@@ -10,7 +10,6 @@ import {
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { GradientHeader, FAB, Card, SearchBar } from '../../components/common';
 import { colors } from '../../theme/colors';
-import TeamLogo from '../../components/common/TeamLogo';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSearch } from '../../hooks';
 import { Grupo, Clasificacion, Equipo } from '../../types';
@@ -122,11 +121,11 @@ export const GroupStageScreen: React.FC<GroupStageScreenProps> = ({ navigation, 
         <View style={styles.table}>
           {/* Header de la tabla */}
           <View style={styles.tableHeader}>
-            <View style={styles.posCol}><Text style={styles.tableHeaderText}>#</Text></View>
-            <View style={styles.equipoCol}><Text style={[styles.tableHeaderText, { textAlign: 'left' }]}>Equipo</Text></View>
-            <View style={styles.statCol}><Text style={styles.tableHeaderText}>P</Text></View>
-            <View style={styles.statCol}><Text style={styles.tableHeaderText}>DIFF</Text></View>
-            <View style={styles.statCol}><Text style={styles.tableHeaderText}>PTS</Text></View>
+            <Text style={[styles.tableHeaderText, styles.posCol]}>#</Text>
+            <Text style={[styles.tableHeaderText, styles.equipoCol]}>Equipo</Text>
+            <Text style={[styles.tableHeaderText, styles.statCol]}>P</Text>
+            <Text style={[styles.tableHeaderText, styles.statCol]}>DIFF</Text>
+            <Text style={[styles.tableHeaderText, styles.statCol]}>PTS</Text>
           </View>
 
           {/* Filas de equipos */}
@@ -145,28 +144,28 @@ export const GroupStageScreen: React.FC<GroupStageScreenProps> = ({ navigation, 
               
               {/* Logo + Nombre */}
               <View style={[styles.equipoCell, styles.equipoCol]}>
-                <TeamLogo uri={clasificacion.equipo.logo} size={32} />
-                <Text style={styles.equipoNombre} numberOfLines={1}>
+                <Image
+                  source={clasificacion.equipo.logo ? { uri: clasificacion.equipo.logo } : require('../../assets/InterLOGO.png')}
+                  style={styles.equipoLogo}
+                  resizeMode="contain"
+                />
+                <Text style={styles.equipoNombre}>
                   {clasificacion.equipo.nombre}
                 </Text>
               </View>
               
               {/* Partidos Jugados */}
-              <View style={styles.statCol}><Text style={styles.tableText}>{clasificacion.pj}</Text></View>
+              <Text style={[styles.tableText, styles.statCol]}>{clasificacion.pj}</Text>
               
               {/* Diferencia de Goles */}
-              <View style={styles.statCol}>
-                <Text style={[styles.tableText, clasificacion.dif > 0 && styles.positiveDiff]}>
-                  {clasificacion.dif > 0 ? `+${clasificacion.dif}` : clasificacion.dif}
-                </Text>
-              </View>
+              <Text style={[styles.tableText, styles.statCol, clasificacion.dif > 0 && styles.positiveDiff]}>
+                {clasificacion.dif > 0 ? `+${clasificacion.dif}` : clasificacion.dif}
+              </Text>
               
               {/* Puntos */}
-              <View style={styles.statCol}>
-                <Text style={[styles.tableText, styles.puntosText]}>
-                  {clasificacion.puntos}
-                </Text>
-              </View>
+              <Text style={[styles.tableText, styles.statCol, styles.puntosText]}>
+                {clasificacion.puntos}
+              </Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -268,7 +267,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   grupoNombre: {
-    fontSize: 20,
+    fontSize: 30,
     fontWeight: 'bold',
     color: colors.textPrimary,
   },
@@ -303,6 +302,7 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.borderLight,
     alignItems: 'center',
     position: 'relative',
+    minHeight: 56,
   },
   tableText: {
     fontSize: 14,
@@ -314,27 +314,28 @@ const styles = StyleSheet.create({
   },
   equipoCol: {
     flex: 1,
+    minWidth: 0,
   },
   statCol: {
-    width: 50,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 30,
   },
   equipoCell: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flex: 1,
   },
   equipoLogo: {
     width: 32,
     height: 32,
-    borderRadius: 16,
+    borderRadius: 8,
   },
   equipoNombre: {
     fontSize: 14,
     fontWeight: '600',
     color: colors.textPrimary,
     flex: 1,
+    flexWrap: 'wrap',
   },
   positiveDiff: {
     color: colors.success,
@@ -348,7 +349,7 @@ const styles = StyleSheet.create({
     left: 0,
     top: 0,
     bottom: 0,
-    width: 4,
+    width: 2,
   },
   leyenda: {
     marginTop: 12,

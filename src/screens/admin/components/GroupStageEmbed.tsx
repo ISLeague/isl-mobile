@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -27,22 +27,23 @@ interface GroupStageEmbedProps {
   isAdmin?: boolean;
 }
 
-// Función helper para determinar el color de clasificación
-const getClasificacionColor = (posicion: number, tipo_clasificacion?: string) => {
-  if (!tipo_clasificacion) return 'transparent';
+// Función helper para determinar el color de clasificación basado en la posición y configuración del grupo
+const getClasificacionColor = (posicion: number, grupo: Grupo) => {
+  const equiposOro = grupo.equipos_pasan_oro || 0;
+  const equiposPlata = grupo.equipos_pasan_plata || 0;
   
-  switch (tipo_clasificacion) {
-    case 'pasa_copa_general':
-      return posicion === 1 ? '#4CAF50' : posicion === 2 ? '#2196F3' : 'transparent';
-    case 'pasa_copa_oro':
-      return posicion === 1 ? '#FFD700' : posicion === 2 ? '#C0C0C0' : 'transparent';
-    case 'pasa_copa_plata':
-      return posicion === 1 ? '#C0C0C0' : posicion === 2 ? '#CD7F32' : 'transparent';
-    case 'pasa_copa_bronce':
-      return posicion === 1 ? '#CD7F32' : 'transparent';
-    default:
-      return 'transparent';
+  // Primeras posiciones van a Oro (dorado)
+  if (posicion <= equiposOro) {
+    return '#FFD700'; // Dorado
   }
+  
+  // Siguientes posiciones van a Plata (plateado)
+  if (posicion <= equiposOro + equiposPlata) {
+    return '#C0C0C0'; // Plateado
+  }
+  
+  // Resto de equipos (no clasifican) - gris muy claro casi blanco
+  return '#F5F5F5';
 };
 
 export const GroupStageEmbed: React.FC<GroupStageEmbedProps> = ({ navigation, isAdmin = false }) => {
@@ -81,7 +82,7 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps> = ({ navigation, is
   const handleRemoveTeamFromGroup = (clasificacionId: number, equipoNombre: string) => {
     Alert.alert(
       'Eliminar Equipo',
-      `¿Deseas remover "${equipoNombre}" del grupo?`,
+      `Â¿Deseas remover "${equipoNombre}" del grupo?`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -110,7 +111,7 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps> = ({ navigation, is
     
     Alert.alert(
       'Confirmar Movimiento',
-      `¿Mover "${selectedClasificacion.equipo.nombre}" a "${targetGrupo?.nombre}"?`,
+      `Â¿Mover "${selectedClasificacion.equipo.nombre}" a "${targetGrupo?.nombre}"?`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -160,7 +161,7 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps> = ({ navigation, is
     return mockClasificacion
       .filter((c) => {
         const equipo = mockEquipos.find((e) => e.id_equipo === c.id_equipo);
-        // Filtrar por grupo y por búsqueda
+        // Filtrar por grupo y por bÃºsqueda
         return c.id_grupo === id_grupo && 
                (!searchQuery || filteredEquipos.some(fe => fe.id_equipo === equipo?.id_equipo));
       })
@@ -180,14 +181,15 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps> = ({ navigation, is
     }
   };
 
-  const renderClasificacionIndicator = (posicion: number, tipo_clasificacion?: string) => {
-    const color = getClasificacionColor(posicion, tipo_clasificacion);
-    const textColor = color !== 'transparent' ? colors.white : colors.textPrimary;
+  const renderClasificacionIndicator = (posicion: number, grupo: Grupo) => {
+    const color = getClasificacionColor(posicion, grupo);
+    const isEliminated = color === '#F5F5F5';
+    const textColor = isEliminated ? colors.textSecondary : colors.white;
     
     return (
       <View style={[
         styles.posicionCircle, 
-        color !== 'transparent' && { backgroundColor: color }
+        { backgroundColor: color, borderWidth: isEliminated ? 1 : 0, borderColor: colors.border }
       ]}>
         <Text style={[styles.posicionText, { color: textColor }]}>{posicion}</Text>
       </View>
@@ -254,16 +256,14 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps> = ({ navigation, is
         activeOpacity={0.7}
         accessible={true}
       >
-        {renderClasificacionIndicator(clasificacion.posicion, grupo.tipo_clasificacion)}
-        {true ? (
-          <TeamLogo uri={clasificacion.equipo.logo} size={32} />
-        ) : (
-          <View style={styles.equipoLogoEmoji}>
-            <Text style={styles.equipoLogoEmojiText}>{clasificacion.equipo.logo || '⚽'}</Text>
-          </View>
-        )}
+        {renderClasificacionIndicator(clasificacion.posicion, grupo)}
+        <Image 
+          source={clasificacion.equipo.logo ? { uri: clasificacion.equipo.logo } : require('../../../assets/InterLOGO.png')} 
+          style={styles.equipoLogo} 
+          resizeMode="cover" 
+        />
         <View style={[styles.equipoCell, styles.equipoCol]}>
-          <Text style={styles.equipoNombre} numberOfLines={1}>
+          <Text style={styles.equipoNombre}>
             {clasificacion.equipo.nombre}
           </Text>
         </View>
@@ -328,17 +328,25 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps> = ({ navigation, is
 
         <View style={styles.table}>
           <View style={styles.tableHeader}>
-            <Text style={[styles.tableHeaderText, styles.posCol]}>#</Text>
+            <View style={styles.posCol}>
+              <Text style={styles.tableHeaderText}>#</Text>
+            </View>
             <Text style={[styles.tableHeaderText, styles.equipoCol]}>Equipo</Text>
-            <Text style={[styles.tableHeaderText, styles.statCol]}>P</Text>
-            <Text style={[styles.tableHeaderText, styles.statCol]}>DIFF</Text>
-            <Text style={[styles.tableHeaderText, styles.statCol]}>PTS</Text>
+            <View style={styles.statCol}>
+              <Text style={styles.tableHeaderText}>P</Text>
+            </View>
+            <View style={styles.statCol}>
+              <Text style={styles.tableHeaderText}>DIFF</Text>
+            </View>
+            <View style={styles.statCol}>
+              <Text style={styles.tableHeaderText}>PTS</Text>
+            </View>
           </View>
 
           {equipos.map((clasificacion) => renderEquipoRow(clasificacion, grupo))}
         </View>
 
-        {/* Sección de Reglas - Collapsible */}
+        {/* SecciÃ³n de Reglas - Collapsible */}
         <TouchableOpacity
           style={styles.rulesToggle}
           onPress={() => setExpandedRules(prev => ({ ...prev, [grupo.id_grupo]: !prev[grupo.id_grupo] }))}
@@ -359,67 +367,53 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps> = ({ navigation, is
               Los equipos clasifican según su posición en el grupo:
             </Text>
 
-            {grupo.tipo_clasificacion === 'pasa_copa_general' && (
-              <View style={styles.rulesSection}>
-                <View style={styles.ruleItem}>
-                  <View style={[styles.ruleDot, { backgroundColor: '#4CAF50' }]} />
-                  <Text style={styles.ruleText}>
-                    <Text style={styles.ruleBold}>1º Posición:</Text> Clasifica a Copa General
-                  </Text>
-                </View>
-                <View style={styles.ruleItem}>
-                  <View style={[styles.ruleDot, { backgroundColor: '#2196F3' }]} />
-                  <Text style={styles.ruleText}>
-                    <Text style={styles.ruleBold}>2º Posición:</Text> Clasifica a Copa General (repechaje)
-                  </Text>
-                </View>
-              </View>
-            )}
+            <View style={styles.rulesSection}>
+              {/* Reglas para Copa de Oro */}
+              {(grupo.equipos_pasan_oro || 0) > 0 && (
+                <>
+                  {Array.from({ length: grupo.equipos_pasan_oro || 0 }).map((_, index) => {
+                    const posicion = index + 1;
+                    const posicionTexto = posicion === 1 ? '1º' : posicion === 2 ? '2º' : posicion === 3 ? '3º' : `${posicion}º`;
+                    return (
+                      <View key={`oro-${posicion}`} style={styles.ruleItem}>
+                        <View style={[styles.ruleDot, { backgroundColor: '#FFD700', borderColor: '#DAA520' }]} />
+                        <Text style={styles.ruleText}>
+                          <Text style={styles.ruleBold}>{posicionTexto} Posición:</Text> Clasifica a Copa de Oro
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </>
+              )}
 
-            {grupo.tipo_clasificacion === 'pasa_copa_oro' && (
-              <View style={styles.rulesSection}>
-                <View style={styles.ruleItem}>
-                  <View style={[styles.ruleDot, { backgroundColor: '#FFD700' }]} />
-                  <Text style={styles.ruleText}>
-                    <Text style={styles.ruleBold}>1º Posición:</Text> Clasifica a Copa de Oro
-                  </Text>
-                </View>
-                <View style={styles.ruleItem}>
-                  <View style={[styles.ruleDot, { backgroundColor: '#C0C0C0' }]} />
-                  <Text style={styles.ruleText}>
-                    <Text style={styles.ruleBold}>2º Posición:</Text> Clasifica a Copa de Oro (repechaje)
-                  </Text>
-                </View>
-              </View>
-            )}
+              {/* Reglas para Copa de Plata */}
+              {(grupo.equipos_pasan_plata || 0) > 0 && (
+                <>
+                  {Array.from({ length: grupo.equipos_pasan_plata || 0 }).map((_, index) => {
+                    const posicion = (grupo.equipos_pasan_oro || 0) + index + 1;
+                    const posicionTexto = posicion === 1 ? '1º' : posicion === 2 ? '2º' : posicion === 3 ? '3º' : `${posicion}º`;
+                    return (
+                      <View key={`plata-${posicion}`} style={styles.ruleItem}>
+                        <View style={[styles.ruleDot, { backgroundColor: '#C0C0C0', borderColor: '#A0A0A0' }]} />
+                        <Text style={styles.ruleText}>
+                          <Text style={styles.ruleBold}>{posicionTexto} Posición:</Text> Clasifica a Copa de Plata
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </>
+              )}
 
-            {grupo.tipo_clasificacion === 'pasa_copa_plata' && (
-              <View style={styles.rulesSection}>
+              {/* Equipos eliminados */}
+              {((grupo.equipos_pasan_oro || 0) + (grupo.equipos_pasan_plata || 0)) < (grupo.cantidad_equipos || 0) && (
                 <View style={styles.ruleItem}>
-                  <View style={[styles.ruleDot, { backgroundColor: '#C0C0C0' }]} />
+                  <View style={[styles.ruleDot, { backgroundColor: '#F5F5F5', borderColor: colors.border }]} />
                   <Text style={styles.ruleText}>
-                    <Text style={styles.ruleBold}>1º Posición:</Text> Clasifica a Copa de Plata
+                    <Text style={styles.ruleBold}>Resto:</Text> No clasifican
                   </Text>
                 </View>
-                <View style={styles.ruleItem}>
-                  <View style={[styles.ruleDot, { backgroundColor: '#CD7F32' }]} />
-                  <Text style={styles.ruleText}>
-                    <Text style={styles.ruleBold}>2º Posición:</Text> Clasifica a Copa de Plata (repechaje)
-                  </Text>
-                </View>
-              </View>
-            )}
-
-            {grupo.tipo_clasificacion === 'pasa_copa_bronce' && (
-              <View style={styles.rulesSection}>
-                <View style={styles.ruleItem}>
-                  <View style={[styles.ruleDot, { backgroundColor: '#CD7F32' }]} />
-                  <Text style={styles.ruleText}>
-                    <Text style={styles.ruleBold}>1º Posición:</Text> Clasifica a Copa de Bronce
-                  </Text>
-                </View>
-              </View>
-            )}
+              )}
+            </View>
 
             <View style={[styles.rulesSection, { marginTop: 12 }]}>
               <Text style={styles.rulesSubtitle}>Criterios de Desempate:</Text>
@@ -437,7 +431,7 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps> = ({ navigation, is
 
   return (
     <GestureHandlerRootView style={styles.container}>
-      {/* Barra de búsqueda */}
+      {/* Barra de bÃºsqueda */}
       <View style={styles.searchSection}>
         <SearchBar
           value={searchQuery}
@@ -503,7 +497,7 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps> = ({ navigation, is
         />
       )}
 
-      {/* Modal para importar múltiples equipos CSV */}
+      {/* Modal para importar mÃºltiples equipos CSV */}
       <ImportTeamsModal
         visible={importTeamsModalVisible}
         onClose={() => {
@@ -572,12 +566,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     backgroundColor: colors.backgroundGray,
+    alignItems: 'center',
   },
   tableHeaderText: {
     fontSize: 12,
     fontWeight: '700',
     color: colors.textSecondary,
     textTransform: 'uppercase',
+    textAlign: 'center',
   },
   tableRow: {
     flexDirection: 'row',
@@ -586,6 +582,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+    minHeight: 56,
   },
   removeButton: {
     marginLeft: 8,
@@ -613,13 +610,16 @@ const styles = StyleSheet.create({
     width: 4,
   },
   posCol: {
-    width: 32,
+    width: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   equipoCol: {
     flex: 1,
+    minWidth: 0,
   },
   statCol: {
-    width: 40,
+    width: 33,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -632,11 +632,13 @@ const styles = StyleSheet.create({
   equipoCell: {
     flex: 1,
     justifyContent: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   equipoLogo: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 30,
+    height: 30,
+    borderRadius: 8,
     marginRight: 8,
   },
   equipoLogoEmoji: {
@@ -656,6 +658,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.textPrimary,
     flex: 1,
+    flexWrap: 'wrap',
   },
   rulesToggle: {
     flexDirection: 'row',
@@ -704,10 +707,12 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   ruleDot: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    marginRight: 10,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    marginRight: 12,
+    borderWidth: 2,
+    borderColor: 'rgba(0,0,0,0.1)',
   },
   ruleText: {
     fontSize: 13,
@@ -744,3 +749,4 @@ const styles = StyleSheet.create({
   },
 });
   
+

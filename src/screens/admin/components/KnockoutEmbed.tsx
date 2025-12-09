@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,18 +9,14 @@ import {
   Switch,
   Alert,
   Share,
-  Modal,
-  TextInput,
-  FlatList,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../../theme/colors';
-import TeamLogo from '../../../components/common/TeamLogo';
 import { Ronda, Partido, Equipo } from '../../../types';
-import { mockRondas, mockPartidos, mockEquipos } from '../../../data/mockData';
+import { mockRondas, mockPartidos, mockEquipos, mockCanchas, mockLocales } from '../../../data/mockData';
 import { formatDate } from '../../../utils/formatters';
-import { FAB } from '../../../components/common';
+import { FAB, SearchBar } from '../../../components/common';
 import { useToast } from '../../../contexts/ToastContext';
 import { useSearch } from '../../../hooks';
 
@@ -48,13 +44,13 @@ const getSubtipoGradient = (subtipo: SubtipoEliminatoria) => {
 const getSubtipoIcon = (subtipo: SubtipoEliminatoria) => {
   switch (subtipo) {
     case 'oro':
-      return '🥇';
+      return 'ðŸ¥‡';
     case 'plata':
-      return '🥈';
+      return 'ðŸ¥ˆ';
     case 'bronce':
-      return '🥉';
+      return 'ðŸ¥‰';
     default:
-      return '🏆';
+      return 'ðŸ†';
   }
 };
 
@@ -70,7 +66,6 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
   const [selectedSubtipo, setSelectedSubtipo] = useState<SubtipoEliminatoria>('oro');
   const [torneoFinalizado, setTorneoFinalizado] = useState(false);
   const [knockoutActivo, setKnockoutActivo] = useState(true); // Control para activar/desactivar knockout
-  const [showSearchModal, setShowSearchModal] = useState(false);
   
   // Hook de búsqueda
   const {
@@ -121,11 +116,22 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
         ...p,
         equipo_local: mockEquipos.find(e => e.id_equipo === p.id_equipo_local)!,
         equipo_visitante: mockEquipos.find(e => e.id_equipo === p.id_equipo_visitante)!,
+        cancha: mockCanchas.find(c => c.id_cancha === p.id_cancha),
       }))
+      .filter(p => {
+        // Filtrar por búsqueda si hay query
+        if (!searchQuery) return true;
+        const query = searchQuery.toLowerCase();
+        return (
+          p.equipo_local?.nombre.toLowerCase().includes(query) ||
+          p.equipo_visitante?.nombre.toLowerCase().includes(query)
+        );
+      })
       .sort((a, b) => {
+        // Ordenar por fecha y hora descendente (más tarde primero - arriba)
         const dateA = new Date(`${a.fecha} ${a.hora || '00:00'}`);
         const dateB = new Date(`${b.fecha} ${b.hora || '00:00'}`);
-        return dateA.getTime() - dateB.getTime();
+        return dateB.getTime() - dateA.getTime();
       });
   };
 
@@ -247,25 +253,34 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
     );
   }
 
-  // Filtrar rondas por subtipo seleccionado
-  const filteredRondas = rondas.filter(r => r.subtipo_eliminatoria === selectedSubtipo);
+  // Filtrar y ordenar rondas por subtipo seleccionado
+  const filteredRondas = rondas
+    .filter(r => r.subtipo_eliminatoria === selectedSubtipo)
+    .sort((a, b) => {
+      // Ordenar rondas por fecha de inicio descendente (más reciente primero - arriba)
+      const dateA = new Date(a.fecha_inicio || '');
+      const dateB = new Date(b.fecha_inicio || '');
+      return dateB.getTime() - dateA.getTime();
+    });
 
   const renderPartido = (partido: Partido & { equipo_local: Equipo, equipo_visitante: Equipo }) => {
     // Determinar ganador considerando penales
     const hasResult = partido.marcador_local !== null && partido.marcador_local !== undefined && 
                       partido.marcador_visitante !== null && partido.marcador_visitante !== undefined;
     
+    const hayPenales = partido.penales_local !== null && partido.penales_local !== undefined && 
+                       partido.penales_visitante !== null && partido.penales_visitante !== undefined;
+    
     let ganador: 'local' | 'visitante' | 'empate' | null = null;
     
     if (hasResult) {
       const golesLocal = partido.marcador_local!;
       const golesVisitante = partido.marcador_visitante!;
-      const penalesLocal = partido.penales_local !== null && partido.penales_local !== undefined ? partido.penales_local : null;
-      const penalesVisitante = partido.penales_visitante !== null && partido.penales_visitante !== undefined ? partido.penales_visitante : null;
       
       // Si hay penales, determinar ganador por penales
-      if (penalesLocal !== null && penalesVisitante !== null) {
-        ganador = penalesLocal > penalesVisitante ? 'local' : penalesLocal < penalesVisitante ? 'visitante' : 'empate';
+      if (hayPenales) {
+        ganador = partido.penales_local! > partido.penales_visitante! ? 'local' : 
+                  partido.penales_local! < partido.penales_visitante! ? 'visitante' : 'empate';
       } else {
         // Determinar ganador por resultado normal
         ganador = golesLocal > golesVisitante ? 'local' : golesLocal < golesVisitante ? 'visitante' : 'empate';
@@ -275,12 +290,9 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
     return (
       <TouchableOpacity
         key={partido.id_partido}
-        style={[
-          styles.partidoCard,
-          ganador === 'empate' && styles.partidoCardEmpate,
-        ]}
-        onPress={() => isAdmin && handleEditPartido(partido)}
-        activeOpacity={isAdmin ? 0.7 : 1}
+        style={styles.partidoCard}
+        onPress={() => isAdmin ? handleEditPartido(partido) : navigation.navigate('MatchDetail', { partidoId: partido.id_partido })}
+        activeOpacity={0.7}
       >
         <View style={styles.partidoHeader}>
           <View style={styles.fechaHoraContainer}>
@@ -308,15 +320,25 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
           </View>
         </View>
 
+        {partido.cancha && (
+          <View style={styles.canchaContainer}>
+            <MaterialCommunityIcons name="soccer-field" size={14} color={colors.textSecondary} />
+            <View style={styles.canchaTextContainer}>
+              <Text style={styles.canchaLocalText}>
+                {mockLocales.find(l => l.id_local === partido.cancha!.id_local)?.nombre || 'Local'}
+              </Text>
+              <Text style={styles.canchaText}>{partido.cancha.nombre}</Text>
+            </View>
+          </View>
+        )}
+
         <View style={styles.equiposContainer}>
           <View style={styles.equipoRow}>
-            {true ? (
-              <TeamLogo uri={partido.equipo_local.logo} size={40} />
-            ) : (
-              <View style={styles.equipoLogoEmoji}>
-                <Text style={styles.equipoLogoEmojiText}>{partido.equipo_local.logo || '⚽'}</Text>
-              </View>
-            )}
+            <Image 
+              source={partido.equipo_local.logo ? { uri: partido.equipo_local.logo } : require('../../../assets/InterLOGO.png')} 
+              style={styles.equipoLogo} 
+              resizeMode="cover" 
+            />
             <Text style={[
               styles.equipoNombre,
               ganador === 'local' && styles.equipoNombreGanador,
@@ -325,20 +347,33 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
             </Text>
             <View style={styles.scoreContainer}>
               {ganador === 'local' && <View style={styles.winnerIndicator} />}
-              <Text style={styles.golesText}>
-                {partido.marcador_local !== null && partido.marcador_local !== undefined ? partido.marcador_local : '-'}
-              </Text>
+              <View style={styles.scoreRow}>
+                <Text style={[
+                  styles.golesText,
+                  ganador === 'local' && styles.golesTextGanador,
+                  ganador === 'visitante' && styles.golesTextPerdedor
+                ]}>
+                  {partido.marcador_local !== null && partido.marcador_local !== undefined ? partido.marcador_local : '-'}
+                </Text>
+                {hayPenales && (
+                  <Text style={[
+                    styles.penalesTextSmall,
+                    ganador === 'local' && styles.golesTextGanador,
+                    ganador === 'visitante' && styles.golesTextPerdedor
+                  ]}>
+                    {' '}({partido.penales_local})
+                  </Text>
+                )}
+              </View>
             </View>
           </View>
 
           <View style={styles.equipoRow}>
-            {true ? (
-              <TeamLogo uri={partido.equipo_visitante.logo} size={40} />
-            ) : (
-              <View style={styles.equipoLogoEmoji}>
-                <Text style={styles.equipoLogoEmojiText}>{partido.equipo_visitante.logo || '⚽'}</Text>
-              </View>
-            )}
+            <Image 
+              source={partido.equipo_visitante.logo ? { uri: partido.equipo_visitante.logo } : require('../../../assets/InterLOGO.png')} 
+              style={styles.equipoLogo} 
+              resizeMode="cover" 
+            />
             <Text style={[
               styles.equipoNombre,
               ganador === 'visitante' && styles.equipoNombreGanador,
@@ -347,9 +382,24 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
             </Text>
             <View style={styles.scoreContainer}>
               {ganador === 'visitante' && <View style={styles.winnerIndicator} />}
-              <Text style={styles.golesText}>
-                {partido.marcador_visitante !== null && partido.marcador_visitante !== undefined ? partido.marcador_visitante : '-'}
-              </Text>
+              <View style={styles.scoreRow}>
+                <Text style={[
+                  styles.golesText,
+                  ganador === 'visitante' && styles.golesTextGanador,
+                  ganador === 'local' && styles.golesTextPerdedor
+                ]}>
+                  {partido.marcador_visitante !== null && partido.marcador_visitante !== undefined ? partido.marcador_visitante : '-'}
+                </Text>
+                {hayPenales && (
+                  <Text style={[
+                    styles.penalesTextSmall,
+                    ganador === 'visitante' && styles.golesTextGanador,
+                    ganador === 'local' && styles.golesTextPerdedor
+                  ]}>
+                    {' '}({partido.penales_visitante})
+                  </Text>
+                )}
+              </View>
             </View>
           </View>
         </View>
@@ -565,6 +615,16 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
         </View>
       )}
 
+      {/* Barra de búsqueda */}
+      <View style={styles.searchSection}>
+        <SearchBar
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholder="Buscar equipo en eliminatorias..."
+          onClear={clearSearch}
+        />
+      </View>
+
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {filteredRondas.length === 0 ? (
           <View style={styles.emptyRondasContainer}>
@@ -586,17 +646,6 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
         )}
       </ScrollView>
 
-      {/* Botón de búsqueda */}
-      <TouchableOpacity
-        style={[
-          styles.searchFab,
-          isAdmin && styles.searchFabWithCreate, // Si es admin, posicionar más arriba para no chocar con el FAB de crear
-        ]}
-        onPress={() => setShowSearchModal(true)}
-      >
-        <MaterialCommunityIcons name="magnify" size={24} color={colors.white} />
-      </TouchableOpacity>
-
       {/* FAB para crear ronda (solo admin) */}
       {isAdmin && (
         <FAB
@@ -605,104 +654,6 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
           color={getSubtipoGradient(selectedSubtipo)[0]}
         />
       )}
-
-      {/* Modal de búsqueda */}
-      <Modal
-        visible={showSearchModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => {
-          setShowSearchModal(false);
-          clearSearch();
-        }}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.searchModalContent}>
-            <View style={styles.searchModalHeader}>
-              <Text style={styles.searchModalTitle}>Buscar Equipo</Text>
-              <TouchableOpacity
-                style={styles.closeButton}
-                onPress={() => {
-                  setShowSearchModal(false);
-                  clearSearch();
-                }}
-              >
-                <MaterialCommunityIcons name="close" size={24} color={colors.textPrimary} />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.searchInputContainer}>
-              <MaterialCommunityIcons name="magnify" size={20} color={colors.textSecondary} />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Buscar por nombre de equipo..."
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                autoFocus
-              />
-              {searchQuery.length > 0 && (
-                <TouchableOpacity onPress={clearSearch}>
-                  <MaterialCommunityIcons name="close-circle" size={20} color={colors.textSecondary} />
-                </TouchableOpacity>
-              )}
-            </View>
-
-            <FlatList
-              data={filteredEquipos}
-              keyExtractor={(item) => item.id_equipo.toString()}
-              renderItem={({ item }) => {
-                // Buscar partidos donde este equipo participa en el knockout
-                const equipoPartidos = partidos.filter(
-                  p => (p.id_equipo_local === item.id_equipo || p.id_equipo_visitante === item.id_equipo) &&
-                       mockRondas.find(r => r.id_ronda === p.id_ronda && r.tipo === 'eliminatorias' && r.subtipo_eliminatoria === selectedSubtipo)
-                );
-
-                if (equipoPartidos.length === 0) {
-                  return null;
-                }
-
-                return (
-                  <TouchableOpacity
-                    style={styles.equipoResultItem}
-                    onPress={() => {
-                      // Expandir la ronda del primer partido encontrado
-                      if (equipoPartidos[0].id_ronda) {
-                        setExpandedRondas(prev => ({ ...prev, [equipoPartidos[0].id_ronda!]: true }));
-                      }
-                      setShowSearchModal(false);
-                      clearSearch();
-                    }}
-                  >
-                    {item.logo && item.logo.startsWith('http') ? (
-                      <Image source={{ uri: item.logo }} style={styles.equipoResultLogo} resizeMode="contain" />
-                    ) : (
-                      <View style={styles.equipoResultLogoEmoji}>
-                        <Text style={styles.equipoResultLogoEmojiText}>{item.logo || '⚽'}</Text>
-                      </View>
-                    )}
-                    <View style={styles.equipoResultInfo}>
-                      <Text style={styles.equipoResultName}>{item.nombre}</Text>
-                      <Text style={styles.equipoResultCount}>
-                        {equipoPartidos.length} {equipoPartidos.length === 1 ? 'partido' : 'partidos'}
-                      </Text>
-                    </View>
-                    <MaterialCommunityIcons name="chevron-right" size={24} color={colors.textSecondary} />
-                  </TouchableOpacity>
-                );
-              }}
-              ListEmptyComponent={
-                <View style={styles.emptySearchContainer}>
-                  <MaterialCommunityIcons name="alert-circle-outline" size={48} color={colors.textLight} />
-                  <Text style={styles.emptySearchText}>
-                    {searchQuery ? 'No se encontraron equipos' : 'Escribe para buscar equipos'}
-                  </Text>
-                </View>
-              }
-              contentContainerStyle={styles.searchResultsList}
-            />
-          </View>
-        </View>
-      </Modal>
 
         </>
       ) : (
@@ -726,6 +677,11 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+  },
+  searchSection: {
+    padding: 16,
+    paddingBottom: 8,
+    backgroundColor: colors.backgroundGray,
   },
   emptyContainer: {
     flex: 1,
@@ -913,13 +869,11 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   partidoCard: {
-    backgroundColor: colors.backgroundGray,
-    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
     padding: 16,
     gap: 12,
-  },
-  partidoCardEmpate: {
-    backgroundColor: 'rgba(200, 200, 200, 0.15)',
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderLight,
   },
   partidoHeader: {
     flexDirection: 'row',
@@ -940,6 +894,25 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textSecondary,
     fontWeight: '600',
+  },
+  canchaContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: -4,
+    marginBottom: 4,
+  },
+  canchaTextContainer: {
+    flexDirection: 'column',
+  },
+  canchaLocalText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  canchaText: {
+    fontSize: 10,
+    color: colors.textSecondary,
   },
   estadoBadge: {
     paddingHorizontal: 10,
@@ -973,9 +946,9 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   equipoLogo: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 20,
+    height: 20,
+    borderRadius: 8,
   },
   equipoLogoEmoji: {
     width: 32,
@@ -1008,12 +981,28 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: colors.success,
   },
+  scoreRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   golesText: {
     fontSize: 18,
     fontWeight: 'bold',
     color: colors.textPrimary,
     minWidth: 24,
     textAlign: 'center',
+  },
+  golesTextGanador: {
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  golesTextPerdedor: {
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  penalesTextSmall: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   loadResultButton: {
     flexDirection: 'row',
@@ -1071,126 +1060,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
   },
-  searchFab: {
-    position: 'absolute',
-    right: 20,
-    bottom: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-  },
-  searchFabWithCreate: {
-    bottom: 90, // Más arriba cuando hay FAB de crear
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  searchModalContent: {
-    backgroundColor: colors.white,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: '80%',
-    paddingBottom: 20,
-  },
-  searchModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
-  },
-  searchModalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: colors.textPrimary,
-  },
-  closeButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.backgroundGray,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  searchInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.backgroundGray,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    margin: 20,
-    gap: 8,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    color: colors.textPrimary,
-  },
-  searchResultsList: {
-    paddingHorizontal: 20,
-  },
-  equipoResultItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    backgroundColor: colors.backgroundGray,
-    borderRadius: 12,
-    marginBottom: 12,
-    gap: 12,
-  },
-  equipoResultLogo: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-  },
-  equipoResultLogoEmoji: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.white,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  equipoResultLogoEmojiText: {
-    fontSize: 28,
-  },
-  equipoResultInfo: {
-    flex: 1,
-  },
-  equipoResultName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.textPrimary,
-    marginBottom: 4,
-  },
-  equipoResultCount: {
-    fontSize: 13,
-    color: colors.textSecondary,
-  },
-  emptySearchContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 60,
-  },
-  emptySearchText: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginTop: 16,
-  },
 });
 
 export default KnockoutEmbed;
+

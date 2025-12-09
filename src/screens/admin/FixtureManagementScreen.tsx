@@ -14,7 +14,6 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { colors } from '../../theme/colors';
-import TeamLogo from '../../components/common/TeamLogo';
 import { useToast } from '../../contexts/ToastContext';
 import { Ronda, Partido, Equipo } from '../../types';
 import { mockRondas, mockPartidos, mockEquipos, mockGrupos, mockClasificacion } from '../../data/mockData';
@@ -292,7 +291,11 @@ export const FixtureManagementScreen: React.FC<FixtureManagementScreenProps> = (
         <View style={styles.partidoContent}>
           {/* Equipo Local */}
           <View style={styles.equipoContainer}>
-            <TeamLogo uri={partido.equipo_local.logo} size={40} />
+            <Image
+              source={partido.equipo_local.logo ? { uri: partido.equipo_local.logo } : require('../../assets/InterLOGO.png')}
+              style={styles.equipoLogo}
+              resizeMode="contain"
+            />
             <Text style={styles.equipoNombre} numberOfLines={2}>
               {partido.equipo_local.nombre}
             </Text>
@@ -316,7 +319,11 @@ export const FixtureManagementScreen: React.FC<FixtureManagementScreenProps> = (
 
           {/* Equipo Visitante */}
           <View style={styles.equipoContainer}>
-            <TeamLogo uri={partido.equipo_visitante.logo} size={40} />
+            <Image
+              source={partido.equipo_visitante.logo ? { uri: partido.equipo_visitante.logo } : require('../../assets/InterLOGO.png')}
+              style={styles.equipoLogo}
+              resizeMode="contain"
+            />
             <Text style={styles.equipoNombre} numberOfLines={2}>
               {partido.equipo_visitante.nombre}
             </Text>
@@ -707,6 +714,7 @@ const styles = StyleSheet.create({
   equipoLogo: {
     width: 40,
     height: 40,
+    borderRadius: 8,
   },
   equipoNombre: {
     fontSize: 13,
