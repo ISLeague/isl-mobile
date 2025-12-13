@@ -2,7 +2,7 @@
 export interface Usuario {
   id_usuario: number;
   email: string;
-  rol: 'superadmin' | 'admin' | 'jugador' | 'fan' | 'invitado';
+  rol: 'superadmin' | 'admin' | 'fan' | 'invitado';
   id_pais: number;
   id_torneos?: number[]; // Array de torneos asignados para admins de torneo
   id_ediciones?: number[]; // Array de ediciones correspondientes a los torneos

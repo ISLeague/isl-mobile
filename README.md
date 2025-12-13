@@ -24,8 +24,8 @@ Aplicación móvil para la gestión y visualización de torneos de fútbol amate
 11. [Sistema de Tipos](#-sistema-de-tipos)
 12. [Theming y Estilos](#-theming-y-estilos)
 13. [API Mock Actual](#-api-mock-actual)
-14. [Requerimientos de Backend](#-requerimientos-de-backend)
-15. [Mejoras Futuras](#-mejoras-futuras)
+14. [InterfacesForBackend](#-interfacesforbackend)
+15. [Consideraciones Técnicas del Backend](#-consideraciones-técnicas-del-backend)
 16. [Testing](#-testing)
 17. [Contribución](#-contribución)
 
@@ -111,6 +111,13 @@ ISL/
 ├── package.json               # Dependencias
 ├── tsconfig.json              # Configuración TypeScript
 ├── babel.config.js            # Configuración Babel
+│
+├── InterfacesForBackend/      # Contratos de API para el backend
+│   ├── index.ts               # Barrel export de todo
+│   ├── entities/              # Modelos de base de datos
+│   ├── dtos/                  # Data Transfer Objects
+│   ├── responses/             # Tipos de respuesta API
+│   └── endpoints/             # Contratos de endpoints REST
 │
 └── src/
     ├── api/
@@ -683,7 +690,6 @@ const {
 **Roles soportados:**
 - `superadmin`: Gestiona países y admins
 - `admin`: Gestiona torneos asignados
-- `jugador`: Rol de jugador (futuro)
 - `fan`: Usuario normal
 - `invitado`: Acceso limitado sin registro
 
@@ -742,7 +748,7 @@ showToast({
 interface Usuario {
   id_usuario: number;
   email: string;
-  rol: 'superadmin' | 'admin' | 'jugador' | 'fan' | 'invitado';
+  rol: 'superadmin' | 'admin' | 'fan' | 'invitado';
   id_pais: number;
   id_torneos?: number[];
   id_ediciones?: number[];
@@ -979,59 +985,6 @@ const darkColors = {
 
 ---
 
-## 📡 API Mock Actual
-
-### Estructura de la API Mock
-
-```typescript
-const mockApi = {
-  auth: mockAuthApi,      // Autenticación
-  main: mockMainApi,      // Navegación principal
-  competition: mockCompetitionApi,  // Competición
-  teams: mockTeamsApi,    // Equipos
-  knockout: mockKnockoutApi,  // Eliminatorias
-  stats: mockStatsApi,    // Estadísticas
-  profile: mockProfileApi,  // Perfil
-};
-```
-
-### Endpoints Actuales
-
-#### Autenticación
-```typescript
-mockAuthApi.login(credentials)      // POST /auth/login
-mockAuthApi.register(data)          // POST /auth/register
-mockAuthApi.logout()                // POST /auth/logout
-mockAuthApi.getProfile(token)       // GET /profile
-```
-
-#### Navegación Principal
-```typescript
-mockMainApi.getBanners()                        // GET /banners
-mockMainApi.getCountries()                      // GET /countries
-mockMainApi.getTournamentsByCountry(idPais)     // GET /countries/{id}/tournaments
-mockMainApi.getEditionsByTournament(idTorneo)   // GET /tournaments/{id}/editions
-mockMainApi.getCategoriesByEdition(idEdicion)   // GET /editions/{id}/categories
-```
-
-#### Competición
-```typescript
-mockCompetitionApi.getPhases(idEdicionCategoria)       // GET /edition-categories/{id}/phases
-mockCompetitionApi.getGroupsByPhase(idFase)            // GET /phases/{id}/groups
-mockCompetitionApi.getStandingsByGroup(idGrupo)        // GET /groups/{id}/standings
-mockCompetitionApi.getMatchesByPhase(idFase)           // GET /phases/{id}/matches
-mockCompetitionApi.getMatchDetail(idPartido)           // GET /matches/{id}
-mockCompetitionApi.searchMatches(teamName)             // GET /matches/search?team_name=...
-```
-
-#### Equipos
-```typescript
-mockTeamsApi.getTeamDetail(idEquipo)    // GET /teams/{id}
-mockTeamsApi.getTeamStats(idEquipo)     // GET /teams/{id}/stats
-mockTeamsApi.getNextMatch(idEquipo)     // GET /teams/{id}/next-match
-mockTeamsApi.getRecentForm(idEquipo)    // GET /teams/{id}/recent-form
-mockTeamsApi.getTeamPlayers(idEquipo)   // GET /teams/{id}/players
-```
 
 #### Estadísticas
 ```typescript
@@ -1044,419 +997,189 @@ mockStatsApi.getMostReds(idEdicionCategoria, limit)     // GET /stats/most-reds
 
 ---
 
-## 🔌 Requerimientos de Backend
+## 📦 InterfacesForBackend
 
-### Autenticación y Usuarios
+Esta carpeta contiene todos los **contratos de API** tipados en TypeScript para implementar el backend. Está diseñada para compartirse entre frontend y backend, garantizando consistencia de tipos.
 
-#### Endpoints Requeridos
+### Estructura
 
 ```
-POST   /api/auth/login
-POST   /api/auth/register
-POST   /api/auth/logout
-POST   /api/auth/refresh-token
-POST   /api/auth/forgot-password
-POST   /api/auth/reset-password
-POST   /api/auth/change-password
-GET    /api/auth/verify-token
-
-GET    /api/users/me
-PUT    /api/users/me
-GET    /api/users/:id (Admin)
-PUT    /api/users/:id (Admin)
-DELETE /api/users/:id (SuperAdmin)
-GET    /api/users (Admin - listado con filtros)
-POST   /api/users/impersonate/:id (Admin - suplantación)
-POST   /api/users/stop-impersonation
+InterfacesForBackend/
+├── index.ts                 # Barrel export de todo el módulo
+├── entities/                # Modelos de base de datos (25 entidades)
+├── dtos/                    # Data Transfer Objects (13 DTOs)
+├── responses/               # Tipos de respuesta API genéricos
+└── endpoints/               # Contratos REST (20 archivos)
 ```
 
-#### Modelo de Usuario (Backend)
+### Entidades Disponibles
+
+| Entidad | Descripción |
+|---------|-------------|
+| `Usuario` | Usuarios del sistema con roles |
+| `Pais` | Países donde hay torneos |
+| `Torneo` | Torneos de fútbol |
+| `Edicion` | Ediciones anuales de torneos |
+| `Categoria` | Categorías globales (Libre, Senior, etc.) |
+| `EdicionCategoria` | Categoría específica de una edición |
+| `Equipo` | Equipos participantes |
+| `Jugador` | Jugadores registrados |
+| `PlantillaEquipo` | Relación jugador-equipo por edición |
+| `Fase` | Fases de competición (grupos, eliminatorias) |
+| `Grupo` | Grupos dentro de una fase |
+| `Ronda` | Rondas/fechas de partidos |
+| `Partido` | Partidos individuales |
+| `EventoPartido` | Eventos (goles, tarjetas, etc.) |
+| `Clasificacion` | Tabla de posiciones |
+| `Local` | Locaciones/sedes |
+| `Cancha` | Canchas dentro de un local |
+| `Sponsor` | Patrocinadores |
+| `Banner` | Banners publicitarios |
+| `Notificacion` | Notificaciones push |
+| `Fotos` | Galería de fotos |
+| `SeguimientoEquipo` | Equipos seguidos por fans |
+| `HistorialEquipoEdicion` | Historial de equipos |
+| `HistorialJugadorEdicion` | Historial de jugadores |
+| `ReglaAvance` | Reglas de avance entre fases |
+
+### Endpoints REST
+
+Todos los endpoints siguen el patrón `/api/v1/...` y están documentados con JSDoc.
+
+| Archivo | Base URL | Descripción |
+|---------|----------|-------------|
+| `auth.endpoints.ts` | `/api/v1/auth` | Login, registro, tokens, contraseñas |
+| `usuarios.endpoints.ts` | `/api/v1/usuarios` | CRUD usuarios, roles, perfil |
+| `paises.endpoints.ts` | `/api/v1/paises` | CRUD países |
+| `torneos.endpoints.ts` | `/api/v1/torneos` | CRUD torneos, logos |
+| `ediciones.endpoints.ts` | `/api/v1/ediciones` | CRUD ediciones, estados |
+| `categorias.endpoints.ts` | `/api/v1/categorias` | Categorías y edición-categorías |
+| `equipos.endpoints.ts` | `/api/v1/equipos` | CRUD equipos, estadísticas |
+| `jugadores.endpoints.ts` | `/api/v1/jugadores` | CRUD jugadores, plantillas |
+| `fases.endpoints.ts` | `/api/v1/fases` | CRUD fases, reglas avance |
+| `grupos.endpoints.ts` | `/api/v1/grupos` | CRUD grupos, clasificación |
+| `rondas.endpoints.ts` | `/api/v1/rondas` | CRUD rondas, fixture |
+| `partidos.endpoints.ts` | `/api/v1/partidos` | CRUD partidos, eventos, resultados |
+| `clasificacion.endpoints.ts` | `/api/v1/clasificacion` | Tablas, bracket, mejores terceros |
+| `estadisticas.endpoints.ts` | `/api/v1/estadisticas` | Goleadores, asistencias, tarjetas |
+| `locales.endpoints.ts` | `/api/v1/locales` | CRUD locales, geolocalización |
+| `canchas.endpoints.ts` | `/api/v1/canchas` | CRUD canchas, disponibilidad |
+| `sponsors.endpoints.ts` | `/api/v1/sponsors` | CRUD sponsors y banners |
+| `notificaciones.endpoints.ts` | `/api/v1/notificaciones` | Push notifications |
+| `fotos.endpoints.ts` | `/api/v1/fotos` | Galerías y compras |
+| `seguimiento.endpoints.ts` | `/api/v1/seguimiento` | Seguir equipos |
+
+### Respuestas API
 
 ```typescript
-{
-  id_usuario: number;
-  email: string;
-  password_hash: string;
-  rol: 'superadmin' | 'admin' | 'jugador' | 'fan' | 'invitado';
-  id_pais: number | null;
-  id_torneos: number[];  // Para admins de torneo
-  acepto_terminos: boolean;
-  acepto_privacidad: boolean;
-  fecha_aceptacion_terminos: Date | null;
-  debe_cambiar_password: boolean;
-  activo: boolean;
-  created_at: Date;
-  updated_at: Date;
-  last_login: Date | null;
+// Respuesta exitosa
+interface ApiResponse<T> {
+  success: true;
+  data: T;
+  message?: string;
+  timestamp: string;
+}
+
+// Respuesta paginada
+interface PaginatedResponse<T> {
+  success: true;
+  data: T[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    total_pages: number;
+    has_next: boolean;
+    has_prev: boolean;
+  };
+  timestamp: string;
+}
+
+// Respuesta de error
+interface ApiErrorResponse {
+  success: false;
+  error: {
+    code: string;
+    message: string;
+    details?: Record<string, string[]>;
+  };
+  timestamp: string;
 }
 ```
 
-#### Permisos por Rol
+### Roles del Sistema
 
-| Acción | SuperAdmin | Admin | Jugador | Fan | Invitado |
-|--------|------------|-------|---------|-----|----------|
-| Ver países | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Crear países | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Ver torneos | ✅ | ✅ (asignados) | ✅ | ✅ | ✅ |
-| Crear torneos | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Editar torneos | ✅ | ✅ (asignados) | ❌ | ❌ | ❌ |
-| Gestionar equipos | ✅ | ✅ (asignados) | ❌ | ❌ | ❌ |
-| Cargar resultados | ✅ | ✅ (asignados) | ❌ | ❌ | ❌ |
-| Seguir equipo | ✅ | ❌ | ✅ | ✅ | ❌ |
-| Ver fotos completas | ✅ | ✅ | ✅ (pago) | ✅ (pago) | ❌ |
-| Suplantar usuarios | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Rol | Descripción | Permisos |
+|-----|-------------|----------|
+| `superadmin` | Administrador global | Todo el sistema |
+| `admin` | Admin de torneo | Torneos asignados |
+| `fan` | Usuario registrado | Ver + seguir equipos |
+| `invitado` | Sin registro | Solo lectura básica |
 
----
-
-### Países y Torneos
-
-#### Endpoints
-
-```
-# Países
-GET    /api/countries
-POST   /api/countries (SuperAdmin)
-PUT    /api/countries/:id (SuperAdmin)
-DELETE /api/countries/:id (SuperAdmin)
-
-# Torneos
-GET    /api/countries/:id_pais/tournaments
-POST   /api/tournaments (SuperAdmin)
-PUT    /api/tournaments/:id (SuperAdmin/Admin asignado)
-DELETE /api/tournaments/:id (SuperAdmin)
-GET    /api/tournaments/:id
-GET    /api/tournaments/:id/admins (SuperAdmin)
-POST   /api/tournaments/:id/admins (SuperAdmin)
-DELETE /api/tournaments/:id/admins/:id_admin (SuperAdmin)
-
-# Ediciones
-GET    /api/tournaments/:id/editions
-POST   /api/editions (Admin)
-PUT    /api/editions/:id (Admin)
-DELETE /api/editions/:id (Admin)
-PUT    /api/editions/:id/status (Admin) - Cambiar estado
-
-# Categorías
-GET    /api/categories
-GET    /api/editions/:id/categories
-POST   /api/editions/:id/categories (Admin)
-PUT    /api/edition-categories/:id (Admin)
-DELETE /api/edition-categories/:id (Admin)
-```
-
----
-
-### Equipos y Jugadores
-
-#### Endpoints
-
-```
-# Equipos
-GET    /api/edition-categories/:id/teams
-POST   /api/teams (Admin)
-PUT    /api/teams/:id (Admin)
-DELETE /api/teams/:id (Admin)
-GET    /api/teams/:id
-GET    /api/teams/:id/stats
-GET    /api/teams/:id/players
-GET    /api/teams/:id/next-match
-GET    /api/teams/:id/recent-form
-GET    /api/teams/:id/photos
-POST   /api/teams/:id/photos (Admin)
-DELETE /api/teams/:id/photos/:id_foto (Admin)
-
-# Jugadores
-GET    /api/teams/:id/players
-POST   /api/players (Admin)
-PUT    /api/players/:id (Admin)
-DELETE /api/players/:id (Admin)
-GET    /api/players/:id
-GET    /api/players/:id/stats
-POST   /api/players/:id/transfer (Admin) - Transferir a otro equipo
-PUT    /api/players/:id/status (Admin) - Activar/desactivar
-
-# Plantillas
-GET    /api/teams/:id/roster
-POST   /api/teams/:id/roster (Admin) - Agregar jugador
-DELETE /api/teams/:id/roster/:id_jugador (Admin) - Quitar jugador
-PUT    /api/teams/:id/roster/:id_jugador (Admin) - Marcar refuerzo
-```
-
----
-
-### Competición
-
-#### Endpoints
-
-```
-# Fases
-GET    /api/edition-categories/:id/phases
-POST   /api/phases (Admin)
-PUT    /api/phases/:id (Admin)
-DELETE /api/phases/:id (Admin)
-
-# Grupos
-GET    /api/phases/:id/groups
-POST   /api/groups (Admin)
-PUT    /api/groups/:id (Admin)
-DELETE /api/groups/:id (Admin)
-GET    /api/groups/:id/standings
-POST   /api/groups/:id/teams (Admin) - Agregar equipo
-DELETE /api/groups/:id/teams/:id_equipo (Admin) - Quitar equipo
-
-# Rondas
-GET    /api/phases/:id/rounds
-POST   /api/rounds (Admin)
-PUT    /api/rounds/:id (Admin)
-DELETE /api/rounds/:id (Admin)
-
-# Partidos
-GET    /api/phases/:id/matches
-GET    /api/rounds/:id/matches
-POST   /api/matches (Admin)
-PUT    /api/matches/:id (Admin)
-DELETE /api/matches/:id (Admin)
-GET    /api/matches/:id
-GET    /api/matches/:id/events
-POST   /api/matches/:id/events (Admin) - Agregar evento
-DELETE /api/matches/:id/events/:id_evento (Admin)
-PUT    /api/matches/:id/result (Admin) - Cargar resultado
-GET    /api/matches/search?team_name=...
-
-# Clasificación
-GET    /api/groups/:id/standings
-PUT    /api/classifications/:id (Admin) - Actualizar manual
-POST   /api/groups/:id/recalculate (Admin) - Recalcular
-```
-
----
-
-### Estadísticas ("The Best")
-
-#### Endpoints
-
-```
-GET /api/edition-categories/:id/stats/top-scorers?limit=10
-GET /api/edition-categories/:id/stats/top-assists?limit=10
-GET /api/edition-categories/:id/stats/least-conceded?limit=10
-GET /api/edition-categories/:id/stats/most-goals?limit=10
-GET /api/edition-categories/:id/stats/most-yellows?limit=10
-GET /api/edition-categories/:id/stats/most-reds?limit=10
-GET /api/edition-categories/:id/stats/goal-difference?limit=10
-GET /api/edition-categories/:id/stats/avg-goals-scored?limit=10
-GET /api/edition-categories/:id/stats/avg-goals-conceded?limit=10
-GET /api/edition-categories/:id/stats/win-percentage?limit=10
-GET /api/edition-categories/:id/stats/loss-percentage?limit=10
-```
-
-#### Cálculos Requeridos (Backend)
+### Uso en el Backend
 
 ```typescript
-// Goleadores: SUM(eventos WHERE tipo='gol') GROUP BY jugador
-// Asistencias: SUM(eventos WHERE tipo='asistencia') GROUP BY jugador
-// Menos recibidos: SUM(goles_en_contra) de clasificación GROUP BY equipo
-// Más goles: SUM(goles_a_favor) GROUP BY equipo
-// Tarjetas: SUM(eventos WHERE tipo='amarilla'|'roja') GROUP BY jugador
-// Diferencia: goles_a_favor - goles_en_contra
-// Promedios: total / partidos_jugados
-// Porcentajes: (victorias|derrotas / total) * 100
+// Importar todo
+import { 
+  Usuario, 
+  LoginRequestDTO, 
+  ApiResponse,
+  LoginEndpoint 
+} from 'InterfacesForBackend';
+
+// O importar específico
+import { LoginRequestDTO } from 'InterfacesForBackend/dtos/auth.dto';
 ```
 
 ---
 
-### Seguimiento de Equipos
+## 🔌 Consideraciones Técnicas del Backend
 
-#### Endpoints
-
-```
-GET    /api/users/:id/followed-team
-POST   /api/users/:id/follow-team/:id_equipo
-DELETE /api/users/:id/unfollow-team
-PUT    /api/users/:id/change-followed-team/:id_equipo
-```
-
----
-
-### Locales, Canchas y Sponsors
-
-#### Endpoints
-
-```
-# Locales
-GET    /api/edition-categories/:id/locals
-POST   /api/locals (Admin)
-PUT    /api/locals/:id (Admin)
-DELETE /api/locals/:id (Admin)
-GET    /api/locals/:id
-
-# Canchas
-GET    /api/locals/:id/courts
-POST   /api/courts (Admin)
-PUT    /api/courts/:id (Admin)
-DELETE /api/courts/:id (Admin)
-
-# Sponsors
-GET    /api/edition-categories/:id/sponsors
-POST   /api/sponsors (Admin)
-PUT    /api/sponsors/:id (Admin)
-DELETE /api/sponsors/:id (Admin)
-```
-
----
-
-### Notificaciones
-
-#### Endpoints
-
-```
-GET    /api/users/:id/notifications
-POST   /api/notifications (Admin) - Enviar notificación
-PUT    /api/notifications/:id/read
-DELETE /api/notifications/:id
-POST   /api/notifications/broadcast (Admin) - A todos
-POST   /api/notifications/team/:id (Admin) - A seguidores de equipo
-```
-
-#### Modelo de Notificación
-
-```typescript
-{
-  id_notificacion: number;
-  titulo: string;
-  descripcion: string;
-  fecha: Date;
-  url?: string;
-  id_usuario?: number;  // null = broadcast
-  id_equipo?: number;   // Para notificaciones de equipo
-  leida: boolean;
-  tipo: 'partido' | 'resultado' | 'general' | 'equipo';
-}
-```
-
----
-
-### Fotos
-
-#### Endpoints
-
-```
-GET    /api/teams/:id/photos
-POST   /api/teams/:id/photos (Admin)
-DELETE /api/photos/:id (Admin)
-GET    /api/teams/:id/photos/preview  // Gratis
-GET    /api/teams/:id/photos/full     // Requiere pago
-
-# Pagos de fotos
-POST   /api/photos/purchase/:id_equipo
-GET    /api/users/:id/purchased-photos
-```
-
----
-
-### Historial
-
-#### Endpoints
-
-```
-GET /api/teams/:id/history
-GET /api/players/:id/history
-GET /api/editions/:id/standings/final
-GET /api/editions/:id/champion
-```
-
----
-
-### Consideraciones Técnicas del Backend
-
-#### Autenticación
+### Autenticación
 - JWT con refresh tokens
 - Expiración de access token: 15 min
-- Expiración de refresh token: 7 días
+- Refresh token no expira por tiempo, se invalida al:
+  - Logout
+  - Cambio de contraseña
+  - Revocación de dispositivo
 - Rate limiting en endpoints de auth
 
-#### Base de Datos (PostgreSQL recomendado)
+### Base de Datos (PostgreSQL recomendado)
 - Índices en campos de búsqueda frecuente
 - Triggers para actualizar clasificaciones automáticamente
 - Vistas materializadas para estadísticas
 
-#### Caché (Redis recomendado)
+### Caché (Redis recomendado)
 - Cachear estadísticas ("The Best"): 5 min
 - Cachear clasificaciones: 1 min
 - Invalidar caché al cargar resultados
 
-#### Tiempo Real (Socket.io o similar)
-- Actualizaciones de marcador en vivo
-- Notificaciones push
-- Eventos de partido en tiempo real
-
-#### Almacenamiento de Archivos
+### Almacenamiento de Archivos
 - S3 o similar para logos, fotos
 - CDN para servir imágenes
 - Optimización y resize automático
 
-#### Validaciones Backend
+### Permisos por Rol
+
+| Acción | SuperAdmin | Admin | Fan | Invitado |
+|--------|------------|-------|-----|----------|
+| Ver países | ✅ | ✅ | ✅ | ✅ |
+| Crear países | ✅ | ❌ | ❌ | ❌ |
+| Ver torneos | ✅ | ✅ (asignados) | ✅ | ✅ |
+| Crear torneos | ✅ | ❌ | ❌ | ❌ |
+| Editar torneos | ✅ | ✅ (asignados) | ❌ | ❌ |
+| Gestionar equipos | ✅ | ✅ (asignados) | ❌ | ❌ |
+| Cargar resultados | ✅ | ✅ (asignados) | ❌ | ❌ |
+| Seguir equipo | ✅ | ❌ | ✅ | ❌ |
+| Ver fotos completas | ✅ | ✅ | ✅ (pago) | ❌ |
+| Suplantar usuarios | ✅ | ❌ | ❌ | ❌ |
+
+### Validaciones Backend
 - Verificar restricciones de edad en categorías
 - Verificar límites de refuerzos
 - Verificar DNI únicos
 - Validar fechas de partidos
 - Verificar que equipos pertenecen a la categoría
-
----
-
-## 🚀 Mejoras Futuras
-
-### Frontend
-
-#### Performance
-- [ ] Implementar React.memo en componentes frecuentemente re-renderizados
-- [ ] useMemo para cálculos pesados (rankings, estadísticas)
-- [ ] useCallback para funciones pasadas como props
-- [ ] Lazy loading de imágenes
-- [ ] Virtualización de listas largas (FlashList)
-- [ ] Code splitting
-
-#### Componentes
-- [ ] RankingCard (extraer de TheBestScreen)
-- [ ] PlayerStatsCard
-- [ ] NextMatchCard
-- [ ] TeamStatsCard
-- [ ] MatchEventTimeline
-- [ ] LiveScoreCard
-
-#### UX/UI
-- [ ] Pull to refresh en todas las listas
-- [ ] Skeleton loaders consistentes
-- [ ] Animaciones de transición mejoradas
-- [ ] Haptic feedback
-- [ ] Swipe actions en listas
-- [ ] Empty states mejorados
-
-#### Features
-- [ ] Galería de fotos completa
-- [ ] Notificaciones push reales
-- [ ] Compartir en redes sociales
-- [ ] Modo offline con caché
-- [ ] Deep linking
-- [ ] Widget de próximo partido
-- [ ] Calendario de partidos exportable
-- [ ] Favoritos múltiples
-- [ ] Historial de búsquedas
-
-### Testing
-
-- [ ] Unit tests para utils (calculations, formatters)
-- [ ] Unit tests para custom hooks
-- [ ] Integration tests para pantallas
-- [ ] E2E tests con Detox
-- [ ] Storybook para componentes
-
-### Infraestructura
-
-- [ ] CI/CD con GitHub Actions
-- [ ] Releases automáticos
-- [ ] Sentry para error tracking
-- [ ] Analytics (Firebase/Mixpanel)
-- [ ] Feature flags
 
 ---
 
@@ -1481,64 +1204,16 @@ __tests__/
     └── GroupStageScreen.test.tsx
 ```
 
-### Ejecutar Tests
+### Pendientes
+- [ ] Unit tests para utils (calculations, formatters)
+- [ ] Unit tests para custom hooks
+- [ ] Integration tests para pantallas
+- [ ] E2E tests con Detox
+- [ ] Storybook para componentes
 
-```bash
-# Unit tests
-pnpm test
-
-# Con coverage
-pnpm test --coverage
-
-# E2E tests
-pnpm e2e:build
-pnpm e2e:test
-```
-
----
-
-## 👥 Contribución
-
-### Convenciones de Código
-
-1. **Nombres de archivos**: PascalCase para componentes, camelCase para utils/hooks
-2. **Componentes**: Functional components con TypeScript
-3. **Estilos**: StyleSheet.create() al final del archivo
-4. **Imports**: Ordenar por externos → internos → relativos
-5. **Types**: Interfaces en `/types`, props inline
-
-### Estructura de Commits
-
-```
-feat: Agregar nueva funcionalidad
-fix: Corregir bug
-docs: Actualizar documentación
-style: Cambios de formato
-refactor: Refactorización de código
-test: Agregar o modificar tests
-chore: Tareas de mantenimiento
-```
-
-### Pull Requests
-
-1. Crear rama desde `develop`
-2. Nombrar rama: `feature/nombre` o `fix/nombre`
-3. Hacer PR a `develop`
-4. Requiere 1 aprobación mínima
-5. Pasar todos los tests
-
----
-
-## 📄 Licencia
-
-Proyecto privado - Todos los derechos reservados.
-
----
-
-## 📞 Contacto
-
-Para consultas sobre el proyecto, contactar al equipo de desarrollo.
-
----
-
-*Última actualización: Diciembre 2025*
+### Infraestructura
+- [ ] CI/CD con GitHub Actions
+- [ ] Releases automáticos
+- [ ] Sentry para error tracking
+- [ ] Analytics (Firebase/Mixpanel)
+- [ ] Feature flags

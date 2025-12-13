@@ -98,7 +98,7 @@ export const mockUsuarios: Usuario[] = [
   {
     id_usuario: 7,
     email: 'carlos.rodriguez@gmail.com',
-    rol: 'jugador',
+    rol: 'fan',
     id_pais: 1,
     acepto_terminos: true,
     acepto_privacidad: true,
