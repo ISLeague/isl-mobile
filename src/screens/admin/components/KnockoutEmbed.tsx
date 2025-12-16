@@ -210,7 +210,7 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
           onPress: async () => {
             try {
               // TODO: Llamar API para eliminar ronda
-              // await mockApi.rounds.deleteRound(ronda.id_ronda);
+              // await api.rounds.deleteRound(ronda.id_ronda);
               console.log('Eliminar ronda:', ronda.id_ronda);
               showInfo('Ronda eliminada exitosamente');
               loadData();

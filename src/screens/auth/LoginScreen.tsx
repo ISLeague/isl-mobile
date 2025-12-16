@@ -17,7 +17,7 @@ import { Button } from '../../components/common/Button';
 import { Input } from '../../components/common/Input';
 import { colors } from '../../theme/colors';
 import { useToast } from '../../contexts/ToastContext';
-import { mockApi } from '../../api/mockApi';
+import api from '../../api';
 import { useAuth } from '../../contexts/AuthContext';
 import { safeAsync, getUserFriendlyMessage } from '../../utils/errorHandling';
 
@@ -53,7 +53,7 @@ export const LoginScreen = ({ navigation }: any) => {
     
     const response = await safeAsync(
       async () => {
-        return await mockApi.auth.login({ email, password });
+        return await api.auth.login({ email, password });
       },
       'login',
       {
@@ -61,8 +61,8 @@ export const LoginScreen = ({ navigation }: any) => {
         fallbackValue: null,
         onError: (error) => {
           showError(
-            error.message === 'Credenciales inválidas' 
-              ? 'Email o contraseña incorrectos' 
+            error.message === 'Credenciales inválidas'
+              ? 'Email o contraseña incorrectos'
               : getUserFriendlyMessage(error),
             'Error al iniciar sesión'
           );
@@ -73,12 +73,18 @@ export const LoginScreen = ({ navigation }: any) => {
     setLoading(false);
 
     if (response) {
+      console.log('✅ Login exitoso:', {
+        token: response.token?.substring(0, 20) + '...',
+        usuario: response.usuario,
+      });
+
       // Guardar en el contexto
       login(response.token, response.usuario);
       showSuccess(`¡Bienvenido!`, 'Sesión iniciada');
-      
+
       // Verificar si debe cambiar contraseña (admins de torneo en primer login)
       if (response.usuario.debe_cambiar_password) {
+        console.log('🔄 Redirigiendo a ChangePassword');
         setTimeout(() => {
           navigation.reset({
             index: 0,
@@ -87,16 +93,20 @@ export const LoginScreen = ({ navigation }: any) => {
         }, 500);
         return;
       }
-      
+
       // Navegación según el rol
+      const rol = response.usuario.rol;
+      console.log('👤 Rol del usuario:', rol);
+
       setTimeout(() => {
-        if (response.usuario.rol === 'superadmin') {
-          // SuperAdmin → ManageCountries
+        if (rol === 'superadmin') {
+          console.log('🔄 Navegando a ManageCountries (SuperAdmin)');
           navigation.reset({
             index: 0,
             routes: [{ name: 'ManageCountries' }],
           });
-        } else if (response.usuario.rol === 'admin') {
+        } else if (rol === 'admin') {
+          console.log('🔄 Navegando a TournamentAdminDashboard (Admin)');
           // Admin de torneo → TournamentAdminDashboard (muestra lista de torneos)
           if (response.usuario.id_torneos && response.usuario.id_torneos.length > 0) {
             navigation.reset({
@@ -108,6 +118,7 @@ export const LoginScreen = ({ navigation }: any) => {
             showError('Admin sin torneos asignados', 'Error');
           }
         } else {
+          console.log('🔄 Navegando a Main (Fan/Jugador)');
           // Fan o jugador → Main (tabs)
           navigation.reset({
             index: 0,

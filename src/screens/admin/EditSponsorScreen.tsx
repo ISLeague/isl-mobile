@@ -43,7 +43,7 @@ export const EditSponsorScreen = ({ navigation, route }: any) => {
           onPress: async () => {
             try {
               // TODO: Llamar API
-              // await mockApi.sponsors.updateSponsor(sponsor.id_sponsor, { nombre, logo, link });
+              // await api.sponsors.updateSponsor(sponsor.id_sponsor, { nombre, logo, link });
               console.log('Actualizar sponsor:', { nombre, logo, link });
               showSuccess('Sponsor actualizado exitosamente');
               navigation.goBack();
@@ -68,7 +68,7 @@ export const EditSponsorScreen = ({ navigation, route }: any) => {
           onPress: async () => {
             try {
               // TODO: Llamar API
-              // await mockApi.sponsors.deleteSponsor(sponsor.id_sponsor);
+              // await api.sponsors.deleteSponsor(sponsor.id_sponsor);
               console.log('Eliminar sponsor:', sponsor.id_sponsor);
               showSuccess('Sponsor eliminado exitosamente');
               navigation.goBack();

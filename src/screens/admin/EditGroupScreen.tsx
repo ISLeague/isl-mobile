@@ -60,7 +60,7 @@ export const EditGroupScreen: React.FC<EditGroupScreenProps> = ({ navigation, ro
     console.log('Actualizar grupo:', grupoData);
     
     // TODO: Llamar a la API para actualizar el grupo
-    // await mockApi.groups.updateGroup(grupo.id_grupo, grupoData);
+    // await api.groups.updateGroup(grupo.id_grupo, grupoData);
     
     Alert.alert('Éxito', `Grupo "${nombre}" actualizado exitosamente`, [
       { text: 'OK', onPress: () => navigation.goBack() }
@@ -79,7 +79,7 @@ export const EditGroupScreen: React.FC<EditGroupScreenProps> = ({ navigation, ro
           onPress: () => {
             console.log('Eliminar grupo:', grupo.id_grupo);
             // TODO: Llamar a la API para eliminar el grupo
-            // await mockApi.groups.deleteGroup(grupo.id_grupo);
+            // await api.groups.deleteGroup(grupo.id_grupo);
             Alert.alert('Éxito', 'Grupo eliminado exitosamente', [
               { text: 'OK', onPress: () => navigation.goBack() }
             ]);

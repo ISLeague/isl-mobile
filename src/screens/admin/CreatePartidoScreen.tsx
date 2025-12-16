@@ -94,7 +94,7 @@ export const CreatePartidoScreen = ({ navigation, route }: any) => {
           onPress: async () => {
             try {
               // TODO: Llamar API
-              // await mockApi.matches.createMatch({
+              // await api.matches.createMatch({
               //   id_ronda: ronda.id_ronda,
               //   id_equipo_local: equipoLocalId,
               //   id_equipo_visitante: equipoVisitanteId,

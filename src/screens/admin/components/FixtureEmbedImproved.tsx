@@ -312,7 +312,7 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
           onPress: async () => {
             try {
               // TODO: Llamar API para generar fixture automático
-              // await mockApi.rounds.generateFixture(ronda.id_ronda);
+              // await api.rounds.generateFixture(ronda.id_ronda);
               console.log('Generar fixture para ronda:', ronda.id_ronda);
               showInfo('Partidos generados automáticamente');
               loadData();
@@ -503,7 +503,7 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
           onPress: async () => {
             try {
               // TODO: Llamar API para crear ronda amistosa automática
-              // await mockApi.rounds.createFriendlyRound(idEdicionCategoria);
+              // await api.rounds.createFriendlyRound(idEdicionCategoria);
               console.log('Crear ronda amistosa automática');
               showInfo('Ronda amistosa creada automáticamente');
               loadData();
@@ -527,7 +527,7 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
           onPress: async () => {
             try {
               // TODO: Llamar API para generar todas las rondas de fase de grupos (todos vs todos)
-              // await mockApi.rounds.generateAllGroupStageRounds(idEdicionCategoria);
+              // await api.rounds.generateAllGroupStageRounds(idEdicionCategoria);
               console.log('Generar todas las rondas de fase de grupos automáticamente');
               showInfo('Rondas de fase de grupos generadas exitosamente');
               loadData();
@@ -552,7 +552,7 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
           onPress: async () => {
             try {
               // TODO: Llamar API para eliminar ronda
-              // await mockApi.rounds.deleteRound(ronda.id_ronda);
+              // await api.rounds.deleteRound(ronda.id_ronda);
               console.log('Eliminar ronda:', ronda.id_ronda);
               showInfo('Ronda eliminada exitosamente');
               loadData();

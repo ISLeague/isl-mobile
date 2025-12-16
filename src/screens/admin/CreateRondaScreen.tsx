@@ -66,7 +66,7 @@ export const CreateRondaScreen: React.FC<CreateRondaScreenProps> = ({ navigation
     console.log('Crear ronda:', rondaData);
     
     // TODO: Llamar a la API para crear la ronda
-    // await mockApi.fixture.createRonda(rondaData);
+    // await api.fixture.createRonda(rondaData);
     
     Alert.alert('Éxito', `Ronda "${nombre}" creada exitosamente. Ahora puedes agregar partidos.`, [
       { text: 'OK', onPress: () => navigation.goBack() }
@@ -154,7 +154,7 @@ export const CreateRondaScreen: React.FC<CreateRondaScreenProps> = ({ navigation
           onPress: () => {
             console.log('Aplicar fecha a todos los partidos sin fecha:', fecha);
             // TODO: Llamar a la API para aplicar fecha a todos los partidos sin fecha
-            // await mockApi.fixture.applyDateToMatches(rondaId, fecha);
+            // await api.fixture.applyDateToMatches(rondaId, fecha);
             Alert.alert('Éxito', 'Fecha aplicada a todos los partidos sin fecha');
           },
         },

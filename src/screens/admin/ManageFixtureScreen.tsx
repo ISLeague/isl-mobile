@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../../theme/colors';
-import { mockApi } from '../../api/mockApi';
+import api from '../../api';
 
 export const ManageFixtureScreen = ({ navigation, route }: any) => {
   const { torneo, pais, categoria } = route.params;
@@ -46,7 +46,7 @@ export const ManageFixtureScreen = ({ navigation, route }: any) => {
       
       // Cargar categorías si no las tenemos
       if (categorias.length === 0) {
-        const cats = await mockApi.main.getCategoriesByEdition(torneo.id_edicion);
+        const cats = await api.categorias.getByEdition(torneo.id_edicion);
         setCategorias(cats.map(c => ({
           ...c.categoria,
           id_edicion_categoria: c.id_edicion_categoria,
@@ -54,7 +54,7 @@ export const ManageFixtureScreen = ({ navigation, route }: any) => {
       }
       
       // Cargar fases de la categoría seleccionada
-      const fasesData = await mockApi.competition.getPhases(selectedCategory.id_edicion_categoria);
+      const fasesData = await api.competition.getPhases(selectedCategory.id_edicion_categoria);
       setFases(fasesData.map(fase => ({
         ...fase,
         expanded: false,

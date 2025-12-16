@@ -42,7 +42,7 @@ export const CreateCanchaScreen = ({ navigation, route }: any) => {
 
     try {
       // TODO: Integrar con la API real
-      // const response = await mockApi.canchas.createCancha({
+      // const response = await api.canchas.createCancha({
       //   nombre: nombre.trim(),
       //   id_local: idLocal,
       // });

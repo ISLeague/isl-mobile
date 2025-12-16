@@ -13,7 +13,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { colors } from '../../theme/colors';
-import { mockApi } from '../../api/mockApi';
+import api from '../../api';
 import { Pais, Torneo, Edicion } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -34,14 +34,14 @@ export const AdminTournamentsScreen = ({ navigation, route }: any) => {
 
   const loadTorneos = async () => {
     try {
-      const data = await mockApi.main.getTournamentsByCountry(pais.id_pais);
-      
+      const data = await api.torneos.getByCountry(pais.id_pais);
+
       // Para cada torneo, verificar si tiene una edición activa
       const torneosConEstado = await Promise.all(
         data.map(async (torneo) => {
-          const ediciones = await mockApi.main.getEditionsByTournament(torneo.id_torneo);
+          const ediciones = await api.ediciones.getByTournament(torneo.id_torneo);
           const edicionActiva = ediciones.find(e => e.estado === 'en juego');
-          
+
           return {
             ...torneo,
             tieneEdicionActiva: !!edicionActiva,
@@ -98,7 +98,7 @@ export const AdminTournamentsScreen = ({ navigation, route }: any) => {
           onPress: async () => {
             try {
               // TODO: Llamar API
-              // await mockApi.tournaments.deleteTournament(torneo.id_torneo);
+              // await api.tournaments.deleteTournament(torneo.id_torneo);
               console.log('Eliminar torneo:', torneo.id_torneo);
               setTorneos(torneos.filter(t => t.id_torneo !== torneo.id_torneo));
             } catch (error) {

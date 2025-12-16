@@ -115,7 +115,7 @@ export const EditPartidoScreen: React.FC<EditPartidoScreenProps> = ({ navigation
     const success = await safeAsync(
       async () => {
         // TODO: Llamar a la API para actualizar el partido
-        // await mockApi.partidos.updatePartido(partido.id_partido, { fecha, hora });
+        // await api.partidos.updatePartido(partido.id_partido, { fecha, hora });
         await new Promise(resolve => setTimeout(resolve, 500));
         return true;
       },
@@ -150,7 +150,7 @@ export const EditPartidoScreen: React.FC<EditPartidoScreenProps> = ({ navigation
             const success = await safeAsync(
               async () => {
                 // TODO: Llamar a la API para eliminar el partido
-                // await mockApi.partidos.deletePartido(partido.id_partido);
+                // await api.partidos.deletePartido(partido.id_partido);
                 await new Promise(resolve => setTimeout(resolve, 500));
                 return true;
               },

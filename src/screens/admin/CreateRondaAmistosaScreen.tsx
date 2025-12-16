@@ -226,7 +226,7 @@ export const CreateRondaAmistosaScreen: React.FC<CreateRondaAmistosaScreenProps>
     console.log('Crear ronda amistosa:', rondaData);
     
     // TODO: Llamar a la API para crear la ronda y los partidos
-    // await mockApi.fixture.createRondaAmistosa(rondaData);
+    // await api.fixture.createRondaAmistosa(rondaData);
     
     Alert.alert('Éxito', `Ronda amistosa "${nombre}" creada con ${partidos.length} partidos`, [
       { text: 'OK', onPress: () => navigation.goBack() }

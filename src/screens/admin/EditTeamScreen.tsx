@@ -42,7 +42,7 @@ export const EditTeamScreen: React.FC<EditTeamScreenProps> = ({ navigation, rout
     console.log('Actualizar equipo:', equipoData);
     
     // TODO: Llamar a la API para actualizar el equipo
-    // await mockApi.teams.updateTeam(equipo.id_equipo, equipoData);
+    // await api.teams.updateTeam(equipo.id_equipo, equipoData);
     
     Alert.alert('Éxito', `Equipo "${nombre}" actualizado exitosamente`, [
       { text: 'OK', onPress: () => navigation.goBack() }
@@ -61,7 +61,7 @@ export const EditTeamScreen: React.FC<EditTeamScreenProps> = ({ navigation, rout
           onPress: () => {
             console.log('Eliminar equipo:', equipo.id_equipo);
             // TODO: Llamar a la API para eliminar el equipo
-            // await mockApi.teams.deleteTeam(equipo.id_equipo);
+            // await api.teams.deleteTeam(equipo.id_equipo);
             Alert.alert('Éxito', 'Equipo eliminado exitosamente', [
               { text: 'OK', onPress: () => navigation.goBack() }
             ]);

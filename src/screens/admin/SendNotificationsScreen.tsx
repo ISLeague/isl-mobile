@@ -44,7 +44,7 @@ export const SendNotificationsScreen = ({ navigation, route }: any) => {
           onPress: async () => {
             try {
               // TODO: Llamar API para enviar notificación
-              // await mockApi.notifications.send({
+              // await api.notifications.send({
               //   id_torneo: torneo.id_torneo,
               //   titulo,
               //   mensaje,

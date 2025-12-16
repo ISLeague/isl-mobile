@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../../theme/colors';
-import { mockApi } from '../../api/mockApi';
+import api from '../../api';
 
 export const TournamentDetailScreen = ({ navigation, route }: any) => {
   const { torneo } = route.params;
@@ -22,7 +22,7 @@ export const TournamentDetailScreen = ({ navigation, route }: any) => {
 
   const loadEdiciones = async () => {
     try {
-      const data = await mockApi.main.getEditionsByTournament(torneo.id_torneo);
+      const data = await api.ediciones.getByTournament(torneo.id_torneo);
       setEdiciones(data);
     } catch (error) {
       console.error('Error:', error);

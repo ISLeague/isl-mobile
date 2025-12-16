@@ -83,7 +83,7 @@ export const AddTeamToGroupModal: React.FC<AddTeamToGroupModalProps> = ({
     await safeAsync(
       async () => {
         // TODO: Llamar a la API para crear el equipo
-        // const nuevoEquipo = await mockApi.teams.createTeam({
+        // const nuevoEquipo = await api.teams.createTeam({
         //   nombre: newTeamName.trim(),
         //   logo: newTeamLogo.trim() || 'https://via.placeholder.com/100',
         // });

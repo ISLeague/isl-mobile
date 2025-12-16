@@ -84,7 +84,7 @@ export const TournamentCategoriesScreen = ({ navigation, route }: any) => {
           onPress: async () => {
             try {
               // TODO: Llamar API
-              // await mockApi.categories.deleteCategory(categoria.id_categoria);
+              // await api.categories.deleteCategory(categoria.id_categoria);
               console.log('Eliminar categoría:', categoria.id_categoria);
               setCategorias(categorias.filter(c => c.id_categoria !== categoria.id_categoria));
             } catch (error) {

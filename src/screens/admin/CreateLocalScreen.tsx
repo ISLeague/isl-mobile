@@ -69,7 +69,7 @@ export const CreateLocalScreen = ({ navigation, route }: any) => {
 
     try {
       // TODO: Integrar con la API real
-      // const response = await mockApi.locales.createLocal({
+      // const response = await api.locales.createLocal({
       //   nombre: nombre.trim(),
       //   latitud: parseFloat(latitud),
       //   longitud: parseFloat(longitud),

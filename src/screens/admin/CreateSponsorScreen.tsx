@@ -47,7 +47,7 @@ export const CreateSponsorScreen: React.FC<CreateSponsorScreenProps> = ({ naviga
     console.log('Crear sponsor:', sponsorData);
     
     // TODO: Llamar a la API para crear el sponsor
-    // await mockApi.sponsors.createSponsor(sponsorData);
+    // await api.sponsors.createSponsor(sponsorData);
     
     Alert.alert('Éxito', `Sponsor "${nombre}" creado exitosamente.`, [
       { text: 'OK', onPress: () => navigation.goBack() }

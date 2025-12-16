@@ -356,7 +356,7 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
             await safeAsync(
               async () => {
                 // TODO: Llamar a la API para eliminar todos los jugadores del equipo
-                // await mockApi.teams.clearRoster(equipoId);
+                // await api.teams.clearRoster(equipoId);
                 
                 console.log('Vaciando plantilla del equipo:', equipoId);
                 showSuccess(`Plantilla de "${equipo.nombre}" vaciada exitosamente`, 'Plantilla Vaciada');

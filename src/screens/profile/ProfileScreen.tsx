@@ -46,7 +46,7 @@ export const ProfileScreen = ({ navigation: navProp }: any) => {
 
   useEffect(() => {
     // Aquí cargarías el equipo favorito del usuario
-    // const team = await mockApi.profile.getMyTeam(usuario.id_usuario);
+    // const team = await api.profile.getMyTeam(usuario.id_usuario);
     // setMyTeam(team);
     
     // Cargar usuarios para suplantación (solo admins)

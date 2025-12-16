@@ -12,7 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../../theme/colors';
 import { Button } from '../../components/common/Button';
-import { mockApi } from '../../api/mockApi';
+import api from '../../api';
 import { Pais } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -30,7 +30,7 @@ export const CountrySelectionScreen = ({ navigation }: any) => {
 
   const loadPaises = async () => {
     try {
-      const data = await mockApi.main.getCountries();
+      const data = await api.paises.list();
       setPaises(data);
     } catch (error) {
       console.error('Error loading countries:', error);

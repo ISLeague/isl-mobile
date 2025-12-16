@@ -176,7 +176,7 @@ export const FixtureManagementScreen: React.FC<FixtureManagementScreenProps> = (
           onPress: () => {
             console.log('Generando fixture automático...');
             // TODO: Llamar a la API para generar el fixture
-            // await mockApi.fixture.generateGroupFixture(idEdicionCategoria);
+            // await api.fixture.generateGroupFixture(idEdicionCategoria);
             Alert.alert('Éxito', 'Fixture generado exitosamente');
             loadData();
           },

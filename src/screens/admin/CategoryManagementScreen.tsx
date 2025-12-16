@@ -14,7 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors, colorPresets, ColorPreset } from '../../theme/colors';
-import { mockApi } from '../../api/mockApi';
+import api from '../../api';
 import PagerView from 'react-native-pager-view';
 import { LocalTab } from './components/LocalTab';
 import { SponsorTab } from './components/SponsorTab';
@@ -135,10 +135,10 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
 
   const loadCategorias = async () => {
     try {
-      const ediciones = await mockApi.main.getEditionsByTournament(torneo.id_torneo);
+      const ediciones = await api.ediciones.getByTournament(torneo.id_torneo);
       const edicionActiva = ediciones.find(e => e.estado === 'en juego') || ediciones[0];
       if (edicionActiva) {
-        const cats = await mockApi.main.getCategoriesByEdition(edicionActiva.id_edicion);
+        const cats = await api.categorias.getByEdition(edicionActiva.id_edicion);
         setCategorias(cats);
       }
     } catch (error) {

@@ -91,7 +91,7 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps> = ({ navigation, is
           onPress: () => {
             console.log('Remover equipo del grupo:', clasificacionId);
             // TODO: Llamar a la API para remover el equipo del grupo
-            // await mockApi.groups.removeTeamFromGroup(clasificacionId);
+            // await api.groups.removeTeamFromGroup(clasificacionId);
             showSuccess('Equipo removido del grupo');
           },
         },
@@ -119,7 +119,7 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps> = ({ navigation, is
           onPress: () => {
             console.log('Mover equipo', selectedClasificacion.id_equipo, 'al grupo', targetGrupoId);
             // TODO: Llamar a la API para mover el equipo
-            // await mockApi.groups.moveTeamToGroup(selectedClasificacion.id_clasificacion, targetGrupoId);
+            // await api.groups.moveTeamToGroup(selectedClasificacion.id_clasificacion, targetGrupoId);
             showSuccess(`Equipo movido a ${targetGrupo?.nombre}`);
             setMoveTeamModalVisible(false);
             setSelectedClasificacion(null);
@@ -134,7 +134,7 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps> = ({ navigation, is
     
     console.log('Agregar equipo', equipoId, 'al grupo', selectedGrupoId);
     // TODO: Llamar a la API para agregar el equipo al grupo
-    // await mockApi.groups.addTeamToGroup(selectedGrupoId, equipoId);
+    // await api.groups.addTeamToGroup(selectedGrupoId, equipoId);
   };
 
   const handleImportTeams = () => {
@@ -151,8 +151,8 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps> = ({ navigation, is
     const grupo = grupos.find(g => g.id_grupo === grupoId);
     console.log('Importar equipos:', teams, 'al grupo', grupo?.nombre);
     // TODO: Llamar a la API para crear equipos e importarlos al grupo
-    // await mockApi.teams.bulkCreate(teams);
-    // await mockApi.groups.addMultipleTeamsToGroup(grupoId, teamIds);
+    // await api.teams.bulkCreate(teams);
+    // await api.groups.addMultipleTeamsToGroup(grupoId, teamIds);
     showSuccess(`${teams.length} equipos importados correctamente al grupo ${grupo?.nombre}`);
     setImportTeamsModalVisible(false);
   };

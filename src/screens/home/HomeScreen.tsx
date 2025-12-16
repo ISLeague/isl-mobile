@@ -4,33 +4,27 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  Image,
   TouchableOpacity,
   Dimensions,
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../../theme/colors';
-import { mockApi } from '../../api/mockApi';
-import { Banner, Pais } from '../../types';
+import api from '../../api';
+import { Pais } from '../../types';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 
 const { width } = Dimensions.get('window');
 
 export const HomeScreen = ({ navigation }: any) => {
-  const [banners, setBanners] = useState<Banner[]>([]);
   const [paises, setPaises] = useState<Pais[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const loadData = async () => {
     try {
-      const [bannersData, paisesData] = await Promise.all([
-        mockApi.main.getBanners(),
-        mockApi.main.getCountries(),
-      ]);
-      setBanners(bannersData);
+      const paisesData = await api.paises.list();
       setPaises(paisesData);
     } catch (error) {
       console.error('Error loading data:', error);

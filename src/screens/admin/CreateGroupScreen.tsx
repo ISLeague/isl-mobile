@@ -62,11 +62,11 @@ export const CreateGroupScreen: React.FC<CreateGroupScreenProps> = ({ navigation
     console.log('Reglas de clasificación auto-generadas:', tipoClasificacion);
     
     // TODO: Llamar a la API para crear el grupo
-    // await mockApi.groups.createGroup(grupoData);
+    // await api.groups.createGroup(grupoData);
     
     // TODO: Auto-generar reglas de clasificación
     // const reglas = generarReglasClasificacion(oro, plata, tipoClasificacion);
-    // await mockApi.classification.createRules(reglas);
+    // await api.classification.createRules(reglas);
     
     Alert.alert('Éxito', `Grupo "${nombre}" creado exitosamente con reglas de clasificación auto-generadas`, [
       { text: 'OK', onPress: () => navigation.goBack() }
