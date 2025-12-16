@@ -8,6 +8,7 @@ import {
   TextInput,
   Alert,
   Animated,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -15,14 +16,15 @@ import { Ionicons } from '@expo/vector-icons';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { colors } from '../../theme/colors';
-import { mockPaises } from '../../data/mockData';
 import { Pais } from '../../types';
+import api from '../../api';
 
 export const ManageCountriesScreen = ({ navigation }: any) => {
   const [paises, setPaises] = useState<Pais[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [nuevoNombre, setNuevoNombre] = useState('');
+  const [nuevoCodigoIso, setNuevoCodigoIso] = useState('');
   const [nuevoEmoji, setNuevoEmoji] = useState('');
 
   useEffect(() => {
@@ -31,10 +33,20 @@ export const ManageCountriesScreen = ({ navigation }: any) => {
 
   const loadPaises = async () => {
     try {
-      // TODO: Integrar con API real
-      setPaises(mockPaises);
+      setLoading(true);
+      const paisesData = await api.paises.list();
+
+      // Asegurarse de que paisesData es un array
+      if (Array.isArray(paisesData)) {
+        setPaises(paisesData);
+      } else {
+        console.warn('La respuesta de países no es un array:', paisesData);
+        setPaises([]);
+      }
     } catch (error) {
       console.error('Error cargando países:', error);
+      setPaises([]);
+      Alert.alert('Error', 'No se pudieron cargar los países. Intenta de nuevo.');
     } finally {
       setLoading(false);
     }
@@ -46,21 +58,34 @@ export const ManageCountriesScreen = ({ navigation }: any) => {
       return;
     }
 
-    try {
-      // TODO: Integrar con API real
-      const nuevoPais: Pais = {
-        id_pais: paises.length + 1,
-        nombre: nuevoNombre.trim(),
-        emoji: nuevoEmoji.trim() || '🌍',
-      };
+    if (!nuevoCodigoIso.trim()) {
+      Alert.alert('Error', 'El código ISO del país es requerido');
+      return;
+    }
 
-      setPaises([...paises, nuevoPais]);
+    try {
+      setLoading(true);
+
+      // Crear país usando la API
+      await api.paises.create({
+        nombre: nuevoNombre.trim(),
+        codigo_iso: nuevoCodigoIso.trim().toUpperCase(),
+        emoji: nuevoEmoji.trim() || '🌍',
+      });
+
+      // Recargar la lista de países
+      await loadPaises();
+
       setNuevoNombre('');
+      setNuevoCodigoIso('');
       setNuevoEmoji('');
       setIsCreating(false);
       Alert.alert('¡Éxito!', `País "${nuevoNombre}" creado correctamente`);
     } catch (error) {
-      Alert.alert('Error', 'No se pudo crear el país');
+      console.error('Error creando país:', error);
+      Alert.alert('Error', 'No se pudo crear el país. Intenta de nuevo.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -167,7 +192,17 @@ export const ManageCountriesScreen = ({ navigation }: any) => {
               onChangeText={setNuevoNombre}
               placeholderTextColor={colors.textLight}
             />
-            
+
+            <TextInput
+              style={styles.input}
+              placeholder="Código ISO (ej: PE, AR, BR)"
+              value={nuevoCodigoIso}
+              onChangeText={setNuevoCodigoIso}
+              placeholderTextColor={colors.textLight}
+              autoCapitalize="characters"
+              maxLength={3}
+            />
+
             <TextInput
               style={styles.input}
               placeholder="Emoji (ej: 🇵🇪)"
@@ -183,6 +218,7 @@ export const ManageCountriesScreen = ({ navigation }: any) => {
                 onPress={() => {
                   setIsCreating(false);
                   setNuevoNombre('');
+                  setNuevoCodigoIso('');
                   setNuevoEmoji('');
                 }}
               >
@@ -199,43 +235,63 @@ export const ManageCountriesScreen = ({ navigation }: any) => {
           </View>
         )}
 
-        {/* Lista de Países */}
-        <GestureHandlerRootView>
-          <View style={styles.paisesContainer}>
-            {paises.map((pais) => (
-              <Swipeable
-                key={pais.id_pais}
-                renderRightActions={renderRightActions(pais)}
-                rightThreshold={40}
-                friction={1.5}
-                overshootFriction={8}
-              >
-                <TouchableOpacity 
-                  style={styles.paisCard}
-                  onPress={() => handleSelectPais(pais)}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.paisInfo}>
-                    <Text style={styles.paisEmoji}>{pais.emoji}</Text>
-                    <Text style={styles.paisNombre}>{pais.nombre}</Text>
-                  </View>
-                  
-                  <View style={styles.paisActions}>
-                    <TouchableOpacity
-                      style={styles.actionButton}
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        handleEditPais(pais);
-                      }}
-                    >
-                      <Ionicons name="pencil" size={20} color={colors.error} />
-                    </TouchableOpacity>
-                  </View>
-                </TouchableOpacity>
-              </Swipeable>
-            ))}
+        {/* Loading Indicator */}
+        {loading && (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.loadingText}>Cargando países...</Text>
           </View>
-        </GestureHandlerRootView>
+        )}
+
+        {/* Lista de Países */}
+        {!loading && (
+          <GestureHandlerRootView>
+            <View style={styles.paisesContainer}>
+              {paises.length > 0 ? (
+                paises.map((pais) => (
+                  <Swipeable
+                    key={pais.id_pais}
+                    renderRightActions={renderRightActions(pais)}
+                    rightThreshold={40}
+                    friction={1.5}
+                    overshootFriction={8}
+                  >
+                    <TouchableOpacity
+                      style={styles.paisCard}
+                      onPress={() => handleSelectPais(pais)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.paisInfo}>
+                        <Text style={styles.paisEmoji}>{pais.emoji}</Text>
+                        <Text style={styles.paisNombre}>{pais.nombre}</Text>
+                      </View>
+
+                      <View style={styles.paisActions}>
+                        <TouchableOpacity
+                          style={styles.actionButton}
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            handleEditPais(pais);
+                          }}
+                        >
+                          <Ionicons name="pencil" size={20} color={colors.error} />
+                        </TouchableOpacity>
+                      </View>
+                    </TouchableOpacity>
+                  </Swipeable>
+                ))
+              ) : (
+                <View style={styles.emptyStateContainer}>
+                  <Ionicons name="earth-outline" size={64} color={colors.textSecondary} />
+                  <Text style={styles.emptyStateTitle}>No hay países registrados</Text>
+                  <Text style={styles.emptyStateSubtitle}>
+                    Presiona el botón + para agregar tu primer país
+                  </Text>
+                </View>
+              )}
+            </View>
+          </GestureHandlerRootView>
+        )}
       </ScrollView>
 
       {/* FAB - Botón flotante para crear país */}
@@ -416,6 +472,34 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    marginTop: 12,
+  },
+  emptyStateContainer: {
+    alignItems: 'center',
+    paddingVertical: 80,
+    paddingHorizontal: 40,
+  },
+  emptyStateTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyStateSubtitle: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
   },
 });
 

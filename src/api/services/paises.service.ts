@@ -6,18 +6,18 @@ import { CreatePaisRequest } from '../types/paises.types';
  */
 export const paisesService = {
   /**
-   * Listar todos los países
+    Listar todos los países
    */
   list: async () => {
     const response = await apiClient.get('/paises-list');
-    return response.data;
+    return response.data.data;
   },
 
   /**
-   * Crear un nuevo país
+    Crear un nuevo país
    */
   create: async (data: CreatePaisRequest) => {
     const response = await apiClient.post('/paises-create', data);
-    return response.data;
+    return response.data.data;
   },
 };

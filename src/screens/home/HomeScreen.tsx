@@ -25,9 +25,16 @@ export const HomeScreen = ({ navigation }: any) => {
   const loadData = async () => {
     try {
       const paisesData = await api.paises.list();
-      setPaises(paisesData);
+      // Asegurarse de que paisesData es un array
+      if (Array.isArray(paisesData)) {
+        setPaises(paisesData);
+      } else {
+        console.warn('La respuesta de países no es un array:', paisesData);
+        setPaises([]);
+      }
     } catch (error) {
       console.error('Error loading data:', error);
+      setPaises([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -69,7 +76,6 @@ export const HomeScreen = ({ navigation }: any) => {
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.greeting}>Hola 👋</Text>
             <Text style={styles.title}>ISL</Text>
           </View>
           <TouchableOpacity style={styles.notificationButton}>
@@ -95,22 +101,32 @@ export const HomeScreen = ({ navigation }: any) => {
 
         {/* Countries Grid */}
         <View style={styles.paisesGrid}>
-          {paises.map((pais) => (
-            <TouchableOpacity
-              key={pais.id_pais}
-              style={styles.paisCard}
-              onPress={() => handlePaisPress(pais)}
-              activeOpacity={0.7}
-            >
-              <View style={styles.paisIconContainer}>
-                <Text style={styles.paisEmoji}>{pais.emoji || '🌎'}</Text>
-              </View>
-              <Text style={styles.paisName}>{pais.nombre}</Text>
-              <View style={styles.paisArrow}>
-                <Text style={styles.paisArrowText}>→</Text>
-              </View>
-            </TouchableOpacity>
-          ))}
+          {paises.length > 0 ? (
+            paises.map((pais) => (
+              <TouchableOpacity
+                key={pais.id_pais}
+                style={styles.paisCard}
+                onPress={() => handlePaisPress(pais)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.paisIconContainer}>
+                  <Text style={styles.paisEmoji}>{pais.emoji || '🌎'}</Text>
+                </View>
+                <Text style={styles.paisName}>{pais.nombre}</Text>
+                <View style={styles.paisArrow}>
+                  <Text style={styles.paisArrowText}>→</Text>
+                </View>
+              </TouchableOpacity>
+            ))
+          ) : (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyEmoji}>🌍</Text>
+              <Text style={styles.emptyTitle}>No hay países disponibles</Text>
+              <Text style={styles.emptySubtitle}>
+                Aún no se han agregado países al sistema
+              </Text>
+            </View>
+          )}
         </View>
 
 
@@ -153,7 +169,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   title: {
-    fontSize: 28,
+    fontSize: 36,
     fontWeight: 'bold',
     color: colors.textPrimary,
   },
@@ -326,5 +342,25 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.textPrimary,
     textAlign: 'center',
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  emptyEmoji: {
+    fontSize: 64,
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    paddingHorizontal: 40,
   },
 });
