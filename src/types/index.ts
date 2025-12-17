@@ -8,8 +8,6 @@ export interface Usuario {
   id_ediciones?: number[]; // Array de ediciones correspondientes a los torneos
   id_admin_suplantando?: number;
   pais?: Pais;
-  torneos?: Torneo[]; // Array de torneos populados
-  ediciones?: Edicion[]; // Array de ediciones populadas
   acepto_terminos?: boolean; // Aceptación de términos y condiciones
   acepto_privacidad?: boolean; // Aceptación de política de privacidad
   fecha_aceptacion_terminos?: string; // Fecha de aceptación (ISO 8601)
@@ -46,21 +44,7 @@ export interface Sponsor {
   id_edicion_categoria?: number;
 }
 
-// 🏆 Torneos, Ediciones y Categorías
-export interface Torneo {
-  id_torneo: number;
-  nombre: string;
-  id_pais: number;
-  pais?: Pais;
-}
 
-export interface Edicion {
-  id_edicion: number;
-  numero: number;
-  estado: 'abierto' | 'cerrado' | 'en juego';
-  id_torneo: number;
-  torneo?: Torneo;
-}
 
 export interface Categoria {
   id_categoria: number;
@@ -75,7 +59,7 @@ export interface EdicionCategoria {
   id_edicion_categoria: number;
   id_edicion: number;
   id_categoria: number;
-  edicion?: Edicion;
+  edicion?: number;
   categoria?: Categoria;
 }
 

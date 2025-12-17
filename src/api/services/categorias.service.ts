@@ -31,4 +31,9 @@ export const categoriasService = {
     const response = await apiClient.put('/categorias-update', data);
     return response.data;
   },
+
+  delete: async (id: number) => {
+    const response = await apiClient.delete('/categorias-delete', { params: { id } });
+    return response.data;
+  },
 };

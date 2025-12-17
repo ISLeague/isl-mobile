@@ -13,6 +13,10 @@ import { MainNavigator } from './src/navigation/MainNavigator';
 import CountrySelectionScreen from './src/screens/admin/CountrySelectionScreen';
 import AdminTournamentsScreen from './src/screens/admin/AdminTournamentsScreen';
 import CreateTournamentScreen from './src/screens/admin/CreateTournamentScreen';
+import { TournamentDetailsScreen } from './src/screens/admin/TournamentDetailsScreen';
+import { EditTournamentScreen } from './src/screens/admin/EditTournamentScreen';
+import { ManageCategoriesScreen } from './src/screens/admin/ManageCategoriesScreen';
+import { CreateEditionScreen } from './src/screens/admin/CreateEditionScreen';
 import { TournamentCategoriesScreen } from './src/screens/admin/TournamentCategoriesScreen';
 import { CategoryManagementScreen } from './src/screens/admin/CategoryManagementScreen';
 import { ManageTeamsScreen } from './src/screens/admin/ManageTeamsScreen';
@@ -83,6 +87,10 @@ export default function App() {
           <Stack.Screen name="CountrySelection" component={CountrySelectionScreen} />
           <Stack.Screen name="AdminTournaments" component={AdminTournamentsScreen} />
           <Stack.Screen name="CreateTournament" component={CreateTournamentScreen} />
+          <Stack.Screen name="TournamentDetails" component={TournamentDetailsScreen} />
+          <Stack.Screen name="EditTournament" component={EditTournamentScreen} />
+          <Stack.Screen name="ManageCategories" component={ManageCategoriesScreen} />
+          <Stack.Screen name="CreateEdition" component={CreateEditionScreen} />
           <Stack.Screen name="TournamentCategories" component={TournamentCategoriesScreen} />
           <Stack.Screen name="CategoryManagement" component={CategoryManagementScreen} />
           

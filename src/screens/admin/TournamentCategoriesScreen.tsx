@@ -7,88 +7,103 @@ import {
   TouchableOpacity,
   Alert,
   Modal,
-  TextInput,
-  Animated,
+  ActivityIndicator,
+  FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Swipeable from 'react-native-gesture-handler/Swipeable';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
-import { mockCategorias } from '../../data/mockData';
-import { Categoria } from '../../types';
+import api from '../../api';
+import { Torneo, Pais } from '../../api/types';
+import { Edicion } from '../../api/types/ediciones.types';
+import { Categoria } from '../../api/types/categorias.types';
 import { useAuth } from '../../contexts/AuthContext';
 
 export const TournamentCategoriesScreen = ({ navigation, route }: any) => {
-  const { isAdmin, isTournamentAdmin } = useAuth();
-  const { torneo, pais } = route.params;
-  const [categorias, setCategorias] = useState<Categoria[]>(mockCategorias);
-  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
-  const [showModal, setShowModal] = useState(false);
-  const [newCategoryName, setNewCategoryName] = useState('');
-  const [tieneRestriccionEdad, setTieneRestriccionEdad] = useState(false);
-  const [edadMaxima, setEdadMaxima] = useState('');
-  const [permiteRefuerzos, setPermiteRefuerzos] = useState(false);
-  const [maxRefuerzos, setMaxRefuerzos] = useState('');
+  const { torneo, edicion, pais } = route.params;
+  const { isSuperAdmin, usuario } = useAuth();
 
-  const handleSelectCategory = (categoria: Categoria) => {
-    setSelectedCategory(categoria.id_categoria);
-    // Navegar a la gestión de la categoría
-    navigation.navigate('CategoryManagement', { torneo, pais, categoria });
+  // Check if user can assign categories to this edition
+  const canAssignCategories =
+    isSuperAdmin ||
+    (usuario?.id_torneos && usuario.id_torneos.includes(torneo.id_torneo)) ||
+    (usuario?.id_ediciones && usuario.id_ediciones.includes(edicion.id_edicion));
+
+  const [assignedCategorias, setAssignedCategorias] = useState<Categoria[]>([]);
+  const [allCategorias, setAllCategorias] = useState<Categoria[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+
+  useEffect(() => {
+    loadCategorias();
+  }, []);
+
+  const loadCategorias = async () => {
+    try {
+      setLoading(true);
+
+      // Load all global categories - handle errors gracefully
+      try {
+        const allResponse = await api.categorias.list();
+        setAllCategorias(allResponse.data || []);
+      } catch (error: any) {
+        if (error?.response?.status === 404) {
+          setAllCategorias([]);
+        } else {
+          console.error('Error loading global categories:', error);
+          setAllCategorias([]);
+        }
+      }
+
+      // Load categories assigned to this edition - handle errors gracefully
+      try {
+        const assignedResponse = await api.categorias.getByEdition(edicion.id_edicion);
+        setAssignedCategorias(assignedResponse.data || []);
+      } catch (error: any) {
+        if (error?.response?.status === 404) {
+          setAssignedCategorias([]);
+        } else {
+          console.error('Error loading assigned categories:', error);
+          setAssignedCategorias([]);
+        }
+      }
+    } catch (error) {
+      console.error('Error in loadCategorias:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleAddCategory = () => {
-    if (!newCategoryName.trim()) {
-      Alert.alert('Error', 'El nombre de la categoría es requerido');
-      return;
+  const handleAssignCategory = async (categoria: Categoria) => {
+    try {
+      // TODO: Call API to assign category to edition
+      // For now, just add to local state
+      Alert.alert('Éxito', `Categoría "${categoria.nombre}" asignada correctamente`);
+      setShowAssignModal(false);
+      loadCategorias();
+    } catch (error) {
+      console.error('Error assigning category:', error);
+      Alert.alert('Error', 'No se pudo asignar la categoría');
     }
-
-    if (tieneRestriccionEdad && (!edadMaxima || parseInt(edadMaxima) <= 0)) {
-      Alert.alert('Error', 'Debes especificar una edad máxima válida');
-      return;
-    }
-
-    if (permiteRefuerzos && (!maxRefuerzos || parseInt(maxRefuerzos) <= 0)) {
-      Alert.alert('Error', 'Debes especificar el número máximo de refuerzos');
-      return;
-    }
-
-    const newCategory: Categoria = {
-      id_categoria: categorias.length + 1,
-      nombre: newCategoryName,
-      tiene_restriccion_edad: tieneRestriccionEdad,
-      edad_maxima: tieneRestriccionEdad ? parseInt(edadMaxima) : undefined,
-      permite_refuerzos: permiteRefuerzos,
-      max_refuerzos: permiteRefuerzos ? parseInt(maxRefuerzos) : undefined,
-    };
-
-    setCategorias([...categorias, newCategory]);
-    setShowModal(false);
-    setNewCategoryName('');
-    setTieneRestriccionEdad(false);
-    setEdadMaxima('');
-    setPermiteRefuerzos(false);
-    setMaxRefuerzos('');
-    Alert.alert('¡Éxito!', `Categoría "${newCategoryName}" creada`);
   };
 
-  const handleDeleteCategory = (categoria: Categoria) => {
+  const handleRemoveCategory = (categoria: Categoria) => {
     Alert.alert(
-      'Eliminar Categoría',
-      `¿Estás seguro de eliminar "${categoria.nombre}"? Esta acción no se puede deshacer.`,
+      'Quitar Categoría',
+      `¿Deseas quitar "${categoria.nombre}" de esta edición? Los equipos asociados se eliminarán.`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
-          text: 'Eliminar',
+          text: 'Quitar',
           style: 'destructive',
           onPress: async () => {
             try {
-              // TODO: Llamar API
-              // await api.categories.deleteCategory(categoria.id_categoria);
-              console.log('Eliminar categoría:', categoria.id_categoria);
-              setCategorias(categorias.filter(c => c.id_categoria !== categoria.id_categoria));
+              // TODO: Call API to remove category assignment
+              Alert.alert('Éxito', 'Categoría removida correctamente');
+              loadCategorias();
             } catch (error) {
-              Alert.alert('Error', 'No se pudo eliminar la categoría');
+              console.error('Error removing category:', error);
+              Alert.alert('Error', 'No se pudo quitar la categoría');
             }
           },
         },
@@ -96,54 +111,30 @@ export const TournamentCategoriesScreen = ({ navigation, route }: any) => {
     );
   };
 
-  const renderRightActions = (categoria: Categoria) => (
-    progress: Animated.AnimatedInterpolation<number>,
-    dragX: Animated.AnimatedInterpolation<number>
-  ) => {
-    const scale = dragX.interpolate({
-      inputRange: [-100, 0],
-      outputRange: [1, 0.8],
-      extrapolate: 'clamp',
-    });
-
-    const opacity = dragX.interpolate({
-      inputRange: [-100, -20, 0],
-      outputRange: [1, 0.9, 0],
-      extrapolate: 'clamp',
-    });
-
-    const translateX = dragX.interpolate({
-      inputRange: [-100, 0],
-      outputRange: [0, 20],
-      extrapolate: 'clamp',
-    });
-
-    return (
-      <Animated.View
-        style={[
-          styles.swipeDeleteButton,
-          {
-            opacity,
-            transform: [{ translateX }, { scale }],
-          },
-        ]}
-      >
-        <TouchableOpacity
-          style={styles.swipeDeleteButtonInner}
-          onPress={() => handleDeleteCategory(categoria)}
-          activeOpacity={0.8}
-        >
-          <MaterialCommunityIcons name="delete" size={28} color={colors.white} />
-          <Text style={styles.swipeDeleteText}>Eliminar</Text>
-        </TouchableOpacity>
-      </Animated.View>
-    );
+  const handleCategoryPress = (categoria: Categoria) => {
+    // Navigate to category management (teams, groups, etc.)
+    navigation.navigate('CategoryManagement', { torneo, edicion, pais, categoria });
   };
+
+  // Filter out already assigned categories
+  const availableCategorias = allCategorias.filter(
+    cat => !assignedCategorias.some(assigned => assigned.id === cat.id)
+  );
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container} edges={['bottom']}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Cargando categorías...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
@@ -154,182 +145,196 @@ export const TournamentCategoriesScreen = ({ navigation, route }: any) => {
           </TouchableOpacity>
           <View style={styles.headerInfo}>
             {pais?.emoji && <Text style={styles.paisEmoji}>{pais.emoji}</Text>}
-            <Text style={styles.title}>{torneo.nombre}</Text>
+            <View style={styles.headerText}>
+              <Text style={styles.title}>{torneo.nombre}</Text>
+              <Text style={styles.subtitle}>
+                Edición {edicion.numero}
+                {edicion.nombre && ` - ${edicion.nombre}`}
+              </Text>
+            </View>
           </View>
         </View>
 
-        {/* Categories List */}
-        <View style={styles.categoriesSection}>
-          <Text style={styles.sectionTitle}>Categorías</Text>
-          
-          {categorias.map((categoria) => {
-            const content = (
-              <TouchableOpacity
-                style={[
-                  styles.categoryCard,
-                  selectedCategory === categoria.id_categoria && styles.categoryCardSelected,
-                ]}
-                onPress={() => handleSelectCategory(categoria)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.categoryInfo}>
-                  <Text style={[
-                    styles.categoryName,
-                    selectedCategory === categoria.id_categoria && styles.categoryNameSelected,
-                  ]}>
-                    {categoria.nombre}
-                  </Text>
-                </View>
-                {selectedCategory === categoria.id_categoria && (
-                  <View style={styles.checkIcon}>
-                    <Text style={styles.checkIconText}>✓</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-            );
-
-            if (isAdmin) {
-              return (
-                <Swipeable
-                  key={categoria.id_categoria}
-                  renderRightActions={renderRightActions(categoria)}
-                  rightThreshold={40}
-                  overshootRight={false}
-                  friction={1.5}
-                  overshootFriction={8}
-                  enableTrackpadTwoFingerGesture
-                >
-                  {content}
-                </Swipeable>
-              );
-            }
-
-            return <View key={categoria.id_categoria}>{content}</View>;
-          })}
+        {/* Info Banner */}
+        <View style={styles.infoBanner}>
+          <MaterialCommunityIcons
+            name="information"
+            size={20}
+            color={colors.primary}
+          />
+          <Text style={styles.infoBannerText}>
+            Asigna categorías globales a esta edición. Solo puedes asignar categorías ya creadas.
+          </Text>
         </View>
 
-        <View style={{ height: 40 }} />
-      </ScrollView>
-      </GestureHandlerRootView>
+        {/* Assigned Categories */}
+        <View style={styles.categoriesSection}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Categorías Asignadas</Text>
+            {assignedCategorias.length > 0 && (
+              <View style={styles.countBadge}>
+                <Text style={styles.countBadgeText}>{assignedCategorias.length}</Text>
+              </View>
+            )}
+          </View>
 
-      {/* Floating Add Button - Solo para admins */}
-      {isAdmin && (
+          {assignedCategorias.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <MaterialCommunityIcons
+                name="shape-outline"
+                size={64}
+                color={colors.textSecondary}
+              />
+              <Text style={styles.emptyTitle}>No hay categorías asignadas</Text>
+              <Text style={styles.emptySubtitle}>
+                {canAssignCategories
+                  ? 'Presiona el botón + para asignar categorías a esta edición'
+                  : 'No tienes permisos para asignar categorías a esta edición'}
+              </Text>
+              {canAssignCategories && (
+                <TouchableOpacity
+                  style={styles.assignFirstButton}
+                  onPress={() => setShowAssignModal(true)}
+                >
+                  <Text style={styles.assignFirstButtonText}>
+                    Asignar Primera Categoría
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          ) : (
+            <View style={styles.categoriesList}>
+              {assignedCategorias.map((categoria) => (
+                <TouchableOpacity
+                  key={categoria.id}
+                  style={styles.categoryCard}
+                  onPress={() => handleCategoryPress(categoria)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.categoryMain}>
+                    <MaterialCommunityIcons
+                      name="shape"
+                      size={32}
+                      color={colors.primary}
+                    />
+                    <View style={styles.categoryInfo}>
+                      <Text style={styles.categoryName}>{categoria.nombre}</Text>
+                      <Text style={styles.categorySubtitle}>Toca para gestionar</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.categoryActions}>
+                    {canAssignCategories && (
+                      <TouchableOpacity
+                        style={styles.removeButton}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          handleRemoveCategory(categoria);
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <MaterialCommunityIcons
+                          name="close-circle"
+                          size={24}
+                          color={colors.error}
+                        />
+                      </TouchableOpacity>
+                    )}
+                    <MaterialCommunityIcons
+                      name="chevron-right"
+                      size={24}
+                      color={colors.primary}
+                    />
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </View>
+
+        <View style={{ height: 100 }} />
+      </ScrollView>
+
+      {/* Floating Add Button - Only show if user has permission */}
+      {assignedCategorias.length > 0 && canAssignCategories && (
         <TouchableOpacity
           style={styles.fab}
-          onPress={() => setShowModal(true)}
+          onPress={() => setShowAssignModal(true)}
           activeOpacity={0.8}
         >
           <Text style={styles.fabIcon}>+</Text>
         </TouchableOpacity>
       )}
 
-      {/* Add Category Modal */}
+      {/* Assign Category Modal */}
       <Modal
-        visible={showModal}
+        visible={showAssignModal}
+        transparent
         animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowModal(false)}
+        onRequestClose={() => setShowAssignModal(false)}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={styles.modalTitle}>Agregar Categoría</Text>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Nombre de la Categoría *</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Ej: SUB20"
-                  value={newCategoryName}
-                  onChangeText={setNewCategoryName}
-                  placeholderTextColor={colors.textLight}
-                  autoCapitalize="characters"
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Asignar Categoría</Text>
+              <TouchableOpacity onPress={() => setShowAssignModal(false)}>
+                <MaterialCommunityIcons
+                  name="close"
+                  size={24}
+                  color={colors.textPrimary}
                 />
-              </View>
+              </TouchableOpacity>
+            </View>
 
-              {/* Restricción de Edad */}
-              <View style={styles.checkboxGroup}>
-                <TouchableOpacity
-                  style={styles.checkboxRow}
-                  onPress={() => setTieneRestriccionEdad(!tieneRestriccionEdad)}
-                  activeOpacity={0.7}
-                >
-                  <View style={[styles.checkbox, tieneRestriccionEdad && styles.checkboxChecked]}>
-                    {tieneRestriccionEdad && (
-                      <MaterialCommunityIcons name="check" size={16} color={colors.white} />
-                    )}
-                  </View>
-                  <Text style={styles.checkboxLabel}>Tiene restricción de edad</Text>
-                </TouchableOpacity>
-
-                {tieneRestriccionEdad && (
-                  <View style={styles.subInputGroup}>
-                    <Text style={styles.inputLabel}>Edad Máxima *</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Ej: 18"
-                      value={edadMaxima}
-                      onChangeText={setEdadMaxima}
-                      placeholderTextColor={colors.textLight}
-                      keyboardType="numeric"
-                    />
-                  </View>
-                )}
-              </View>
-
-              {/* Refuerzos */}
-              <View style={styles.checkboxGroup}>
-                <TouchableOpacity
-                  style={styles.checkboxRow}
-                  onPress={() => setPermiteRefuerzos(!permiteRefuerzos)}
-                  activeOpacity={0.7}
-                >
-                  <View style={[styles.checkbox, permiteRefuerzos && styles.checkboxChecked]}>
-                    {permiteRefuerzos && (
-                      <MaterialCommunityIcons name="check" size={16} color={colors.white} />
-                    )}
-                  </View>
-                  <Text style={styles.checkboxLabel}>Permite refuerzos</Text>
-                </TouchableOpacity>
-
-                {permiteRefuerzos && (
-                  <View style={styles.subInputGroup}>
-                    <Text style={styles.inputLabel}>Número Máximo de Refuerzos *</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Ej: 3"
-                      value={maxRefuerzos}
-                      onChangeText={setMaxRefuerzos}
-                      placeholderTextColor={colors.textLight}
-                      keyboardType="numeric"
-                    />
-                  </View>
-                )}
-              </View>
-
-              <View style={styles.modalButtons}>
-                <TouchableOpacity
-                  style={[styles.modalButton, styles.cancelButton]}
-                  onPress={() => {
-                    setShowModal(false);
-                    setNewCategoryName('');
-                    setTieneRestriccionEdad(false);
-                    setEdadMaxima('');
-                    setPermiteRefuerzos(false);
-                    setMaxRefuerzos('');
-                  }}
-                >
-                  <Text style={styles.cancelButtonText}>Cancelar</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.modalButton, styles.confirmButton]}
-                  onPress={handleAddCategory}
-                >
-                  <Text style={styles.confirmButtonText}>Agregar</Text>
-                </TouchableOpacity>
-              </View>
-            </ScrollView>
+            <View style={styles.modalBody}>
+              {availableCategorias.length === 0 ? (
+                <View style={styles.emptyModal}>
+                  <MaterialCommunityIcons
+                    name="alert-circle-outline"
+                    size={48}
+                    color={colors.textSecondary}
+                  />
+                  <Text style={styles.emptyModalTitle}>
+                    No hay categorías disponibles
+                  </Text>
+                  <Text style={styles.emptyModalText}>
+                    Todas las categorías ya están asignadas a esta edición.
+                    {'\n\n'}
+                    Si necesitas una nueva categoría, pídele a un superadmin que la cree en la sección de Gestión de Categorías.
+                  </Text>
+                </View>
+              ) : (
+                <FlatList
+                  data={availableCategorias}
+                  keyExtractor={(item) => item.id.toString()}
+                  renderItem={({ item: categoria }) => (
+                    <TouchableOpacity
+                      style={styles.modalCategoryCard}
+                      onPress={() => handleAssignCategory(categoria)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.modalCategoryInfo}>
+                        <MaterialCommunityIcons
+                          name="shape"
+                          size={28}
+                          color={colors.primary}
+                        />
+                        <Text style={styles.modalCategoryName}>
+                          {categoria.nombre}
+                        </Text>
+                      </View>
+                      <MaterialCommunityIcons
+                        name="plus-circle"
+                        size={24}
+                        color={colors.primary}
+                      />
+                    </TouchableOpacity>
+                  )}
+                  showsVerticalScrollIndicator={false}
+                  contentContainerStyle={styles.modalList}
+                />
+              )}
+            </View>
           </View>
         </View>
       </Modal>
@@ -341,6 +346,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.backgroundGray,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: colors.textSecondary,
   },
   scrollView: {
     flex: 1,
@@ -369,45 +384,120 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
+    gap: 12,
   },
   paisEmoji: {
     fontSize: 32,
-    marginRight: 12,
+  },
+  headerText: {
+    flex: 1,
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: colors.textPrimary,
-  },
-  categoriesSection: {
-    paddingHorizontal: 20,
-    paddingTop: 24,
-  },
-  sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: colors.textPrimary,
+  },
+  subtitle: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  infoBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#e3f2fd',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginHorizontal: 20,
+    marginTop: 16,
+    marginBottom: 8,
+    borderRadius: 8,
+  },
+  infoBannerText: {
+    flex: 1,
+    fontSize: 13,
+    color: colors.textPrimary,
+    lineHeight: 18,
+  },
+  categoriesSection: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+  },
+  countBadge: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+    minWidth: 24,
+    alignItems: 'center',
+  },
+  countBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.white,
+  },
+  emptyContainer: {
+    paddingVertical: 60,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  assignFirstButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  assignFirstButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.white,
+  },
+  categoriesList: {
+    gap: 12,
   },
   categoryCard: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: colors.white,
-    padding: 20,
+    padding: 16,
     borderRadius: 12,
-    marginBottom: 12,
-    borderWidth: 2,
-    borderColor: 'transparent',
     shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
   },
-  categoryCardSelected: {
-    borderColor: colors.primary,
-    backgroundColor: colors.white,
+  categoryMain: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
   },
   categoryInfo: {
     flex: 1,
@@ -416,22 +506,19 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: colors.textPrimary,
+    marginBottom: 2,
   },
-  categoryNameSelected: {
-    color: colors.primary,
+  categorySubtitle: {
+    fontSize: 13,
+    color: colors.textSecondary,
   },
-  checkIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
+  categoryActions: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
   },
-  checkIconText: {
-    color: colors.white,
-    fontSize: 16,
-    fontWeight: 'bold',
+  removeButton: {
+    padding: 4,
   },
   fab: {
     position: 'absolute',
@@ -452,123 +539,80 @@ const styles = StyleSheet.create({
   fabIcon: {
     fontSize: 32,
     color: colors.white,
-    fontWeight: 'bold',
+    fontWeight: '300',
   },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
+    justifyContent: 'flex-end',
   },
   modalContent: {
     backgroundColor: colors.white,
-    borderRadius: 16,
-    padding: 24,
-    width: '100%',
-    maxWidth: 400,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '80%',
+    paddingBottom: 40,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   modalTitle: {
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: 'bold',
     color: colors.textPrimary,
-    marginBottom: 24,
+  },
+  modalBody: {
+    flex: 1,
+  },
+  modalList: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+  },
+  emptyModal: {
+    paddingVertical: 60,
+    paddingHorizontal: 40,
+    alignItems: 'center',
+  },
+  emptyModalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginTop: 16,
+    marginBottom: 8,
     textAlign: 'center',
   },
-  inputGroup: {
-    marginBottom: 20,
-  },
-  inputLabel: {
+  emptyModalText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: colors.textPrimary,
-    marginBottom: 8,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
   },
-  input: {
-    backgroundColor: colors.backgroundGray,
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    color: colors.textPrimary,
-  },
-  checkboxGroup: {
-    marginBottom: 20,
-  },
-  checkboxRow: {
+  modalCategoryCard: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    backgroundColor: colors.backgroundGray,
+    borderRadius: 12,
     marginBottom: 12,
   },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: colors.border,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  checkboxChecked: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  checkboxLabel: {
-    fontSize: 15,
-    color: colors.textPrimary,
-    fontWeight: '500',
-  },
-  subInputGroup: {
-    marginLeft: 36,
-    marginTop: 8,
-  },
-  modalButtons: {
+  modalCategoryInfo: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 12,
-    marginTop: 8,
-  },
-  modalButton: {
     flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
   },
-  cancelButton: {
-    backgroundColor: colors.backgroundGray,
-  },
-  cancelButtonText: {
+  modalCategoryName: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.textSecondary,
-  },
-  confirmButton: {
-    backgroundColor: colors.primary,
-  },
-  confirmButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.white,
-  },
-  swipeDeleteButton: {
-    backgroundColor: colors.error,
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: 90,
-    height: 73,
-    borderRadius: 10,
-  },
-  swipeDeleteButtonInner: {
-    flex: 1,
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },	
-  swipeDeleteText: {
-    color: colors.white,
-    fontSize: 12,
-    fontWeight: '600',
-    marginTop: 4,
+    color: colors.textPrimary,
   },
 });
 

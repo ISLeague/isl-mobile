@@ -16,7 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { colors } from '../../theme/colors';
-import { Pais } from '../../types';
+import { Pais } from '../../api/types';
 import api from '../../api';
 
 export const ManageCountriesScreen = ({ navigation }: any) => {
