@@ -14,37 +14,49 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import api from '../../api';
-import { Torneo, Pais, AdminTorneoAsignacion, AdminTorneoDisponible } from '../../api/types';
+import { Edicion, EstadoEdicion } from '../../api/types/ediciones.types';
+import {
+  AdminEdicionAsignacion,
+  AdminEdicionDisponible,
+} from '../../api/types/admin-edicion';
 import { useAuth } from '../../contexts/AuthContext';
 
-export const EditTournamentScreen = ({ navigation, route }: any) => {
-  const { torneo, pais } = route.params;
+const ESTADOS: { value: EstadoEdicion; label: string; color: string }[] = [
+  { value: 'abierto', label: 'Abierto', color: '#4caf50' },
+  { value: 'en_curso', label: 'En Curso', color: '#2196f3' },
+  { value: 'cerrado', label: 'Cerrado', color: '#9e9e9e' },
+];
+
+export const EditEditionScreen = ({ navigation, route }: any) => {
+  const { edicion, torneo, pais } = route.params;
   const { isSuperAdmin, usuario } = useAuth();
 
-  // Check if user can edit this tournament and manage admins
-  const canEditTournament =
+  // Check if user can edit this edition
+  const canEditEdition =
     isSuperAdmin ||
     (usuario?.id_torneos && usuario.id_torneos.includes(torneo.id_torneo));
 
   useEffect(() => {
-    if (!canEditTournament) {
+    if (!canEditEdition) {
       Alert.alert(
         'Acceso Denegado',
-        'No tienes permisos para editar este torneo',
+        'No tienes permisos para editar esta edición',
         [{ text: 'OK', onPress: () => navigation.goBack() }]
       );
     }
-  }, [canEditTournament]);
+  }, [canEditEdition]);
 
-  // Tournament form state
-  const [nombre, setNombre] = useState(torneo.nombre);
-  const [temporada, setTemporada] = useState(torneo.temporada);
-  const [activo, setActivo] = useState(torneo.activo);
+  // Edition form state
+  const [numero, setNumero] = useState(edicion.numero.toString());
+  const [nombre, setNombre] = useState(edicion.nombre);
+  const [estado, setEstado] = useState<EstadoEdicion>(edicion.estado);
+  const [fechaInicio, setFechaInicio] = useState(edicion.fecha_inicio.split('T')[0]);
+  const [fechaFin, setFechaFin] = useState(edicion.fecha_fin.split('T')[0]);
   const [isSaving, setIsSaving] = useState(false);
 
   // Admins state
-  const [assignedAdmins, setAssignedAdmins] = useState<AdminTorneoAsignacion[]>([]);
-  const [availableAdmins, setAvailableAdmins] = useState<AdminTorneoDisponible[]>([]);
+  const [assignedAdmins, setAssignedAdmins] = useState<AdminEdicionAsignacion[]>([]);
+  const [availableAdmins, setAvailableAdmins] = useState<AdminEdicionDisponible[]>([]);
   const [loadingAdmins, setLoadingAdmins] = useState(true);
   const [loadingAvailableAdmins, setLoadingAvailableAdmins] = useState(false);
 
@@ -66,21 +78,20 @@ export const EditTournamentScreen = ({ navigation, route }: any) => {
     try {
       setLoadingAdmins(true);
 
-      // Load assigned admins for this tournament - handle errors gracefully
+      // Load assigned admins for this edition - handle errors gracefully
       try {
-        const assignedResponse = await api.adminTorneo.list({ id_torneo: torneo.id_torneo });
+        const assignedResponse = await api.adminEdicion.list({
+          id_edicion: edicion.id_edicion,
+        });
         setAssignedAdmins(assignedResponse.data.data || []);
       } catch (error: any) {
-        // If 404, it means no admins assigned yet, which is fine
-        if (error?.response?.status === 404) {
-          setAssignedAdmins([]);
-        } else {
-          console.error('Error loading assigned admins:', error);
-          setAssignedAdmins([]);
-        }
+        // Silently handle all errors - just show empty state
+        // This is expected when no admins are assigned yet or endpoint doesn't exist
+        setAssignedAdmins([]);
       }
     } catch (error) {
-      console.error('Error in loadAdmins:', error);
+      // Silently handle outer errors
+      setAssignedAdmins([]);
     } finally {
       setLoadingAdmins(false);
     }
@@ -89,74 +100,71 @@ export const EditTournamentScreen = ({ navigation, route }: any) => {
   const loadAvailableAdmins = async () => {
     try {
       setLoadingAvailableAdmins(true);
-      const response = await api.adminTorneo.disponibles(torneo.id_torneo);
+      const response = await api.adminEdicion.disponibles(edicion.id_edicion);
       setAvailableAdmins(response.data.data || []);
     } catch (error: any) {
-      if (error?.response?.status === 404) {
-        setAvailableAdmins([]);
-      } else {
-        console.error('Error loading available admins:', error);
-        setAvailableAdmins([]);
-      }
+      // Silently handle all errors - just show empty state
+      setAvailableAdmins([]);
     } finally {
       setLoadingAvailableAdmins(false);
     }
   };
 
-  const handleSaveTournament = async () => {
-    if (!nombre.trim() || !temporada.trim()) {
-      Alert.alert('Error', 'El nombre y la temporada son obligatorios');
+  const handleSaveEdition = async () => {
+    if (!numero.trim() || !nombre.trim() || !fechaInicio.trim() || !fechaFin.trim()) {
+      Alert.alert('Error', 'Todos los campos son obligatorios');
+      return;
+    }
+
+    const numeroValue = parseInt(numero.trim());
+    if (isNaN(numeroValue) || numeroValue <= 0) {
+      Alert.alert('Error', 'El número de edición debe ser un número válido');
       return;
     }
 
     try {
       setIsSaving(true);
-      await api.torneos.update({
-        id_torneo: torneo.id_torneo,
+      await api.ediciones.update(edicion.id_edicion, {
+        numero: numeroValue,
         nombre: nombre.trim(),
-        temporada: temporada.trim(),
-        activo,
+        estado,
+        fecha_inicio: fechaInicio.trim(),
+        fecha_fin: fechaFin.trim(),
       });
 
-      Alert.alert('Éxito', 'Torneo actualizado correctamente', [
+      Alert.alert('Éxito', 'Edición actualizada correctamente', [
         {
           text: 'OK',
           onPress: () => navigation.goBack(),
         },
       ]);
     } catch (error) {
-      console.error('Error updating tournament:', error);
-      Alert.alert('Error', 'No se pudo actualizar el torneo');
+      console.error('Error updating edition:', error);
+      Alert.alert('Error', 'No se pudo actualizar la edición');
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleAssignAdmin = (admin: AdminTorneoDisponible) => {
+  const handleAssignAdmin = (admin: AdminEdicionDisponible) => {
     Alert.alert(
       'Confirmar Asignación',
-      `¿Estás seguro que deseas asignar a ${admin.nombre_completo} como administrador de este torneo?`,
+      `¿Estás seguro que deseas asignar a ${admin.nombre_completo} como administrador de esta edición?`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
           text: 'Asignar',
           onPress: async () => {
             try {
-              // Show loading state
               setShowAssignAdminModal(false);
 
-              // Create a promise to show loading alert
-              const assignPromise = api.adminTorneo.asignar({
-                id_usuario: admin.id_usuario,
-                id_torneo: torneo.id_torneo,
-              });
-
-              // Show loading indicator
               Alert.alert('Asignando...', 'Por favor espera', [], { cancelable: false });
 
-              await assignPromise;
+              await api.adminEdicion.asignar({
+                id_usuario: admin.id_usuario,
+                id_edicion: edicion.id_edicion,
+              });
 
-              // Dismiss loading and show success
               Alert.alert('Éxito', 'Administrador asignado correctamente');
               loadAdmins();
             } catch (error) {
@@ -174,10 +182,10 @@ export const EditTournamentScreen = ({ navigation, route }: any) => {
     loadAvailableAdmins();
   };
 
-  const handleRemoveAdmin = (admin: AdminTorneoAsignacion) => {
+  const handleRemoveAdmin = (admin: AdminEdicionAsignacion) => {
     Alert.alert(
       'Confirmar Eliminación',
-      `¿Estás seguro que deseas quitar a ${admin.usuario.nombre_completo} de este torneo?`,
+      `¿Estás seguro que deseas quitar a ${admin.usuario.nombre_completo} de esta edición?`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -185,15 +193,10 @@ export const EditTournamentScreen = ({ navigation, route }: any) => {
           style: 'destructive',
           onPress: async () => {
             try {
-              // Create a promise to show loading alert
-              const deletePromise = api.adminTorneo.delete({ id_admin_torneo: admin.id });
-
-              // Show loading indicator
               Alert.alert('Removiendo...', 'Por favor espera', [], { cancelable: false });
 
-              await deletePromise;
+              await api.adminEdicion.delete({ id_admin_edicion: admin.id });
 
-              // Dismiss loading and show success
               Alert.alert('Éxito', 'Administrador removido correctamente');
               loadAdmins();
             } catch (error) {
@@ -216,7 +219,7 @@ export const EditTournamentScreen = ({ navigation, route }: any) => {
       setIsCreatingAdmin(true);
 
       // Register new admin with temporary credentials
-      const registerResponse = await api.adminTorneo.register({
+      const registerResponse = await api.adminEdicion.register({
         nombre: newAdminNombre.trim(),
         apellido: newAdminApellido.trim(),
         email: newAdminEmail.trim(),
@@ -225,22 +228,27 @@ export const EditTournamentScreen = ({ navigation, route }: any) => {
       // Get the created user's ID from the response
       const usuarioId = registerResponse.data.usuario.id;
 
-      // Now assign the newly created admin to this tournament
-      await api.adminTorneo.asignar({
+      // Now assign the newly created admin to this edition
+      await api.adminEdicion.asignar({
         id_usuario: parseInt(usuarioId),
-        id_torneo: torneo.id_torneo,
+        id_edicion: edicion.id_edicion,
       });
 
       Alert.alert(
         'Éxito',
         `Administrador creado y asignado correctamente.\n\nSe han enviado las credenciales temporales a ${newAdminEmail}`,
-        [{ text: 'OK', onPress: () => {
-          setShowCreateAdminModal(false);
-          setNewAdminEmail('');
-          setNewAdminNombre('');
-          setNewAdminApellido('');
-          loadAdmins();
-        }}]
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              setShowCreateAdminModal(false);
+              setNewAdminEmail('');
+              setNewAdminNombre('');
+              setNewAdminApellido('');
+              loadAdmins();
+            },
+          },
+        ]
       );
     } catch (error) {
       console.error('Error creating admin:', error);
@@ -253,20 +261,18 @@ export const EditTournamentScreen = ({ navigation, route }: any) => {
     <SafeAreaView style={styles.container} edges={['bottom']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Text style={styles.backButtonText}>{'←'}</Text>
         </TouchableOpacity>
 
         <View style={styles.headerInfo}>
-          <Text style={styles.title}>Editar Torneo</Text>
+          <Text style={styles.title}>Editar Edición</Text>
+          <Text style={styles.subtitle}>{torneo.nombre}</Text>
         </View>
 
         <TouchableOpacity
           style={styles.saveButton}
-          onPress={handleSaveTournament}
+          onPress={handleSaveEdition}
           disabled={isSaving}
         >
           <Text style={styles.saveButtonText}>Guardar</Text>
@@ -278,9 +284,21 @@ export const EditTournamentScreen = ({ navigation, route }: any) => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Tournament Info Section */}
+        {/* Edition Info Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>INFORMACIÓN DEL TORNEO</Text>
+          <Text style={styles.sectionTitle}>INFORMACIÓN DE LA EDICIÓN</Text>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Número de Edición</Text>
+            <TextInput
+              style={styles.input}
+              value={numero}
+              onChangeText={setNumero}
+              placeholder="Ej: 2024, 2025"
+              placeholderTextColor={colors.textSecondary}
+              keyboardType="number-pad"
+            />
+          </View>
 
           <View style={styles.formGroup}>
             <Text style={styles.label}>Nombre</Text>
@@ -288,36 +306,66 @@ export const EditTournamentScreen = ({ navigation, route }: any) => {
               style={styles.input}
               value={nombre}
               onChangeText={setNombre}
-              placeholder="Nombre del torneo"
+              placeholder="Nombre de la edición"
               placeholderTextColor={colors.textSecondary}
             />
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Temporada</Text>
+            <Text style={styles.label}>Estado</Text>
+            <View style={styles.estadosContainer}>
+              {ESTADOS.map((est) => (
+                <TouchableOpacity
+                  key={est.value}
+                  style={[
+                    styles.estadoChip,
+                    estado === est.value && styles.estadoChipActive,
+                    estado === est.value && { borderColor: est.color },
+                  ]}
+                  onPress={() => setEstado(est.value)}
+                  activeOpacity={0.7}
+                >
+                  <View
+                    style={[
+                      styles.estadoDot,
+                      { backgroundColor: estado === est.value ? est.color : colors.border },
+                    ]}
+                  />
+                  <Text
+                    style={[
+                      styles.estadoText,
+                      estado === est.value && styles.estadoTextActive,
+                    ]}
+                  >
+                    {est.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Fecha de Inicio</Text>
             <TextInput
               style={styles.input}
-              value={temporada}
-              onChangeText={setTemporada}
-              placeholder="2024"
+              value={fechaInicio}
+              onChangeText={setFechaInicio}
+              placeholder="2025-03-01"
               placeholderTextColor={colors.textSecondary}
             />
+            <Text style={styles.helperText}>Formato: AAAA-MM-DD (ej: 2025-03-01)</Text>
           </View>
 
           <View style={styles.formGroup}>
-            <View style={styles.switchRow}>
-              <Text style={styles.label}>Estado</Text>
-              <TouchableOpacity
-                style={[styles.switch, activo && styles.switchActive]}
-                onPress={() => setActivo(!activo)}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.switchThumb, activo && styles.switchThumbActive]} />
-              </TouchableOpacity>
-            </View>
-            <Text style={styles.switchLabel}>
-              {activo ? 'Activo' : 'Inactivo'}
-            </Text>
+            <Text style={styles.label}>Fecha de Fin</Text>
+            <TextInput
+              style={styles.input}
+              value={fechaFin}
+              onChangeText={setFechaFin}
+              placeholder="2025-08-31"
+              placeholderTextColor={colors.textSecondary}
+            />
+            <Text style={styles.helperText}>Formato: AAAA-MM-DD (ej: 2025-08-31)</Text>
           </View>
         </View>
 
@@ -328,6 +376,7 @@ export const EditTournamentScreen = ({ navigation, route }: any) => {
           {loadingAdmins ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="small" color={colors.primary} />
+              <Text style={styles.loadingText}>Cargando administradores...</Text>
             </View>
           ) : (
             <>
@@ -354,7 +403,9 @@ export const EditTournamentScreen = ({ navigation, route }: any) => {
                         />
                         <View style={styles.adminText}>
                           <Text style={styles.adminName}>{admin.usuario.nombre_completo}</Text>
-                          <Text style={styles.adminEmail}>{admin.torneo.nombre}</Text>
+                          <Text style={styles.adminEmail}>
+                            Asignado el {new Date(admin.asignado_el).toLocaleDateString('es-ES')}
+                          </Text>
                         </View>
                       </View>
                       <TouchableOpacity
@@ -425,7 +476,7 @@ export const EditTournamentScreen = ({ navigation, route }: any) => {
                 <View style={styles.loadingModal}>
                   <ActivityIndicator size="large" color={colors.primary} />
                   <Text style={styles.loadingModalText}>
-                    Cargando admins torneo disponibles...
+                    Cargando administradores disponibles...
                   </Text>
                 </View>
               ) : availableAdmins.length === 0 ? (
@@ -450,7 +501,7 @@ export const EditTournamentScreen = ({ navigation, route }: any) => {
                       <View style={styles.adminText}>
                         <Text style={styles.adminName}>{admin.nombre_completo}</Text>
                         <Text style={styles.adminEmail}>
-                          {admin.estadisticas.total_torneos} torneos asignados
+                          {admin.estadisticas.total_ediciones} ediciones asignadas
                         </Text>
                       </View>
                     </View>
@@ -586,6 +637,11 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: colors.textPrimary,
   },
+  subtitle: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
   saveButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
@@ -635,40 +691,53 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  switchRow: {
+  helperText: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 4,
+  },
+  estadosContainer: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  estadoChip: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-  },
-  switch: {
-    width: 50,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: colors.border,
-    padding: 2,
     justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: colors.border,
+    backgroundColor: colors.backgroundGray,
   },
-  switchActive: {
-    backgroundColor: colors.primary,
-  },
-  switchThumb: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+  estadoChipActive: {
     backgroundColor: colors.white,
-    alignSelf: 'flex-start',
   },
-  switchThumbActive: {
-    alignSelf: 'flex-end',
+  estadoDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
-  switchLabel: {
-    fontSize: 14,
+  estadoText: {
+    fontSize: 13,
+    fontWeight: '500',
     color: colors.textSecondary,
+  },
+  estadoTextActive: {
+    color: colors.textPrimary,
+    fontWeight: '600',
   },
   loadingContainer: {
     paddingVertical: 20,
     alignItems: 'center',
+    gap: 8,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: colors.textSecondary,
   },
   emptyAdmins: {
     paddingVertical: 40,
@@ -846,4 +915,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default EditTournamentScreen;
+export default EditEditionScreen;

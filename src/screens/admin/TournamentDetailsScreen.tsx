@@ -3,8 +3,8 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   FlatList,
+  TouchableOpacity,
   ActivityIndicator,
   Alert,
 } from 'react-native';
@@ -43,17 +43,16 @@ export const TournamentDetailsScreen = ({ navigation, route }: any) => {
       } else {
         setLoading(true);
       }
-
-      const data = await api.ediciones.getByTournament(torneo.id_torneo);
-      const edicionesArray = Array.isArray(data.data) ? data.data : (Array.isArray(data) ? data : []);
-      setEdiciones(edicionesArray);
+      console.log('Loading editions for tournament ID:', torneo.id_torneo);
+      const response = await api.ediciones.list({ id_torneo: torneo.id_torneo });
+      setEdiciones(response.data || []);
     } catch (error: any) {
       // Handle 404 gracefully - no editions yet
+      console.log('Error details:', error);
       if (error?.response?.status === 404) {
         setEdiciones([]);
       } else {
         console.error('Error loading editions:', error);
-        // Don't show alert, just set empty array - screen will show empty state
         setEdiciones([]);
       }
     } finally {
@@ -78,58 +77,92 @@ export const TournamentDetailsScreen = ({ navigation, route }: any) => {
     navigation.navigate('TournamentCategories', { torneo, edicion, pais });
   };
 
-  const renderEditionItem = ({ item: edicion }: { item: Edicion }) => (
-    <TouchableOpacity
-      style={styles.editionCard}
-      onPress={() => handleEditionPress(edicion)}
-      activeOpacity={0.7}
-    >
-      <View style={styles.editionInfo}>
-        <View style={styles.editionHeader}>
-          <Text style={styles.editionTitle}>
-            Edición {edicion.numero}
-          </Text>
-          <View
-            style={[
-              styles.statusBadge,
-              edicion.estado === 'en juego' && styles.statusBadgeActive,
-              edicion.estado === 'cerrado' && styles.statusBadgeClosed,
-            ]}
-          >
-            <Text
-              style={[
-                styles.statusText,
-                edicion.estado === 'en juego' && styles.statusTextActive,
-              ]}
-            >
-              {edicion.estado === 'en juego'
-                ? 'En Juego'
-                : edicion.estado === 'abierto'
-                ? 'Abierto'
-                : 'Cerrado'}
-            </Text>
+  const handleEditEdition = (edicion: Edicion) => {
+    navigation.navigate('EditEdition', { edicion, torneo, pais });
+  };
+
+  const getEstadoBadgeStyle = (estado: string) => {
+    switch (estado) {
+      case 'abierto':
+        return { backgroundColor: '#e8f5e9', color: '#4caf50' };
+      case 'en_curso':
+        return { backgroundColor: '#e3f2fd', color: '#2196f3' };
+      case 'cerrado':
+        return { backgroundColor: '#fce4ec', color: '#f06292' };
+      default:
+        return { backgroundColor: '#f5f5f5', color: '#9e9e9e' };
+    }
+  };
+
+  const getEstadoLabel = (estado: string) => {
+    switch (estado) {
+      case 'abierto':
+        return 'Abierto';
+      case 'en_curso':
+        return 'En Curso';
+      case 'cerrado':
+        return 'Cerrado';
+      default:
+        return estado;
+    }
+  };
+
+  const renderEditionItem = ({ item: edicion }: { item: Edicion }) => {
+    const estadoStyle = getEstadoBadgeStyle(edicion.estado);
+
+    return (
+      <View style={styles.editionCard}>
+        <TouchableOpacity
+          style={styles.editionCardContent}
+          onPress={() => handleEditionPress(edicion)}
+          activeOpacity={0.7}
+        >
+          <View style={styles.editionHeader}>
+            <View style={styles.editionTitleContainer}>
+              <Text style={styles.editionNumber}>Edición {edicion.numero}</Text>
+              <View style={[styles.estadoBadge, { backgroundColor: estadoStyle.backgroundColor }]}>
+                <Text style={[styles.estadoText, { color: estadoStyle.color }]}>
+                  {getEstadoLabel(edicion.estado)}
+                </Text>
+              </View>
+            </View>
+            <MaterialCommunityIcons name="chevron-right" size={24} color={colors.primary} />
           </View>
-        </View>
-        {edicion.nombre && (
+
           <Text style={styles.editionName}>{edicion.nombre}</Text>
+
+          <View style={styles.editionFooter}>
+            <View style={styles.dateContainer}>
+              <MaterialCommunityIcons name="calendar-start" size={16} color={colors.textSecondary} />
+              <Text style={styles.dateText}>
+                {new Date(edicion.fecha_inicio).toLocaleDateString('es-ES')}
+              </Text>
+            </View>
+            <View style={styles.dateContainer}>
+              <MaterialCommunityIcons name="calendar-end" size={16} color={colors.textSecondary} />
+              <Text style={styles.dateText}>
+                {new Date(edicion.fecha_fin).toLocaleDateString('es-ES')}
+              </Text>
+            </View>
+          </View>
+        </TouchableOpacity>
+
+        {canEditTournament && (
+          <TouchableOpacity
+            style={styles.editionEditButton}
+            onPress={() => handleEditEdition(edicion)}
+            activeOpacity={0.7}
+          >
+            <MaterialCommunityIcons name="pencil" size={18} color={colors.primary} />
+          </TouchableOpacity>
         )}
       </View>
-
-      <MaterialCommunityIcons
-        name="chevron-right"
-        size={24}
-        color={colors.primary}
-      />
-    </TouchableOpacity>
-  );
+    );
+  };
 
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>
-      <MaterialCommunityIcons
-        name="calendar-blank"
-        size={64}
-        color={colors.textSecondary}
-      />
+      <MaterialCommunityIcons name="calendar-blank" size={64} color={colors.textSecondary} />
       <Text style={styles.emptyTitle}>No hay ediciones para este torneo</Text>
       <Text style={styles.emptySubtitle}>
         {canCreateEdition
@@ -137,13 +170,8 @@ export const TournamentDetailsScreen = ({ navigation, route }: any) => {
           : 'Pronto se agregarán ediciones a este torneo'}
       </Text>
       {canCreateEdition && (
-        <TouchableOpacity
-          style={styles.createFirstButton}
-          onPress={handleCreateEdition}
-        >
-          <Text style={styles.createFirstButtonText}>
-            Crear Primera Edición
-          </Text>
+        <TouchableOpacity style={styles.createFirstButton} onPress={handleCreateEdition}>
+          <Text style={styles.createFirstButtonText}>Crear Primera Edición</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -164,10 +192,7 @@ export const TournamentDetailsScreen = ({ navigation, route }: any) => {
     <SafeAreaView style={styles.container} edges={['bottom']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Text style={styles.backButtonText}>{'←'}</Text>
         </TouchableOpacity>
 
@@ -176,15 +201,8 @@ export const TournamentDetailsScreen = ({ navigation, route }: any) => {
         </View>
 
         {canEditTournament ? (
-          <TouchableOpacity
-            style={styles.editButton}
-            onPress={handleEditTournament}
-          >
-            <MaterialCommunityIcons
-              name="pencil"
-              size={24}
-              color={colors.primary}
-            />
+          <TouchableOpacity style={styles.editButton} onPress={handleEditTournament}>
+            <MaterialCommunityIcons name="pencil" size={24} color={colors.primary} />
           </TouchableOpacity>
         ) : (
           <View style={styles.editButton} />
@@ -194,11 +212,7 @@ export const TournamentDetailsScreen = ({ navigation, route }: any) => {
       {/* Tournament Info */}
       <View style={styles.tournamentInfo}>
         <View style={styles.infoRow}>
-          <MaterialCommunityIcons
-            name="calendar"
-            size={20}
-            color={colors.textSecondary}
-          />
+          <MaterialCommunityIcons name="calendar" size={20} color={colors.textSecondary} />
           <Text style={styles.infoText}>Temporada: {torneo.temporada}</Text>
         </View>
         <View style={styles.infoRow}>
@@ -207,9 +221,7 @@ export const TournamentDetailsScreen = ({ navigation, route }: any) => {
             size={12}
             color={torneo.activo ? colors.success : colors.textSecondary}
           />
-          <Text style={styles.infoText}>
-            {torneo.activo ? 'Activo' : 'Inactivo'}
-          </Text>
+          <Text style={styles.infoText}>{torneo.activo ? 'Activo' : 'Inactivo'}</Text>
         </View>
       </View>
 
@@ -231,11 +243,7 @@ export const TournamentDetailsScreen = ({ navigation, route }: any) => {
 
       {/* FAB - Only show if there are editions and user has permission */}
       {ediciones.length > 0 && canCreateEdition && (
-        <TouchableOpacity
-          style={styles.fab}
-          onPress={handleCreateEdition}
-          activeOpacity={0.8}
-        >
+        <TouchableOpacity style={styles.fab} onPress={handleCreateEdition} activeOpacity={0.8}>
           <Text style={styles.fabIcon}>+</Text>
         </TouchableOpacity>
       )}
@@ -325,11 +333,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   editionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     backgroundColor: colors.white,
-    padding: 16,
     borderRadius: 12,
     marginBottom: 12,
     shadowColor: colors.shadow,
@@ -337,44 +341,62 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  editionInfo: {
+  editionCardContent: {
     flex: 1,
-    gap: 4,
+    padding: 16,
+  },
+  editionEditButton: {
+    padding: 12,
+    marginRight: 8,
+    borderLeftWidth: 1,
+    borderLeftColor: colors.border,
   },
   editionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  editionTitleContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
   },
-  editionTitle: {
+  editionNumber: {
     fontSize: 16,
     fontWeight: '600',
     color: colors.textPrimary,
   },
-  editionName: {
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
-  statusBadge: {
+  estadoBadge: {
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
-    backgroundColor: '#f5f5f5',
   },
-  statusBadgeActive: {
-    backgroundColor: '#e8f5e9',
-  },
-  statusBadgeClosed: {
-    backgroundColor: '#fce4ec',
-  },
-  statusText: {
+  estadoText: {
     fontSize: 11,
     fontWeight: '600',
-    color: colors.textSecondary,
   },
-  statusTextActive: {
-    color: colors.success,
+  editionName: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginBottom: 12,
+  },
+  editionFooter: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  dateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  dateText: {
+    fontSize: 12,
+    color: colors.textSecondary,
   },
   emptyContainer: {
     flex: 1,

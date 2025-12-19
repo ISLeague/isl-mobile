@@ -15,6 +15,7 @@ import AdminTournamentsScreen from './src/screens/admin/AdminTournamentsScreen';
 import CreateTournamentScreen from './src/screens/admin/CreateTournamentScreen';
 import { TournamentDetailsScreen } from './src/screens/admin/TournamentDetailsScreen';
 import { EditTournamentScreen } from './src/screens/admin/EditTournamentScreen';
+import { EditEditionScreen } from './src/screens/admin/EditEditionScreen';
 import { ManageCategoriesScreen } from './src/screens/admin/ManageCategoriesScreen';
 import { CreateEditionScreen } from './src/screens/admin/CreateEditionScreen';
 import { TournamentCategoriesScreen } from './src/screens/admin/TournamentCategoriesScreen';
@@ -89,6 +90,7 @@ export default function App() {
           <Stack.Screen name="CreateTournament" component={CreateTournamentScreen} />
           <Stack.Screen name="TournamentDetails" component={TournamentDetailsScreen} />
           <Stack.Screen name="EditTournament" component={EditTournamentScreen} />
+          <Stack.Screen name="EditEdition" component={EditEditionScreen} />
           <Stack.Screen name="ManageCategories" component={ManageCategoriesScreen} />
           <Stack.Screen name="CreateEdition" component={CreateEditionScreen} />
           <Stack.Screen name="TournamentCategories" component={TournamentCategoriesScreen} />

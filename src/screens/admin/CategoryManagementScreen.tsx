@@ -135,8 +135,9 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
 
   const loadCategorias = async () => {
     try {
-      const ediciones = await api.ediciones.getByTournament(torneo.id_torneo);
-      const edicionActiva = ediciones.find(e => e.estado === 'en juego') || ediciones[0];
+      const response = await api.ediciones.list({ id_torneo: torneo.id_torneo });
+      const ediciones = response.data || [];
+      const edicionActiva = ediciones.find(e => e.estado === 'en_curso') || ediciones[0];
       if (edicionActiva) {
         const cats = await api.categorias.getByEdition(edicionActiva.id_edicion);
         setCategorias(cats);

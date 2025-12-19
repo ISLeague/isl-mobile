@@ -19,7 +19,7 @@ import { useAuth } from '../../contexts/AuthContext';
 
 const ESTADOS: { value: EstadoEdicion; label: string; color: string }[] = [
   { value: 'abierto', label: 'Abierto', color: '#4caf50' },
-  { value: 'en juego', label: 'En Juego', color: '#2196f3' },
+  { value: 'en_curso', label: 'En Curso', color: '#2196f3' },
   { value: 'cerrado', label: 'Cerrado', color: '#9e9e9e' },
 ];
 
@@ -56,6 +56,21 @@ export const CreateEditionScreen = ({ navigation, route }: any) => {
       return;
     }
 
+    if (!nombre.trim()) {
+      Alert.alert('Error', 'El nombre de edición es obligatorio');
+      return;
+    }
+
+    if (!fechaInicio.trim()) {
+      Alert.alert('Error', 'La fecha de inicio es obligatoria');
+      return;
+    }
+
+    if (!fechaFin.trim()) {
+      Alert.alert('Error', 'La fecha de fin es obligatoria');
+      return;
+    }
+
     const numeroValue = parseInt(numero.trim());
     if (isNaN(numeroValue) || numeroValue <= 0) {
       Alert.alert('Error', 'El número de edición debe ser un número válido');
@@ -67,11 +82,10 @@ export const CreateEditionScreen = ({ navigation, route }: any) => {
 
       await api.ediciones.create({
         numero: numeroValue,
-        nombre: nombre.trim() || null,
-        estado,
+        nombre: nombre.trim(),
         id_torneo: torneo.id_torneo,
-        fecha_inicio: fechaInicio.trim() || null,
-        fecha_fin: fechaFin.trim() || null,
+        fecha_inicio: fechaInicio.trim(),
+        fecha_fin: fechaFin.trim(),
       });
 
       Alert.alert('Éxito', 'Edición creada correctamente', [
@@ -147,16 +161,18 @@ export const CreateEditionScreen = ({ navigation, route }: any) => {
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Nombre (Opcional)</Text>
+            <Text style={styles.label}>
+              Nombre <Text style={styles.required}>*</Text>
+            </Text>
             <TextInput
               style={styles.input}
               value={nombre}
               onChangeText={setNombre}
-              placeholder="Ej: Torneo Verano, Copa Invierno"
+              placeholder="Ej: Temporada Verano 2025, Apertura 2024"
               placeholderTextColor={colors.textSecondary}
             />
             <Text style={styles.helperText}>
-              Dale un nombre especial a esta edición
+              Nombre descriptivo de la edición
             </Text>
           </View>
 
@@ -195,36 +211,40 @@ export const CreateEditionScreen = ({ navigation, route }: any) => {
             </View>
             <Text style={styles.helperText}>
               {estado === 'abierto' && 'Inscripciones abiertas para equipos'}
-              {estado === 'en juego' && 'Torneo en curso, partidos activos'}
+              {estado === 'en_curso' && 'Torneo en curso, partidos activos'}
               {estado === 'cerrado' && 'Torneo finalizado'}
             </Text>
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Fecha de Inicio (Opcional)</Text>
+            <Text style={styles.label}>
+              Fecha de Inicio <Text style={styles.required}>*</Text>
+            </Text>
             <TextInput
               style={styles.input}
               value={fechaInicio}
               onChangeText={setFechaInicio}
-              placeholder="YYYY-MM-DD"
+              placeholder="2025-03-01"
               placeholderTextColor={colors.textSecondary}
             />
             <Text style={styles.helperText}>
-              Formato: AAAA-MM-DD (ej: 2024-01-15)
+              Formato: AAAA-MM-DD (ej: 2025-03-01)
             </Text>
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Fecha de Fin (Opcional)</Text>
+            <Text style={styles.label}>
+              Fecha de Fin <Text style={styles.required}>*</Text>
+            </Text>
             <TextInput
               style={styles.input}
               value={fechaFin}
               onChangeText={setFechaFin}
-              placeholder="YYYY-MM-DD"
+              placeholder="2025-08-31"
               placeholderTextColor={colors.textSecondary}
             />
             <Text style={styles.helperText}>
-              Formato: AAAA-MM-DD (ej: 2024-06-30)
+              Formato: AAAA-MM-DD (ej: 2025-08-31)
             </Text>
           </View>
         </View>

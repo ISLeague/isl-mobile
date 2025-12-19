@@ -99,9 +99,9 @@ export const AdminTournamentsScreen = ({ navigation, route }: any) => {
       const torneosConEstado = await Promise.all(
         data.map(async (torneo) => {
           try {
-            const ediciones = await api.ediciones.getByTournament(torneo.id_torneo);
-            const edicionesArray = Array.isArray(ediciones) ? ediciones : [];
-            const edicionActiva = edicionesArray.find(e => e.estado === 'en juego');
+            const response = await api.ediciones.list({ id_torneo: torneo.id_torneo });
+            const edicionesArray = response.data || [];
+            const edicionActiva = edicionesArray.find(e => e.estado === 'en_curso');
 
             return {
               ...torneo,
@@ -221,14 +221,7 @@ export const AdminTournamentsScreen = ({ navigation, route }: any) => {
         </View>
 
         <View style={styles.headerActions}>
-          {isSuperAdmin && (
-            <TouchableOpacity
-              style={styles.iconButton}
-              onPress={handleManageCategories}
-            >
-              <MaterialCommunityIcons name="shape" size={24} color={colors.primary} />
-            </TouchableOpacity>
-          )}
+         
           <TouchableOpacity
             style={styles.iconButton}
             onPress={() => navigation.navigate('Main')}

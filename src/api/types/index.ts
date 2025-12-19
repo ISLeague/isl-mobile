@@ -37,3 +37,13 @@ export * from './torneos.types';
 
 // Usuarios
 export * from './usuarios.types';
+
+// Admin Torneos
+export * from './admin-torneos';
+
+//Admin Ediciones
+export * from './admin-edicion';
+
+// Admin Categorias
+
+export * from './admin-categoria'

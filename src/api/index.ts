@@ -26,6 +26,9 @@ export { rondasService } from './services/rondas.service';
 export { torneosService } from './services/torneos.service';
 export { usuariosService } from './services/usuarios.service';
 export { healthService } from './services/health.service';
+export { adminTorneoService } from './services/admin-torneo.service';
+export { adminCategoriaService } from './services/admin-categoria.service';
+export { adminEdicionService } from './services/admin-edicion.service';
 
 // ============================================
 // 🔧 API CONSOLIDADA (Para compatibilidad)
@@ -47,6 +50,9 @@ import { rondasService } from './services/rondas.service';
 import { torneosService } from './services/torneos.service';
 import { usuariosService } from './services/usuarios.service';
 import { healthService } from './services/health.service';
+import { adminTorneoService } from './services/admin-torneo.service';
+import { adminCategoriaService } from './services/admin-categoria.service';
+import { adminEdicionService } from './services/admin-edicion.service';
 
 /**
  * API consolidada - Exportación default para compatibilidad
@@ -78,6 +84,9 @@ export const api = {
   torneos: torneosService,
   usuarios: usuariosService,
   health: healthService,
+  adminTorneo: adminTorneoService,
+  adminCategoria: adminCategoriaService,
+  adminEdicion: adminEdicionService,
 };
 
 export default api;
