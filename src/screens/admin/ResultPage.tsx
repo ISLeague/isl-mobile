@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,13 +10,15 @@ import {
   Switch,
   Modal,
   FlatList,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import { Button } from '../../components/common/Button';
 import { GradientHeader } from '../../components/common';
-import { getEquipoById, getJugadoresByEquipo } from '../../data/mockData';
+import api from '../../api';
+import { useToast } from '../../contexts/ToastContext';
 
 interface ResultPageProps {
   navigation: any;
@@ -34,16 +36,18 @@ interface PlayerEvent {
 
 export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => {
   const { partido, ronda } = route.params;
-  
+  const { showSuccess, showError } = useToast();
+
   // partido.id_equipo_local y partido.id_equipo_visitante pueden ser números o objetos
   const equipoLocalId = typeof partido.id_equipo_local === 'number' ? partido.id_equipo_local : partido.id_equipo_local?.id_equipo;
   const equipoVisitanteId = typeof partido.id_equipo_visitante === 'number' ? partido.id_equipo_visitante : partido.id_equipo_visitante?.id_equipo;
-  
-  const equipoLocal = equipoLocalId ? getEquipoById(equipoLocalId) : null;
-  const equipoVisitante = equipoVisitanteId ? getEquipoById(equipoVisitanteId) : null;
-  
-  const jugadoresLocal = equipoLocal ? getJugadoresByEquipo(equipoLocal.id_equipo) : [];
-  const jugadoresVisitante = equipoVisitante ? getJugadoresByEquipo(equipoVisitante.id_equipo) : [];
+
+  // State for loading and data
+  const [loading, setLoading] = useState(true);
+  const [equipoLocal, setEquipoLocal] = useState<any>(null);
+  const [equipoVisitante, setEquipoVisitante] = useState<any>(null);
+  const [jugadoresLocal, setJugadoresLocal] = useState<any[]>([]);
+  const [jugadoresVisitante, setJugadoresVisitante] = useState<any[]>([]);
 
   const [golesLocal, setGolesLocal] = useState(partido.marcador_local || 0);
   const [golesVisitante, setGolesVisitante] = useState(partido.marcador_visitante || 0);
@@ -52,17 +56,86 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
   const [penalesVisitante, setPenalesVisitante] = useState(partido.penales_visitante || 0);
   const [walkoverEnabled, setWalkoverEnabled] = useState(false);
   const [walkoverWinner, setWalkoverWinner] = useState<'local' | 'visitante' | null>(null);
-  
+
   // Modales de selección
   const [showScoreModal, setShowScoreModal] = useState<'golesLocal' | 'golesVisitante' | 'penalesLocal' | 'penalesVisitante' | null>(null);
   const [showEventModal, setShowEventModal] = useState<{ jugadorId: number; isLocal: boolean; eventType: keyof PlayerEvent } | null>(null);
-  
-  const [eventosLocal, setEventosLocal] = useState<PlayerEvent[]>(
-    jugadoresLocal.map(j => ({ id_jugador: j.id_jugador, goles: 0, asistencias: 0, amarillas: 0, rojas: 0, isMVP: false }))
-  );
-  const [eventosVisitante, setEventosVisitante] = useState<PlayerEvent[]>(
-    jugadoresVisitante.map(j => ({ id_jugador: j.id_jugador, goles: 0, asistencias: 0, amarillas: 0, rojas: 0, isMVP: false }))
-  );
+
+  const [eventosLocal, setEventosLocal] = useState<PlayerEvent[]>([]);
+  const [eventosVisitante, setEventosVisitante] = useState<PlayerEvent[]>([]);
+
+  // Load teams and players data
+  const loadData = useCallback(async () => {
+    try {
+      setLoading(true);
+
+      // Load teams
+      if (equipoLocalId) {
+        const equipoLocalResponse = await api.equipos.getById(equipoLocalId);
+        if (equipoLocalResponse.data) {
+          setEquipoLocal(equipoLocalResponse.data);
+        }
+      }
+
+      if (equipoVisitanteId) {
+        const equipoVisitanteResponse = await api.equipos.getById(equipoVisitanteId);
+        if (equipoVisitanteResponse.data) {
+          setEquipoVisitante(equipoVisitanteResponse.data);
+        }
+      }
+
+      // Load players for each team
+      // TODO: Backend needs to support filtering by id_equipo in /jugadores-list endpoint
+      // For now, we load all players and filter locally
+      const allJugadoresResponse = await api.jugadores.list();
+      if (allJugadoresResponse.success && allJugadoresResponse.data) {
+        // Filter players for local team
+        if (equipoLocalId) {
+          const jugadoresLocalData = allJugadoresResponse.data.filter(
+            (j: any) => j.equipo_id === equipoLocalId || j.id_equipo === equipoLocalId
+          );
+          setJugadoresLocal(jugadoresLocalData);
+          setEventosLocal(
+            jugadoresLocalData.map((j: any) => ({
+              id_jugador: j.id_jugador,
+              goles: 0,
+              asistencias: 0,
+              amarillas: 0,
+              rojas: 0,
+              isMVP: false
+            }))
+          );
+        }
+
+        // Filter players for visiting team
+        if (equipoVisitanteId) {
+          const jugadoresVisitanteData = allJugadoresResponse.data.filter(
+            (j: any) => j.equipo_id === equipoVisitanteId || j.id_equipo === equipoVisitanteId
+          );
+          setJugadoresVisitante(jugadoresVisitanteData);
+          setEventosVisitante(
+            jugadoresVisitanteData.map((j: any) => ({
+              id_jugador: j.id_jugador,
+              goles: 0,
+              asistencias: 0,
+              amarillas: 0,
+              rojas: 0,
+              isMVP: false
+            }))
+          );
+        }
+      }
+    } catch (error) {
+      console.error('Error loading data:', error);
+      showError('Error al cargar los datos del partido');
+    } finally {
+      setLoading(false);
+    }
+  }, [equipoLocalId, equipoVisitanteId, showError]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const hasResult = partido.estado_partido === 'Finalizado';
   const canLoadResult = equipoLocal && equipoVisitante;
@@ -129,7 +202,7 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
     setShowEventModal(null);
   };
 
-  const handleSaveResult = () => {
+  const handleSaveResult = async () => {
     if (!canLoadResult) {
       Alert.alert('Error', 'No se puede cargar el resultado. Hay equipos por definir.');
       return;
@@ -140,15 +213,125 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
       return;
     }
 
-    // Si es walkover, establecer marcador 3-0
-    const finalGolesLocal = walkoverEnabled ? (walkoverWinner === 'local' ? 3 : 0) : golesLocal;
-    const finalGolesVisitante = walkoverEnabled ? (walkoverWinner === 'visitante' ? 3 : 0) : golesVisitante;
+    try {
+      setLoading(true);
 
-    Alert.alert(
-      'Resultado Guardado',
-      `${equipoLocal?.nombre} ${finalGolesLocal} - ${finalGolesVisitante} ${equipoVisitante?.nombre}${walkoverEnabled ? ' (W.O.)' : ''}`,
-      [{ text: 'OK', onPress: () => navigation.goBack() }]
-    );
+      // Si es walkover, establecer marcador 3-0
+      const finalGolesLocal = walkoverEnabled ? (walkoverWinner === 'local' ? 3 : 0) : golesLocal;
+      const finalGolesVisitante = walkoverEnabled ? (walkoverWinner === 'visitante' ? 3 : 0) : golesVisitante;
+
+      // Collect all events from both teams
+      const eventos: any[] = [];
+
+      // Process local team events
+      eventosLocal.forEach((evento) => {
+        // Add goals
+        for (let i = 0; i < evento.goles; i++) {
+          eventos.push({
+            tipo: 'gol',
+            minuto: 0, // TODO: Add minute tracking if needed
+            id_jugador: evento.id_jugador,
+            id_equipo: equipoLocalId,
+          });
+        }
+
+        // Add assists
+        for (let i = 0; i < evento.asistencias; i++) {
+          eventos.push({
+            tipo: 'asistencia',
+            minuto: 0,
+            id_jugador: evento.id_jugador,
+            id_equipo: equipoLocalId,
+          });
+        }
+
+        // Add yellow cards
+        for (let i = 0; i < evento.amarillas; i++) {
+          eventos.push({
+            tipo: 'amarilla',
+            minuto: 0,
+            id_jugador: evento.id_jugador,
+            id_equipo: equipoLocalId,
+          });
+        }
+
+        // Add red cards
+        for (let i = 0; i < evento.rojas; i++) {
+          eventos.push({
+            tipo: 'roja',
+            minuto: 0,
+            id_jugador: evento.id_jugador,
+            id_equipo: equipoLocalId,
+          });
+        }
+      });
+
+      // Process visiting team events
+      eventosVisitante.forEach((evento) => {
+        // Add goals
+        for (let i = 0; i < evento.goles; i++) {
+          eventos.push({
+            tipo: 'gol',
+            minuto: 0,
+            id_jugador: evento.id_jugador,
+            id_equipo: equipoVisitanteId,
+          });
+        }
+
+        // Add assists
+        for (let i = 0; i < evento.asistencias; i++) {
+          eventos.push({
+            tipo: 'asistencia',
+            minuto: 0,
+            id_jugador: evento.id_jugador,
+            id_equipo: equipoVisitanteId,
+          });
+        }
+
+        // Add yellow cards
+        for (let i = 0; i < evento.amarillas; i++) {
+          eventos.push({
+            tipo: 'amarilla',
+            minuto: 0,
+            id_jugador: evento.id_jugador,
+            id_equipo: equipoVisitanteId,
+          });
+        }
+
+        // Add red cards
+        for (let i = 0; i < evento.rojas; i++) {
+          eventos.push({
+            tipo: 'roja',
+            minuto: 0,
+            id_jugador: evento.id_jugador,
+            id_equipo: equipoVisitanteId,
+          });
+        }
+      });
+
+      // Call API to register result
+      const response = await api.partidos.registrarResultado({
+        id_partido: partido.id_partido,
+        goles_local: finalGolesLocal,
+        goles_visitante: finalGolesVisitante,
+        estado: 'finalizado',
+        eventos,
+      });
+
+      if (response.success) {
+        showSuccess('Resultado guardado exitosamente');
+        setTimeout(() => {
+          navigation.goBack();
+        }, 1000);
+      } else {
+        showError('Error al guardar el resultado');
+      }
+    } catch (error) {
+      console.error('Error saving result:', error);
+      showError('Error al guardar el resultado');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDeleteResult = () => {
@@ -337,6 +520,22 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
     );
   };
 
+  if (loading && !equipoLocal && !equipoVisitante) {
+    return (
+      <SafeAreaView style={styles.container} edges={['bottom']}>
+        <GradientHeader
+          title="Cargar Resultado"
+          onBackPress={() => navigation.goBack()}
+        />
+
+        <View style={styles.errorContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Cargando datos del partido...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   if (!canLoadResult) {
     return (
       <SafeAreaView style={styles.container} edges={['bottom']}>
@@ -344,14 +543,14 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
           title="Cargar Resultado"
           onBackPress={() => navigation.goBack()}
         />
-        
+
         <View style={styles.errorContainer}>
           <MaterialCommunityIcons name="alert-circle" size={64} color={colors.error} />
           <Text style={styles.errorTitle}>No se puede cargar el resultado</Text>
           <Text style={styles.errorMessage}>
             Uno o ambos equipos están "Por Definir". Espera a que se defina el fixture completo.
           </Text>
-          <Button 
+          <Button
             title="Volver"
             onPress={() => navigation.goBack()}
             style={styles.errorButton}
@@ -537,6 +736,16 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
 
       {renderNumberModal()}
       {renderEventModal()}
+
+      {/* Loading overlay when saving */}
+      {loading && (
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loadingCard}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.loadingOverlayText}>Guardando resultado...</Text>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 };
@@ -554,6 +763,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 40,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    marginTop: 16,
+    textAlign: 'center',
   },
   errorTitle: {
     fontSize: 20,
@@ -904,6 +1119,34 @@ const styles = StyleSheet.create({
   numberText: {
     fontSize: 20,
     fontWeight: 'bold',
+    color: colors.textPrimary,
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  loadingCard: {
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    padding: 32,
+    alignItems: 'center',
+    gap: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  loadingOverlayText: {
+    fontSize: 16,
+    fontWeight: '600',
     color: colors.textPrimary,
   },
 });

@@ -47,6 +47,8 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [showThemeModal, setShowThemeModal] = useState(false);
   const [tabLayouts, setTabLayouts] = useState<{ [key: string]: { x: number; width: number } }>({});
+  const [idEdicionCategoria, setIdEdicionCategoria] = useState<number | undefined>(undefined);
+  const [idFase, setIdFase] = useState<number | undefined>(undefined);
 
   // Tabs diferentes para admin y fan (invitados ven lo mismo que fans)
   const tabs = isAdmin
@@ -143,6 +145,26 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
       if (edicionActiva) {
         const cats = await api.categorias.getByEdition(edicionActiva.id_edicion);
         setCategorias(cats);
+
+        // Set idEdicionCategoria from selectedCategoria
+        const edicionCat = cats.find((c: any) => c.categoria.id_categoria === selectedCategoria.id_categoria);
+        if (edicionCat) {
+          setIdEdicionCategoria(edicionCat.id_edicion_categoria);
+
+          // Load fase de grupos for this edicionCategoria
+          try {
+            const fasesResponse = await api.fases.list(edicionCat.id_edicion_categoria);
+            if (fasesResponse.success && fasesResponse.data && fasesResponse.data.length > 0) {
+              // Find the first "grupo" type fase
+              const faseGrupos = fasesResponse.data.find(f => f.tipo === 'grupo');
+              if (faseGrupos) {
+                setIdFase(faseGrupos.id_fase);
+              }
+            }
+          } catch (error) {
+            console.error('Error loading fases:', error);
+          }
+        }
       }
     } catch (error) {
       console.error('Error cargando categorías:', error);
@@ -298,13 +320,13 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
             if (tab.id === 'grupos') {
               return (
                 <View key={tab.id} style={styles.pageWrapper}>
-                  <GroupStageEmbed navigation={navigation} isAdmin={true} />
+                  <GroupStageEmbed navigation={navigation} isAdmin={true} idFase={idFase} />
                 </View>
               );
             } else if (tab.id === 'fixture') {
               return (
                 <View key={tab.id} style={styles.pageWrapper}>
-                  <FixtureEmbedImproved navigation={navigation} isAdmin={true} idEdicionCategoria={1} />
+                  <FixtureEmbedImproved navigation={navigation} isAdmin={true} idEdicionCategoria={idEdicionCategoria} />
                 </View>
               );
             } else if (tab.id === 'knockout') {
@@ -313,7 +335,7 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
                   <KnockoutEmbed
                     navigation={navigation}
                     isAdmin={true}
-                    idEdicionCategoria={1}
+                    idEdicionCategoria={idEdicionCategoria}
                   />
                 </View>
               );
@@ -321,15 +343,15 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
               return (
                 <View key={tab.id} style={styles.pageWrapper}>
                   <TeamsTab
-                    idEdicionCategoria={1}
+                    idEdicionCategoria={idEdicionCategoria || 1}
                     onCreateTeam={() => navigation.navigate('CreateTeam', {
-                      idEdicionCategoria: 1,
+                      idEdicionCategoria: idEdicionCategoria || 1,
                       onTeamCreated: () => {
                         // Refresh will be handled by navigation back
                       }
                     })}
                     onBulkCreateTeams={() => navigation.navigate('BulkCreateTeams', {
-                      idEdicionCategoria: 1,
+                      idEdicionCategoria: idEdicionCategoria || 1,
                       onTeamsCreated: () => {
                         // Refresh will be handled by navigation back
                       }
@@ -342,8 +364,8 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
               return (
                 <View key={tab.id} style={styles.pageWrapper}>
                   <LocalTab
-                    idEdicionCategoria={1}
-                    onCreateLocal={() => navigation.navigate('CreateLocal', { idEdicionCategoria: 1 })}
+                    idEdicionCategoria={idEdicionCategoria || 1}
+                    onCreateLocal={() => navigation.navigate('CreateLocal', { idEdicionCategoria: idEdicionCategoria || 1 })}
                     onCreateCancha={(idLocal, nombreLocal) =>
                       navigation.navigate('CreateCancha', { idLocal, nombreLocal })
                     }
@@ -363,8 +385,8 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
             } else if (tab.id === 'sponsors') {
               return (
                 <View key={tab.id} style={styles.pageWrapper}>
-                  <SponsorTab 
-                    idEdicionCategoria={1}
+                  <SponsorTab
+                    idEdicionCategoria={idEdicionCategoria || 1}
                     onCreateSponsor={() => navigation.navigate('CreateSponsor')}
                     onEditSponsor={(sponsor) => navigation.navigate('EditSponsor  ', { sponsor })}
                     onDeleteSponsor={(idSponsor) => console.log('Eliminar sponsor:', idSponsor)}
@@ -386,36 +408,36 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
             } else if (tab.id === 'grupos') {
               return (
                 <View key={tab.id} style={styles.pageWrapper}>
-                  <GroupStageEmbed navigation={navigation} isAdmin={false} />
+                  <GroupStageEmbed navigation={navigation} isAdmin={false} idFase={idFase} />
                 </View>
               );
             } else if (tab.id === 'fixture') {
               return (
                 <View key={tab.id} style={styles.pageWrapper}>
-                  <FixtureEmbedImproved navigation={navigation} isAdmin={false} idEdicionCategoria={1} />
+                  <FixtureEmbedImproved navigation={navigation} isAdmin={false} idEdicionCategoria={idEdicionCategoria} />
                 </View>
               );
             } else if (tab.id === 'knockout') {
               return (
                 <View key={tab.id} style={styles.pageWrapper}>
-                  <KnockoutEmbed 
-                    navigation={navigation} 
-                    isAdmin={false} 
-                    idEdicionCategoria={1} 
+                  <KnockoutEmbed
+                    navigation={navigation}
+                    isAdmin={false}
+                    idEdicionCategoria={idEdicionCategoria}
                   />
                 </View>
               );
             } else if (tab.id === 'thebest') {
               return (
                 <View key={tab.id} style={styles.pageWrapper}>
-                  <TheBestEmbed navigation={navigation} />
+                  <TheBestEmbed navigation={navigation} idEdicionCategoria={idEdicionCategoria} />
                 </View>
               );
             } else if (tab.id === 'local') {
               return (
                 <View key={tab.id} style={styles.pageWrapper}>
-                  <LocalTab 
-                    idEdicionCategoria={1} 
+                  <LocalTab
+                    idEdicionCategoria={idEdicionCategoria || 1}
                     onCreateLocal={undefined}
                     onCreateCancha={undefined}
                     onEditLocal={undefined}

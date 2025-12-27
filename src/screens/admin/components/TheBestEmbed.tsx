@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,19 +6,66 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Card } from '../../../components/common';
 import { colors } from '../../../theme/colors';
-import { mockTopScorers, mockTopAssists, mockLeastConceded, mockJugadores, mockEquipos } from '../../../data/mockData';
 import { useAuth } from '../../../contexts/AuthContext';
+import { useToast } from '../../../contexts/ToastContext';
+import api from '../../../api';
 
 interface TheBestEmbedProps {
   navigation: any;
+  idEdicionCategoria?: number;
 }
 
-export const TheBestEmbed: React.FC<TheBestEmbedProps> = ({ navigation }) => {
+export const TheBestEmbed: React.FC<TheBestEmbedProps> = ({ navigation, idEdicionCategoria }) => {
   const { isGuest } = useAuth();
+  const { showError } = useToast();
+  const [loading, setLoading] = useState(true);
+  const [goleadores, setGoleadores] = useState<any[]>([]);
+  const [asistencias, setAsistencias] = useState<any[]>([]);
+  const [estadisticasEquipos, setEstadisticasEquipos] = useState<any[]>([]);
+
+  const loadEstadisticas = useCallback(async () => {
+    if (!idEdicionCategoria) {
+      showError('No se ha especificado la edición/categoría');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      // Fetch top scorers
+      const goleadoresResponse = await api.estadisticas.goleadores(idEdicionCategoria, 10);
+      if (goleadoresResponse.success && goleadoresResponse.data) {
+        setGoleadores(goleadoresResponse.data);
+      }
+
+      // Fetch top assists
+      const asistenciasResponse = await api.estadisticas.asistencias(idEdicionCategoria, 10);
+      if (asistenciasResponse.success && asistenciasResponse.data) {
+        setAsistencias(asistenciasResponse.data);
+      }
+
+      // Fetch team statistics
+      const equiposResponse = await api.estadisticas.equiposGlobal(idEdicionCategoria);
+      if (equiposResponse.success && equiposResponse.data) {
+        setEstadisticasEquipos(equiposResponse.data);
+      }
+    } catch (error) {
+      console.error('Error loading statistics:', error);
+      showError('Error al cargar las estadísticas');
+    } finally {
+      setLoading(false);
+    }
+  }, [idEdicionCategoria, showError]);
+
+  useEffect(() => {
+    loadEstadisticas();
+  }, [loadEstadisticas]);
 
   // Formatear nombre: mostrar "Nombre A." (primera letra del apellido)
   const formatPlayerName = (nombreCompleto: string) => {
@@ -62,39 +109,20 @@ export const TheBestEmbed: React.FC<TheBestEmbedProps> = ({ navigation }) => {
     );
   }
   
-  // Convertir los datos mock a la estructura esperada
-  const topScorersData = mockTopScorers.map(scorer => {
-    const jugador = mockJugadores.find(j => j.id_jugador === scorer.id_jugador);
-    return {
-      id_jugador: scorer.id_jugador,
-      nombre: scorer.nombre,
-      equipo_nombre: scorer.equipo,
-      goles: scorer.goles,
-      jugador,
-    };
-  });
+  // Show loading state
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>Cargando estadísticas...</Text>
+      </View>
+    );
+  }
 
-  const topAssistsData = mockTopAssists.map(assist => {
-    const jugador = mockJugadores.find(j => j.id_jugador === assist.id_jugador);
-    return {
-      id_jugador: assist.id_jugador,
-      nombre: assist.nombre,
-      equipo_nombre: assist.equipo,
-      asistencias: assist.asistencias,
-      jugador,
-    };
-  });
-
-  const leastConcededData = mockLeastConceded.map(team => {
-    const equipo = mockEquipos.find(e => e.id_equipo === team.id_equipo);
-    return {
-      id_equipo: team.id_equipo,
-      nombre: team.nombre,
-      logo: team.logo,
-      goles_en_contra: team.goles_en_contra,
-      equipo,
-    };
-  });
+  // Prepare team data for least conceded (sort by least goals conceded)
+  const leastConcededData = [...estadisticasEquipos]
+    .sort((a, b) => a.goles_en_contra - b.goles_en_contra)
+    .slice(0, 5);
 
   const rankings = [
     {
@@ -102,7 +130,7 @@ export const TheBestEmbed: React.FC<TheBestEmbedProps> = ({ navigation }) => {
       title: 'Goleadores',
       icon: 'soccer' as const,
       color: '#FF6B6B',
-      data: topScorersData.slice(0, 5),
+      data: goleadores.slice(0, 5),
       statKey: 'goles',
       isTeam: false,
     },
@@ -111,7 +139,7 @@ export const TheBestEmbed: React.FC<TheBestEmbedProps> = ({ navigation }) => {
       title: 'Asistencias',
       icon: 'account-arrow-right' as const,
       color: '#4ECDC4',
-      data: topAssistsData.slice(0, 5),
+      data: asistencias.slice(0, 5),
       statKey: 'asistencias',
       isTeam: false,
     },
@@ -120,50 +148,29 @@ export const TheBestEmbed: React.FC<TheBestEmbedProps> = ({ navigation }) => {
       title: 'Menos Goleados',
       icon: 'shield-check' as const,
       color: '#95E1D3',
-      data: leastConcededData.slice(0, 5),
+      data: leastConcededData,
       statKey: 'goles_en_contra',
       isTeam: true,
-    },
-    {
-      id: 'yellow_cards',
-      title: 'Tarjetas Amarillas',
-      icon: 'card' as const,
-      color: '#FFD93D',
-      data: topScorersData.slice(0, 5).map((s, i) => ({ ...s, tarjetas_amarillas: 8 - i })),
-      statKey: 'tarjetas_amarillas',
-      isTeam: false,
-    },
-    {
-      id: 'red_cards',
-      title: 'Tarjetas Rojas',
-      icon: 'card' as const,
-      color: '#FF5757',
-      data: topScorersData.slice(0, 5).map((s, i) => ({ ...s, tarjetas_rojas: 3 - i })),
-      statKey: 'tarjetas_rojas',
-      isTeam: false,
     },
     {
       id: 'win_percentage',
       title: '% Partidos Ganados',
       icon: 'trophy' as const,
       color: '#F9CA24',
-      data: mockEquipos.slice(0, 5).map((e, i) => ({ 
-        ...e, 
-        porcentaje_victorias: (85 - i * 10).toFixed(1) 
-      })),
+      data: [...estadisticasEquipos]
+        .sort((a, b) => {
+          const pctA = a.partidos_jugados > 0 ? (a.partidos_ganados / a.partidos_jugados) * 100 : 0;
+          const pctB = b.partidos_jugados > 0 ? (b.partidos_ganados / b.partidos_jugados) * 100 : 0;
+          return pctB - pctA;
+        })
+        .slice(0, 5)
+        .map(e => ({
+          ...e,
+          porcentaje_victorias: e.partidos_jugados > 0
+            ? ((e.partidos_ganados / e.partidos_jugados) * 100).toFixed(1)
+            : '0.0'
+        })),
       statKey: 'porcentaje_victorias',
-      isTeam: true,
-    },
-    {
-      id: 'loss_percentage',
-      title: '% Partidos Perdidos',
-      icon: 'thumb-down' as const,
-      color: '#EE5A6F',
-      data: mockEquipos.slice(0, 5).map((e, i) => ({ 
-        ...e, 
-        porcentaje_derrotas: (10 + i * 5).toFixed(1) 
-      })),
-      statKey: 'porcentaje_derrotas',
       isTeam: true,
     },
     {
@@ -171,10 +178,19 @@ export const TheBestEmbed: React.FC<TheBestEmbedProps> = ({ navigation }) => {
       title: 'Promedio Goles por Partido',
       icon: 'soccer' as const,
       color: '#6C5CE7',
-      data: mockEquipos.slice(0, 5).map((e, i) => ({ 
-        ...e, 
-        promedio_goles: (3.5 - i * 0.3).toFixed(2) 
-      })),
+      data: [...estadisticasEquipos]
+        .sort((a, b) => {
+          const avgA = a.partidos_jugados > 0 ? a.goles_a_favor / a.partidos_jugados : 0;
+          const avgB = b.partidos_jugados > 0 ? b.goles_a_favor / b.partidos_jugados : 0;
+          return avgB - avgA;
+        })
+        .slice(0, 5)
+        .map(e => ({
+          ...e,
+          promedio_goles: e.partidos_jugados > 0
+            ? (e.goles_a_favor / e.partidos_jugados).toFixed(2)
+            : '0.00'
+        })),
       statKey: 'promedio_goles',
       isTeam: true,
     },
@@ -183,10 +199,19 @@ export const TheBestEmbed: React.FC<TheBestEmbedProps> = ({ navigation }) => {
       title: 'Promedio Goles Concedidos',
       icon: 'shield-alert' as const,
       color: '#FD79A8',
-      data: mockEquipos.slice(0, 5).map((e, i) => ({ 
-        ...e, 
-        promedio_concedidos: (0.8 + i * 0.2).toFixed(2) 
-      })),
+      data: [...estadisticasEquipos]
+        .sort((a, b) => {
+          const avgA = a.partidos_jugados > 0 ? a.goles_en_contra / a.partidos_jugados : 0;
+          const avgB = b.partidos_jugados > 0 ? b.goles_en_contra / b.partidos_jugados : 0;
+          return avgA - avgB; // Lower is better
+        })
+        .slice(0, 5)
+        .map(e => ({
+          ...e,
+          promedio_concedidos: e.partidos_jugados > 0
+            ? (e.goles_en_contra / e.partidos_jugados).toFixed(2)
+            : '0.00'
+        })),
       statKey: 'promedio_concedidos',
       isTeam: true,
     },
@@ -269,6 +294,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.backgroundGray,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.backgroundGray,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: colors.textSecondary,
   },
   content: {
     padding: 16,

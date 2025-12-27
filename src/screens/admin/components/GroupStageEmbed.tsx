@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   Image,
   Alert,
   Animated,
+  ActivityIndicator,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
@@ -15,16 +16,18 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Card, SearchBar, FAB } from '../../../components/common';
 import { colors } from '../../../theme/colors';
 import { Grupo, Clasificacion, Equipo } from '../../../types';
-import { mockGrupos, mockClasificacion, mockEquipos } from '../../../data/mockData';
+import { mockEquipos } from '../../../data/mockData';
 import { useSearch } from '../../../hooks';
 import { AddTeamToGroupModal } from './AddTeamToGroupModal';
 import { MoveTeamToGroupModal } from './MoveTeamToGroupModal';
 import ImportTeamsModal from './ImportTeamsModal';
 import { useToast } from '../../../contexts/ToastContext';
+import api from '../../../api';
 
 interface GroupStageEmbedProps {
   navigation: any;
   isAdmin?: boolean;
+  idFase?: number;
 }
 
 // Función helper para determinar el color de clasificación basado en la posición y configuración del grupo
@@ -46,8 +49,10 @@ const getClasificacionColor = (posicion: number, grupo: Grupo) => {
   return '#F5F5F5';
 };
 
-export const GroupStageEmbed: React.FC<GroupStageEmbedProps> = ({ navigation, isAdmin = false }) => {
-  const [grupos] = useState<Grupo[]>(mockGrupos);
+export const GroupStageEmbed: React.FC<GroupStageEmbedProps> = ({ navigation, isAdmin = false, idFase }) => {
+  const [grupos, setGrupos] = useState<Grupo[]>([]);
+  const [clasificaciones, setClasificaciones] = useState<{ [grupoId: number]: (Clasificacion & { equipo: Equipo })[] }>({});
+  const [loading, setLoading] = useState(true);
   const [expandedRules, setExpandedRules] = useState<{ [key: number]: boolean }>({});
   const [addTeamModalVisible, setAddTeamModalVisible] = useState(false);
   const [moveTeamModalVisible, setMoveTeamModalVisible] = useState(false);
@@ -55,13 +60,59 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps> = ({ navigation, is
   const [selectedGrupoId, setSelectedGrupoId] = useState<number | null>(null);
   const [selectedClasificacion, setSelectedClasificacion] = useState<(Clasificacion & { equipo: Equipo }) | null>(null);
   const { showSuccess, showError, showWarning } = useToast();
-  
+
   const {
     searchQuery,
     setSearchQuery,
     filteredData: filteredEquipos,
     clearSearch,
   } = useSearch(mockEquipos, 'nombre');
+
+  const loadGruposAndClasificacion = useCallback(async () => {
+    if (!idFase) {
+      showError('No se ha especificado la fase');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const gruposResponse = await api.grupos.list(idFase);
+
+      if (gruposResponse.success && gruposResponse.data) {
+        setGrupos(gruposResponse.data);
+
+        // Fetch classification for each group
+        const clasificacionesMap: { [grupoId: number]: (Clasificacion & { equipo: Equipo })[] } = {};
+
+        for (const grupo of gruposResponse.data) {
+          try {
+            const clasificacionResponse = await api.grupos.clasificacion(grupo.id_grupo);
+            if (clasificacionResponse.success && clasificacionResponse.data) {
+              clasificacionesMap[grupo.id_grupo] = clasificacionResponse.data.map(item => ({
+                ...item.clasificacion,
+                equipo: item.equipo,
+              }));
+            }
+          } catch (error) {
+            console.error(`Error loading classification for group ${grupo.id_grupo}:`, error);
+            clasificacionesMap[grupo.id_grupo] = [];
+          }
+        }
+
+        setClasificaciones(clasificacionesMap);
+      }
+    } catch (error) {
+      console.error('Error loading groups:', error);
+      showError('Error al cargar los grupos');
+    } finally {
+      setLoading(false);
+    }
+  }, [idFase, showError]);
+
+  useEffect(() => {
+    loadGruposAndClasificacion();
+  }, [loadGruposAndClasificacion]);
 
   const handleCreateGroup = () => {
     console.log('Crear nuevo grupo');
@@ -158,18 +209,15 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps> = ({ navigation, is
   };
 
   const getEquiposByGrupo = (id_grupo: number): (Clasificacion & { equipo: Equipo })[] => {
-    return mockClasificacion
+    const grupoClasificacion = clasificaciones[id_grupo] || [];
+
+    return grupoClasificacion
       .filter((c) => {
-        const equipo = mockEquipos.find((e) => e.id_equipo === c.id_equipo);
-        // Filtrar por grupo y por bÃºsqueda
-        return c.id_grupo === id_grupo && 
-               (!searchQuery || filteredEquipos.some(fe => fe.id_equipo === equipo?.id_equipo));
+        // Filtrar por búsqueda si hay query
+        if (!searchQuery) return true;
+        return filteredEquipos.some(fe => fe.id_equipo === c.equipo?.id_equipo);
       })
-      .sort((a, b) => a.posicion - b.posicion)
-      .map((c) => ({
-        ...c,
-        equipo: mockEquipos.find((e) => e.id_equipo === c.id_equipo)!,
-      }));
+      .sort((a, b) => a.posicion - b.posicion);
   };
 
   const handleTeamPress = (equipoId: number) => {
@@ -429,9 +477,18 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps> = ({ navigation, is
     );
   };
 
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>Cargando grupos...</Text>
+      </View>
+    );
+  }
+
   return (
     <GestureHandlerRootView style={styles.container}>
-      {/* Barra de bÃºsqueda */}
+      {/* Barra de búsqueda */}
       <View style={styles.searchSection}>
         <SearchBar
           value={searchQuery}
@@ -515,6 +572,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.backgroundGray,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.backgroundGray,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: colors.textSecondary,
   },
   searchSection: {
     padding: 16,

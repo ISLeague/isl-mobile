@@ -65,3 +65,17 @@ export interface BulkCreateResponse {
   };
   timestamp: string;
 }
+
+export interface EstadisticasDetalleEquipo {
+  partidos_jugados: number;
+  partidos_ganados: number;
+  partidos_empatados: number;
+  partidos_perdidos: number;
+  goles_favor: number;
+  goles_contra: number;
+  diferencia_goles: number;
+  puntos: number;
+  posicion: number;
+  tarjetas_amarillas: number;
+  tarjetas_rojas: number;
+}

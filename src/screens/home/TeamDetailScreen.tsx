@@ -24,6 +24,10 @@ import { useToast } from '../../contexts/ToastContext';
 import { safeAsync } from '../../utils/errorHandling';
 import { calculateAge } from '../../utils';
 import api from '../../api';
+import type { Equipo, EstadisticasDetalleEquipo } from '../../api/types/equipos.types';
+import type { Jugador } from '../../api/types/jugadores.types';
+import type { Grupo } from '../../api/types/grupos.types';
+import type { Partido } from '../../api/types/partidos.types';
 
 interface TeamDetailScreenProps {
   navigation: any;
@@ -57,56 +61,64 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
 
   const [activeTab, setActiveTab] = useState('estadisticas');
 
-  // Estado del equipo - se carga desde la API
+  // Estado del equipo y datos relacionados - se cargan desde la API
   const [equipo, setEquipo] = useState<Equipo>();
+  const [jugadores, setJugadores] = useState<Jugador[]>([]);
+  const [estadisticasEquipo, setEstadisticasEquipo] = useState<EstadisticasDetalleEquipo | null>(null);
+  const [grupoEquipo, setGrupoEquipo] = useState<Grupo | null>(null);
 
-  // Obtener jugadores del equipo (mock data)
-  const plantilla = mockPlantillas.filter((p) => p.id_equipo === equipoId && p.activo_en_equipo);
-  const jugadores = plantilla.map((p) => mockJugadores.find((j) => j.id_jugador === p.id_jugador)!);
-
-  // Obtener grupo del equipo (mock data)
-  const grupoEquipo = mockGrupos[0]; // Mock
-
-  // Fotos de ejemplo para preview (solo para fans con equipo favorito)
-  const mockPhotos = [
-    { id: 1, url: 'https://via.placeholder.com/300x200/E31E24/FFFFFF?text=Foto+1' },
-    { id: 2, url: 'https://via.placeholder.com/300x200/1976D2/FFFFFF?text=Foto+2' },
-    { id: 3, url: 'https://via.placeholder.com/300x200/4CAF50/FFFFFF?text=Foto+3' },
-    { id: 4, url: 'https://via.placeholder.com/300x200/FF9800/FFFFFF?text=Foto+4' },
-  ];
-
-  // Cargar datos del equipo desde la API
+  // Cargar datos del equipo, jugadores y estadísticas desde la API
   useEffect(() => {
-    const fetchEquipo = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
-        const response = await api.equipos.getById(equipoId);
-        setEquipo(response.data);
+
+        // Load team data
+        const equipoResponse = await api.equipos.getById(equipoId);
+        if (equipoResponse.data) {
+          setEquipo(equipoResponse.data);
+        }
+
+        // Load all players and filter by team
+        // TODO: Backend should support filtering by id_equipo in /jugadores-list endpoint
+        const jugadoresResponse = await api.jugadores.list();
+        if (jugadoresResponse.success && jugadoresResponse.data) {
+          const jugadoresEquipo = jugadoresResponse.data.filter(
+            (j: Jugador) => j.equipo_id === equipoId || j.id_equipo === equipoId
+          );
+          setJugadores(jugadoresEquipo);
+        }
+
+        // TODO: Load team statistics from API
+        // For now, set default values
+        setEstadisticasEquipo({
+          partidos_jugados: 0,
+          partidos_ganados: 0,
+          partidos_empatados: 0,
+          partidos_perdidos: 0,
+          goles_favor: 0,
+          goles_contra: 0,
+          diferencia_goles: 0,
+          puntos: 0,
+          posicion: 0,
+          tarjetas_amarillas: 0,
+          tarjetas_rojas: 0,
+        });
+
+        // TODO: Load group information from API
+        // For now, set to null
+        setGrupoEquipo(null);
+
       } catch (error) {
-        console.error('Error fetching equipo:', error);
+        console.error('Error fetching team data:', error);
         showError('No se pudo cargar la información del equipo');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchEquipo();
+    fetchData();
   }, [equipoId]);
-
-  // Estadísticas del equipo
-  const estadisticasEquipo = {
-    partidos_jugados: 10,
-    partidos_ganados: 7,
-    partidos_empatados: 2,
-    partidos_perdidos: 1,
-    goles_favor: 28,
-    goles_contra: 12,
-    diferencia_goles: 16,
-    puntos: 23,
-    posicion: 1,
-    tarjetas_amarillas: 15,
-    tarjetas_rojas: 2,
-  };
 
   const handleTabPress = (tabId: string, index: number) => {
     pagerRef.current?.setPage(index);
@@ -446,10 +458,9 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
 
   const renderPlayerCard = (jugador: Jugador) => {
     const edad = calculateAge(jugador.fecha_nacimiento);
-    
-    // Buscar si el jugador es refuerzo
-    const plantillaEntry = plantilla.find(p => p.id_jugador === jugador.id_jugador);
-    const esRefuerzo = plantillaEntry?.es_refuerzo || false;
+
+    // Check if player is a reinforcement (from API data)
+    const esRefuerzo = jugador.es_refuerzo || false;
     
     // Formatear nombre según el rol del usuario
     const formatPlayerName = (nombreCompleto: string) => {
@@ -708,170 +719,124 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
                   )}
 
                   {/* Estadísticas Compactas Estilo Barcelona */}
-                  <View style={styles.compactStatsContainer}>
-                    <View style={styles.compactStatsGrid}>
-                      <View style={[styles.compactStatBox, { backgroundColor: colors.textSecondary }]}>
-                        <Text style={[styles.compactStatLabel, { color: colors.white }]}>TOTAL</Text>
-                        <Text style={[styles.compactStatValue, { color: colors.white }]}>{estadisticasEquipo.partidos_jugados}</Text>
-                      </View>
-                      <View style={[styles.compactStatBox, { backgroundColor: colors.success }]}>
-                        <Text style={[styles.compactStatLabel, { color: colors.white }]}>W</Text>
-                        <Text style={[styles.compactStatValue, { color: colors.white }]}>{estadisticasEquipo.partidos_ganados}</Text>
-                      </View>
-                      <View style={[styles.compactStatBox, { backgroundColor: colors.textLight }]}>
-                        <Text style={[styles.compactStatLabel, { color: colors.white }]}>D</Text>
-                        <Text style={[styles.compactStatValue, { color: colors.white }]}>{estadisticasEquipo.partidos_empatados}</Text>
-                      </View>
-                      <View style={[styles.compactStatBox, { backgroundColor: colors.error }]}>
-                        <Text style={[styles.compactStatLabel, { color: colors.white }]}>L</Text>
-                        <Text style={[styles.compactStatValue, { color: colors.white }]}>{estadisticasEquipo.partidos_perdidos}</Text>
+                  {estadisticasEquipo && (
+                    <View style={styles.compactStatsContainer}>
+                      <View style={styles.compactStatsGrid}>
+                        <View style={[styles.compactStatBox, { backgroundColor: colors.textSecondary }]}>
+                          <Text style={[styles.compactStatLabel, { color: colors.white }]}>TOTAL</Text>
+                          <Text style={[styles.compactStatValue, { color: colors.white }]}>{estadisticasEquipo.partidos_jugados}</Text>
+                        </View>
+                        <View style={[styles.compactStatBox, { backgroundColor: colors.success }]}>
+                          <Text style={[styles.compactStatLabel, { color: colors.white }]}>W</Text>
+                          <Text style={[styles.compactStatValue, { color: colors.white }]}>{estadisticasEquipo.partidos_ganados}</Text>
+                        </View>
+                        <View style={[styles.compactStatBox, { backgroundColor: colors.textLight }]}>
+                          <Text style={[styles.compactStatLabel, { color: colors.white }]}>D</Text>
+                          <Text style={[styles.compactStatValue, { color: colors.white }]}>{estadisticasEquipo.partidos_empatados}</Text>
+                        </View>
+                        <View style={[styles.compactStatBox, { backgroundColor: colors.error }]}>
+                          <Text style={[styles.compactStatLabel, { color: colors.white }]}>L</Text>
+                          <Text style={[styles.compactStatValue, { color: colors.white }]}>{estadisticasEquipo.partidos_perdidos}</Text>
+                        </View>
                       </View>
                     </View>
-                  </View>
+                  )}
 
-                  {/* Siguiente Partido */}
-                  <View style={styles.nextMatchContainer}>
-                    <Card style={styles.nextMatchCard}>
-                      <View style={styles.matchRow}>
-                        <View style={styles.matchTeam}>
-                          <Image
-                            source={equipo?.logo ? { uri: equipo.logo } : require('../../assets/InterLOGO.png')}
-                            style={styles.matchTeamLogo}
-                          />
-                          <Text style={styles.matchTeamName} numberOfLines={2}>
-                            {equipo.nombre}
-                          </Text>
+                  {/* TODO: Siguiente Partido - Requires API endpoint for upcoming matches */}
+                  {/* TODO: Partidos Recientes - Requires API endpoint for recent matches */}
+
+                  {grupoEquipo && (
+                    <InfoCard
+                      title="Grupo"
+                      value={grupoEquipo.nombre}
+                      icon="shield"
+                      iconColor={colors.primary}
+                    />
+                  )}
+
+                  {/* Estadísticas Detalladas */}
+                  {estadisticasEquipo && (
+                    <Card style={styles.statsCard}>
+                      <Text style={styles.cardTitle}>Estadísticas Detalladas</Text>
+
+                      <View style={styles.statsGrid}>
+                        <View style={styles.statItem}>
+                          <Text style={styles.statValue}>{estadisticasEquipo.partidos_jugados}</Text>
+                          <Text style={styles.statLabel}>Partidos</Text>
                         </View>
-                        <View style={styles.matchDetails}>
-                          <Text style={styles.matchDate}>21/03/25</Text>
-                          <Text style={styles.matchTime}>3:30 PM</Text>
-                          <Text style={styles.matchVenue} numberOfLines={1}>
-                            Campo 1
+                        <View style={styles.statItem}>
+                          <Text style={[styles.statValue, { color: colors.success }]}>
+                            {estadisticasEquipo.partidos_ganados}
                           </Text>
+                          <Text style={styles.statLabel}>Ganados</Text>
                         </View>
-                        <View style={styles.matchTeam}>
-                          <Image
-                            source={mockEquipos[1]?.logo ? { uri: mockEquipos[1].logo } : require('../../assets/InterLOGO.png')}
-                            style={styles.matchTeamLogo}
-                          />
-                          <Text style={styles.matchTeamName} numberOfLines={2}>
-                            {mockEquipos[1]?.nombre || 'TBD'}
+                        <View style={styles.statItem}>
+                          <Text style={[styles.statValue, { color: colors.textSecondary }]}>
+                            {estadisticasEquipo.partidos_empatados}
                           </Text>
+                          <Text style={styles.statLabel}>Empatados</Text>
+                        </View>
+                        <View style={styles.statItem}>
+                          <Text style={[styles.statValue, { color: colors.error }]}>
+                            {estadisticasEquipo.partidos_perdidos}
+                          </Text>
+                          <Text style={styles.statLabel}>Perdidos</Text>
+                        </View>
+                      </View>
+
+                      <View style={styles.divider} />
+
+                      <View style={styles.statsRow}>
+                        <View style={styles.statItem}>
+                          <Text style={styles.statValue}>{estadisticasEquipo.goles_favor}</Text>
+                          <Text style={styles.statLabel}>Goles a Favor</Text>
+                        </View>
+                        <View style={styles.statItem}>
+                          <Text style={styles.statValue}>{estadisticasEquipo.goles_contra}</Text>
+                          <Text style={styles.statLabel}>Goles en Contra</Text>
+                        </View>
+                        <View style={styles.statItem}>
+                          <Text style={[
+                            styles.statValue,
+                            { color: estadisticasEquipo.diferencia_goles > 0 ? colors.success : estadisticasEquipo.diferencia_goles < 0 ? colors.error : colors.textPrimary }
+                          ]}>
+                            {estadisticasEquipo.diferencia_goles > 0 ? '+' : ''}{estadisticasEquipo.diferencia_goles}
+                          </Text>
+                          <Text style={styles.statLabel}>Diferencia</Text>
+                        </View>
+                      </View>
+
+                      <View style={styles.divider} />
+
+                      <View style={styles.statsRow}>
+                        <View style={styles.statItem}>
+                          <Text style={[styles.statValue, { color: colors.textPrimary }]}>
+                            {estadisticasEquipo.puntos}
+                          </Text>
+                          <Text style={styles.statLabel}>Puntos</Text>
+                        </View>
+                        <View style={styles.statItem}>
+                          <Text style={styles.statValue}>{estadisticasEquipo.posicion}º</Text>
+                          <Text style={styles.statLabel}>Posición</Text>
+                        </View>
+                      </View>
+
+                      <View style={styles.divider} />
+
+                      <View style={styles.statsRow}>
+                        <View style={styles.statItem}>
+                          <MaterialCommunityIcons name="card" size={32} color="#FFD700" />
+                          <Text style={styles.statValue}>{estadisticasEquipo.tarjetas_amarillas}</Text>
+                          <Text style={styles.statLabel}>Amarillas</Text>
+                        </View>
+                        <View style={styles.statItem}>
+                          <MaterialCommunityIcons name="card" size={32} color={colors.error} />
+                          <Text style={styles.statValue}>{estadisticasEquipo.tarjetas_rojas}</Text>
+                          <Text style={styles.statLabel}>Rojas</Text>
                         </View>
                       </View>
                     </Card>
-                  </View>
-
-                  {/* Partidos Recientes */}
-                  <View style={styles.recentMatchesContainer}>
-                    <Text style={styles.sectionTitle}>Partidos Recientes</Text>
-                    <View style={styles.recentMatchesList}>
-                      <View style={[styles.resultCircle, { backgroundColor: colors.success }]}>
-                        <Text style={styles.resultCircleText}>W</Text>
-                      </View>
-                      <View style={[styles.resultCircle, { backgroundColor: colors.textLight }]}>
-                        <Text style={styles.resultCircleText}>D</Text>
-                      </View>
-                      <View style={[styles.resultCircle, { backgroundColor: colors.error }]}>
-                        <Text style={styles.resultCircleText}>L</Text>
-                      </View>
-                      <View style={[styles.resultCircle, { backgroundColor: colors.success }]}>
-                        <Text style={styles.resultCircleText}>W</Text>
-                      </View>
-                      <View style={[styles.resultCircle, { backgroundColor: colors.success }]}>
-                        <Text style={styles.resultCircleText}>W</Text>
-                      </View>
-                    </View>
-                  </View>
-
-                  <InfoCard
-                    title="Grupo"
-                    value={grupoEquipo.nombre}
-                    icon="shield"
-                    iconColor={colors.primary}
-                  />
-
-                  {/* Estadísticas Detalladas */}
-                  <Card style={styles.statsCard}>
-                    <Text style={styles.cardTitle}>Estadísticas Detalladas</Text>
-                    
-                    <View style={styles.statsGrid}>
-                      <View style={styles.statItem}>
-                        <Text style={styles.statValue}>{estadisticasEquipo.partidos_jugados}</Text>
-                        <Text style={styles.statLabel}>Partidos</Text>
-                      </View>
-                      <View style={styles.statItem}>
-                        <Text style={[styles.statValue, { color: colors.success }]}>
-                          {estadisticasEquipo.partidos_ganados}
-                        </Text>
-                        <Text style={styles.statLabel}>Ganados</Text>
-                      </View>
-                      <View style={styles.statItem}>
-                        <Text style={[styles.statValue, { color: colors.textSecondary }]}>
-                          {estadisticasEquipo.partidos_empatados}
-                        </Text>
-                        <Text style={styles.statLabel}>Empatados</Text>
-                      </View>
-                      <View style={styles.statItem}>
-                        <Text style={[styles.statValue, { color: colors.error }]}>
-                          {estadisticasEquipo.partidos_perdidos}
-                        </Text>
-                        <Text style={styles.statLabel}>Perdidos</Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.divider} />
-
-                    <View style={styles.statsRow}>
-                      <View style={styles.statItem}>
-                        <Text style={styles.statValue}>{estadisticasEquipo.goles_favor}</Text>
-                        <Text style={styles.statLabel}>Goles a Favor</Text>
-                      </View>
-                      <View style={styles.statItem}>
-                        <Text style={styles.statValue}>{estadisticasEquipo.goles_contra}</Text>
-                        <Text style={styles.statLabel}>Goles en Contra</Text>
-                      </View>
-                      <View style={styles.statItem}>
-                        <Text style={[
-                          styles.statValue, 
-                          { color: estadisticasEquipo.diferencia_goles > 0 ? colors.success : estadisticasEquipo.diferencia_goles < 0 ? colors.error : colors.textPrimary }
-                        ]}>
-                          {estadisticasEquipo.diferencia_goles > 0 ? '+' : ''}{estadisticasEquipo.diferencia_goles}
-                        </Text>
-                        <Text style={styles.statLabel}>Diferencia</Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.divider} />
-
-                    <View style={styles.statsRow}>
-                      <View style={styles.statItem}>
-                        <Text style={[styles.statValue, { color: colors.textPrimary }]}>
-                          {estadisticasEquipo.puntos}
-                        </Text>
-                        <Text style={styles.statLabel}>Puntos</Text>
-                      </View>
-                      <View style={styles.statItem}>
-                        <Text style={styles.statValue}>{estadisticasEquipo.posicion}º</Text>
-                        <Text style={styles.statLabel}>Posición</Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.divider} />
-
-                    <View style={styles.statsRow}>
-                      <View style={styles.statItem}>
-                        <MaterialCommunityIcons name="card" size={32} color="#FFD700" />
-                        <Text style={styles.statValue}>{estadisticasEquipo.tarjetas_amarillas}</Text>
-                        <Text style={styles.statLabel}>Amarillas</Text>
-                      </View>
-                      <View style={styles.statItem}>
-                        <MaterialCommunityIcons name="card" size={32} color={colors.error} />
-                        <Text style={styles.statValue}>{estadisticasEquipo.tarjetas_rojas}</Text>
-                        <Text style={styles.statLabel}>Rojas</Text>
-                      </View>
-                    </View>
-                  </Card>
+                  )}
 
                   <View style={styles.bottomSpacing} />
                 </ScrollView>
