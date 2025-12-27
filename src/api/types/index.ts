@@ -7,6 +7,7 @@ export * from './auth.types';
 
 // Categorías
 export * from './categorias.types';
+export * from './edicion-categorias.types';
 
 // Ediciones
 export * from './ediciones.types';
@@ -16,6 +17,15 @@ export * from './equipos.types';
 
 // Fases
 export * from './fases.types';
+
+// Grupos
+export * from './grupos.types';
+
+// Reglas de Clasificación
+export * from './reglas-clasificacion.types';
+
+// Estadísticas
+export * from './estadisticas.types';
 
 // Jugadores
 export * from './jugadores.types';

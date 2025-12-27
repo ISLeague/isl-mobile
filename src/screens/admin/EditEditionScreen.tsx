@@ -23,7 +23,7 @@ import { useAuth } from '../../contexts/AuthContext';
 
 const ESTADOS: { value: EstadoEdicion; label: string; color: string }[] = [
   { value: 'abierto', label: 'Abierto', color: '#4caf50' },
-  { value: 'en_curso', label: 'En Curso', color: '#2196f3' },
+  { value: 'en juego', label: 'En Juego', color: '#2196f3' },
   { value: 'cerrado', label: 'Cerrado', color: '#9e9e9e' },
 ];
 

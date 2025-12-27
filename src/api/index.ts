@@ -29,6 +29,8 @@ export { healthService } from './services/health.service';
 export { adminTorneoService } from './services/admin-torneo.service';
 export { adminCategoriaService } from './services/admin-categoria.service';
 export { adminEdicionService } from './services/admin-edicion.service';
+export { edicionCategoriasService } from './services/edicion-categorias.service';
+export { reglasClasificacionService } from './services/reglas-clasificacion.service';
 
 // ============================================
 // 🔧 API CONSOLIDADA (Para compatibilidad)
@@ -53,6 +55,8 @@ import { healthService } from './services/health.service';
 import { adminTorneoService } from './services/admin-torneo.service';
 import { adminCategoriaService } from './services/admin-categoria.service';
 import { adminEdicionService } from './services/admin-edicion.service';
+import { edicionCategoriasService } from './services/edicion-categorias.service';
+import { reglasClasificacionService } from './services/reglas-clasificacion.service';
 
 /**
  * API consolidada - Exportación default para compatibilidad
@@ -87,6 +91,8 @@ export const api = {
   adminTorneo: adminTorneoService,
   adminCategoria: adminCategoriaService,
   adminEdicion: adminEdicionService,
+  edicionCategorias: edicionCategoriasService,
+  reglasClasificacion: reglasClasificacionService,
 };
 
 export default api;

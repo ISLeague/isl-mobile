@@ -51,6 +51,8 @@ import { EditSponsorScreen } from './src/screens/admin/EditSponsorScreen';
 import { TournamentAdminDashboardScreen } from './src/screens/admin/TournamentAdminDashboardScreen';
 import { CreateTournamentAdminScreen } from './src/screens/admin/CreateTournamentAdminScreen';
 import ResultPage from './src/screens/admin/ResultPage';
+import { CreateTeamScreen } from './src/screens/admin/CreateTeamScreen';
+import { BulkCreateTeamsScreen } from './src/screens/admin/BulkCreateTeamsScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -115,7 +117,9 @@ export default function App() {
           
           {/* Team Management */}
           <Stack.Screen name="EditTeam" component={EditTeamScreen} />
-          
+          <Stack.Screen name="CreateTeam" component={CreateTeamScreen} />
+          <Stack.Screen name="BulkCreateTeams" component={BulkCreateTeamsScreen} />
+
           {/* Local & Cancha Management */}
           <Stack.Screen name="CreateLocal" component={CreateLocalScreen} />
           <Stack.Screen name="CreateCancha" component={CreateCanchaScreen} />

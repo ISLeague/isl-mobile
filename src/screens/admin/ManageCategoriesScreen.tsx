@@ -9,6 +9,8 @@ import {
   Alert,
   Modal,
   TextInput,
+  Switch,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -42,6 +44,12 @@ export const ManageCategoriesScreen = ({ navigation, route }: any) => {
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
   const [selectedCategoria, setSelectedCategoria] = useState<Categoria | null>(null);
   const [categoriaNombre, setCategoriaNombre] = useState('');
+  const [categoriaDescripcion, setCategoriaDescripcion] = useState('');
+  const [tieneRestriccionEdad, setTieneRestriccionEdad] = useState(false);
+  const [edadMinima, setEdadMinima] = useState('');
+  const [edadMaxima, setEdadMaxima] = useState('');
+  const [permiteRefuerzos, setPermiteRefuerzos] = useState(false);
+  const [maxRefuerzos, setMaxRefuerzos] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -82,6 +90,12 @@ export const ManageCategoriesScreen = ({ navigation, route }: any) => {
     setModalMode('create');
     setSelectedCategoria(null);
     setCategoriaNombre('');
+    setCategoriaDescripcion('');
+    setTieneRestriccionEdad(false);
+    setEdadMinima('');
+    setEdadMaxima('');
+    setPermiteRefuerzos(false);
+    setMaxRefuerzos('');
     setShowModal(true);
   };
 
@@ -89,6 +103,12 @@ export const ManageCategoriesScreen = ({ navigation, route }: any) => {
     setModalMode('edit');
     setSelectedCategoria(categoria);
     setCategoriaNombre(categoria.nombre);
+    setCategoriaDescripcion(categoria.descripcion || '');
+    setTieneRestriccionEdad(categoria.tiene_restriccion_edad);
+    setEdadMinima(categoria.edad_minima?.toString() || '');
+    setEdadMaxima(categoria.edad_maxima?.toString() || '');
+    setPermiteRefuerzos(categoria.permite_refuerzos);
+    setMaxRefuerzos(categoria.max_refuerzos?.toString() || '');
     setShowModal(true);
   };
 
@@ -98,18 +118,62 @@ export const ManageCategoriesScreen = ({ navigation, route }: any) => {
       return;
     }
 
+    if (!categoriaDescripcion.trim()) {
+      Alert.alert('Error', 'La descripción de la categoría es obligatoria');
+      return;
+    }
+
+    // Validar restricciones de edad
+    if (tieneRestriccionEdad) {
+      if (!edadMinima.trim() || !edadMaxima.trim()) {
+        Alert.alert('Error', 'Debe especificar edad mínima y máxima cuando hay restricción de edad');
+        return;
+      }
+      const min = parseInt(edadMinima);
+      const max = parseInt(edadMaxima);
+      if (isNaN(min) || isNaN(max)) {
+        Alert.alert('Error', 'Las edades deben ser números válidos');
+        return;
+      }
+      if (min > max) {
+        Alert.alert('Error', 'La edad mínima no puede ser mayor que la edad máxima');
+        return;
+      }
+    }
+
+    // Validar refuerzos
+    if (permiteRefuerzos) {
+      if (!maxRefuerzos.trim()) {
+        Alert.alert('Error', 'Debe especificar el máximo de refuerzos permitidos');
+        return;
+      }
+      const max = parseInt(maxRefuerzos);
+      if (isNaN(max) || max < 0) {
+        Alert.alert('Error', 'El máximo de refuerzos debe ser un número válido mayor o igual a 0');
+        return;
+      }
+    }
+
     try {
       setIsSaving(true);
 
+      const categoriaData = {
+        nombre: categoriaNombre.trim(),
+        descripcion: categoriaDescripcion.trim(),
+        tiene_restriccion_edad: tieneRestriccionEdad,
+        edad_minima: tieneRestriccionEdad && edadMinima.trim() ? parseInt(edadMinima) : undefined,
+        edad_maxima: tieneRestriccionEdad && edadMaxima.trim() ? parseInt(edadMaxima) : undefined,
+        permite_refuerzos: permiteRefuerzos,
+        max_refuerzos: permiteRefuerzos && maxRefuerzos.trim() ? parseInt(maxRefuerzos) : undefined,
+      };
+
       if (modalMode === 'create') {
-        await api.categorias.create({
-          nombre: categoriaNombre.trim(),
-        });
+        await api.categorias.create(categoriaData);
         Alert.alert('Éxito', 'Categoría creada correctamente');
       } else if (modalMode === 'edit' && selectedCategoria) {
         await api.categorias.update({
-          id: selectedCategoria.id,
-          nombre: categoriaNombre.trim(),
+          id_categoria: selectedCategoria.id_categoria,
+          ...categoriaData,
         });
         Alert.alert('Éxito', 'Categoría actualizada correctamente');
       }
@@ -135,7 +199,7 @@ export const ManageCategoriesScreen = ({ navigation, route }: any) => {
           style: 'destructive',
           onPress: async () => {
             try {
-              await api.categorias.delete(categoria.id);
+              await api.categorias.delete(categoria.id_categoria);
               Alert.alert('Éxito', 'Categoría eliminada correctamente');
               loadCategorias();
             } catch (error) {
@@ -255,7 +319,7 @@ export const ManageCategoriesScreen = ({ navigation, route }: any) => {
       <FlatList
         data={categorias}
         renderItem={renderCategoryItem}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item) => item.id_categoria.toString()}
         ListEmptyComponent={renderEmpty}
         refreshing={refreshing}
         onRefresh={handleRefresh}
@@ -296,7 +360,7 @@ export const ManageCategoriesScreen = ({ navigation, route }: any) => {
               </TouchableOpacity>
             </View>
 
-            <View style={styles.modalBody}>
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
               <View style={styles.formGroup}>
                 <Text style={styles.label}>Nombre de la Categoría</Text>
                 <TextInput
@@ -308,6 +372,100 @@ export const ManageCategoriesScreen = ({ navigation, route }: any) => {
                   autoFocus
                 />
               </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Descripción</Text>
+                <TextInput
+                  style={[styles.input, styles.textArea]}
+                  value={categoriaDescripcion}
+                  onChangeText={setCategoriaDescripcion}
+                  placeholder="Ej: Categoria sub 18"
+                  placeholderTextColor={colors.textSecondary}
+                  multiline
+                  numberOfLines={3}
+                  textAlignVertical="top"
+                />
+              </View>
+
+              {/* Restricción de Edad */}
+              <View style={styles.formGroup}>
+                <View style={styles.switchRow}>
+                  <View style={styles.switchLabelContainer}>
+                    <Text style={styles.label}>Restricción de Edad</Text>
+                    <Text style={styles.switchDescription}>
+                      Limitar por rango de edad
+                    </Text>
+                  </View>
+                  <Switch
+                    value={tieneRestriccionEdad}
+                    onValueChange={setTieneRestriccionEdad}
+                    trackColor={{ false: colors.border, true: colors.primary }}
+                    thumbColor={colors.white}
+                  />
+                </View>
+              </View>
+
+              {/* Edad Mínima y Máxima - Solo si tiene restricción */}
+              {tieneRestriccionEdad && (
+                <>
+                  <View style={styles.formGroup}>
+                    <Text style={styles.label}>Edad Mínima</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={edadMinima}
+                      onChangeText={setEdadMinima}
+                      placeholder="Ej: 14"
+                      placeholderTextColor={colors.textSecondary}
+                      keyboardType="numeric"
+                    />
+                  </View>
+
+                  <View style={styles.formGroup}>
+                    <Text style={styles.label}>Edad Máxima</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={edadMaxima}
+                      onChangeText={setEdadMaxima}
+                      placeholder="Ej: 16"
+                      placeholderTextColor={colors.textSecondary}
+                      keyboardType="numeric"
+                    />
+                  </View>
+                </>
+              )}
+
+              {/* Permite Refuerzos */}
+              <View style={styles.formGroup}>
+                <View style={styles.switchRow}>
+                  <View style={styles.switchLabelContainer}>
+                    <Text style={styles.label}>Permite Refuerzos</Text>
+                    <Text style={styles.switchDescription}>
+                      Permitir jugadores refuerzo
+                    </Text>
+                  </View>
+                  <Switch
+                    value={permiteRefuerzos}
+                    onValueChange={setPermiteRefuerzos}
+                    trackColor={{ false: colors.border, true: colors.primary }}
+                    thumbColor={colors.white}
+                  />
+                </View>
+              </View>
+
+              {/* Máximo de Refuerzos - Solo si permite refuerzos */}
+              {permiteRefuerzos && (
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>Máximo de Refuerzos</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={maxRefuerzos}
+                    onChangeText={setMaxRefuerzos}
+                    placeholder="Ej: 4"
+                    placeholderTextColor={colors.textSecondary}
+                    keyboardType="numeric"
+                  />
+                </View>
+              )}
 
               <View style={styles.modalActions}>
                 <TouchableOpacity
@@ -331,7 +489,7 @@ export const ManageCategoriesScreen = ({ navigation, route }: any) => {
                   )}
                 </TouchableOpacity>
               </View>
-            </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -525,8 +683,9 @@ const styles = StyleSheet.create({
   modalContent: {
     backgroundColor: colors.white,
     borderRadius: 16,
-    width: '85%',
-    maxWidth: 400,
+    width: '90%',
+    maxWidth: 500,
+    maxHeight: '85%',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -564,6 +723,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
+  textArea: {
+    minHeight: 80,
+    paddingTop: 12,
+  },
   modalActions: {
     flexDirection: 'row',
     gap: 12,
@@ -592,6 +755,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: colors.white,
+  },
+  switchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  switchLabelContainer: {
+    flex: 1,
+  },
+  switchDescription: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 4,
   },
 });
 

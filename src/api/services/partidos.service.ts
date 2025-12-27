@@ -3,6 +3,10 @@ import {
   CreatePartidoRequest,
   UpdatePartidoRequest,
   PartidoResultadoRequest,
+  RegistrarResultadoRequest,
+  RegistrarResultadoResponse,
+  CreatePartidoAmistosoRequest,
+  CreatePartidoAmistosoResponse,
 } from '../types/partidos.types';
 
 /**
@@ -54,10 +58,30 @@ export const partidosService = {
   },
 
   /**
-   * Registrar resultado de un partido
+   * Registrar resultado de un partido (legacy)
    */
   resultado: async (data: PartidoResultadoRequest) => {
     const response = await apiClient.post('/partidos-resultado', data);
+    return response.data;
+  },
+
+  /**
+   * Registrar resultado completo de un partido con eventos (requiere autorización)
+   */
+  registrarResultado: async (
+    data: RegistrarResultadoRequest
+  ): Promise<RegistrarResultadoResponse> => {
+    const response = await apiClient.post('/partidos-resultado', data);
+    return response.data;
+  },
+
+  /**
+   * Crear partido amistoso (requiere autorización)
+   */
+  createAmistoso: async (
+    data: CreatePartidoAmistosoRequest
+  ): Promise<CreatePartidoAmistosoResponse> => {
+    const response = await apiClient.post('/partidos-create-amistoso', data);
     return response.data;
   },
 };

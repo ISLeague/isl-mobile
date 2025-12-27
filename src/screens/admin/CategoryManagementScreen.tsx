@@ -18,6 +18,7 @@ import api from '../../api';
 import PagerView from 'react-native-pager-view';
 import { LocalTab } from './components/LocalTab';
 import { SponsorTab } from './components/SponsorTab';
+import { TeamsTab } from './components/TeamsTab';
 import { GroupStageEmbed } from './components/GroupStageEmbed';
 import { TheBestEmbed } from './components/TheBestEmbed';
 import { MyTeamEmbed } from './components/MyTeamEmbed';
@@ -48,11 +49,12 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
   const [tabLayouts, setTabLayouts] = useState<{ [key: string]: { x: number; width: number } }>({});
 
   // Tabs diferentes para admin y fan (invitados ven lo mismo que fans)
-  const tabs = isAdmin 
+  const tabs = isAdmin
     ? [
         { id: 'grupos', label: 'Grupos' },
         { id: 'fixture', label: 'Fixture' },
         { id: 'knockout', label: 'Knockout' },
+        { id: 'equipos', label: 'Equipos' },
         { id: 'local', label: 'Local' },
         { id: 'sponsors', label: 'Sponsors' },
       ]
@@ -137,7 +139,7 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
     try {
       const response = await api.ediciones.list({ id_torneo: torneo.id_torneo });
       const ediciones = response.data || [];
-      const edicionActiva = ediciones.find(e => e.estado === 'en_curso') || ediciones[0];
+      const edicionActiva = ediciones.find(e => e.estado === 'en juego') || ediciones[0];
       if (edicionActiva) {
         const cats = await api.categorias.getByEdition(edicionActiva.id_edicion);
         setCategorias(cats);
@@ -308,27 +310,48 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
             } else if (tab.id === 'knockout') {
               return (
                 <View key={tab.id} style={styles.pageWrapper}>
-                  <KnockoutEmbed 
-                    navigation={navigation} 
-                    isAdmin={true} 
-                    idEdicionCategoria={1} 
+                  <KnockoutEmbed
+                    navigation={navigation}
+                    isAdmin={true}
+                    idEdicionCategoria={1}
+                  />
+                </View>
+              );
+            } else if (tab.id === 'equipos') {
+              return (
+                <View key={tab.id} style={styles.pageWrapper}>
+                  <TeamsTab
+                    idEdicionCategoria={1}
+                    onCreateTeam={() => navigation.navigate('CreateTeam', {
+                      idEdicionCategoria: 1,
+                      onTeamCreated: () => {
+                        // Refresh will be handled by navigation back
+                      }
+                    })}
+                    onBulkCreateTeams={() => navigation.navigate('BulkCreateTeams', {
+                      idEdicionCategoria: 1,
+                      onTeamsCreated: () => {
+                        // Refresh will be handled by navigation back
+                      }
+                    })}
+                    onTeamPress={(equipo) => navigation.navigate('TeamDetail', { equipoId: equipo.id_equipo })}
                   />
                 </View>
               );
             } else if (tab.id === 'local') {
               return (
                 <View key={tab.id} style={styles.pageWrapper}>
-                  <LocalTab 
-                    idEdicionCategoria={1} 
+                  <LocalTab
+                    idEdicionCategoria={1}
                     onCreateLocal={() => navigation.navigate('CreateLocal', { idEdicionCategoria: 1 })}
-                    onCreateCancha={(idLocal, nombreLocal) => 
+                    onCreateCancha={(idLocal, nombreLocal) =>
                       navigation.navigate('CreateCancha', { idLocal, nombreLocal })
                     }
                     onEditLocal={(local) => navigation.navigate('EditLocal', { local })}
                     onDeleteLocal={(idLocal) => {
                       console.log('Eliminar local:', idLocal);
                     }}
-                    onEditCancha={(cancha, nombreLocal) => 
+                    onEditCancha={(cancha, nombreLocal) =>
                       navigation.navigate('EditCancha', { cancha, nombreLocal })
                     }
                     onDeleteCancha={(idCancha, nombreLocal) => {

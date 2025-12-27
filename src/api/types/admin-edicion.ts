@@ -39,10 +39,12 @@ export interface AdminEdicionRegisterResponse {
 }
 
 export interface EdicionInfo {
-  id_Edicion: number;
+  id_edicion: number;
   nombre: string;
-  temporada: string;
-  activo: boolean;
+  numero: number;
+  estado: string;
+  fecha_inicio: string;
+  fecha_fin: string;
 }
 
 export interface EstadisticasEdicion {
@@ -86,7 +88,11 @@ export interface AdminEdicionAsignarResponse {
       edicion: {
         id_edicion: number;
         nombre: string;
-        temporada: string;
+        torneo: {
+          id_torneo: number;
+          nombre: string;
+          temporada: string;
+        };
       };
       asignado_el: string;
     };

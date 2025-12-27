@@ -7,8 +7,8 @@ export const categoriasService = {
     return response.data;
   },
 
-  get: async (id: number) => {
-    const response = await apiClient.get('/categorias-get', { params: { id } });
+  get: async (id_categoria: number) => {
+    const response = await apiClient.get('/categorias-get', { params: { id_categoria } });
     return response.data;
   },
 
@@ -32,8 +32,8 @@ export const categoriasService = {
     return response.data;
   },
 
-  delete: async (id: number) => {
-    const response = await apiClient.delete('/categorias-delete', { params: { id } });
+  delete: async (id_categoria: number) => {
+    const response = await apiClient.delete('/categorias-delete', { params: { id_categoria } });
     return response.data;
   },
 };

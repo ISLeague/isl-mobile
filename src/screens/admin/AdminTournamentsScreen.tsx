@@ -101,7 +101,7 @@ export const AdminTournamentsScreen = ({ navigation, route }: any) => {
           try {
             const response = await api.ediciones.list({ id_torneo: torneo.id_torneo });
             const edicionesArray = response.data || [];
-            const edicionActiva = edicionesArray.find(e => e.estado === 'en_curso');
+            const edicionActiva = edicionesArray.find(e => e.estado === 'en juego');
 
             return {
               ...torneo,

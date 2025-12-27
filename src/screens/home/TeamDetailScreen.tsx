@@ -11,6 +11,7 @@ import {
   Linking,
   Modal,
   TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -19,11 +20,10 @@ import { GradientHeader, FAB, Card, InfoCard, Skeleton } from '../../components/
 import { colors } from '../../theme/colors';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTeamFollow } from '../../hooks';
-import { Equipo, Jugador, PlantillaEquipo } from '../../types';
-import { mockEquipos, mockJugadores, mockPlantillas, mockGrupos } from '../../data/mockData';
 import { useToast } from '../../contexts/ToastContext';
 import { safeAsync } from '../../utils/errorHandling';
 import { calculateAge } from '../../utils';
+import api from '../../api';
 
 interface TeamDetailScreenProps {
   navigation: any;
@@ -57,15 +57,14 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
 
   const [activeTab, setActiveTab] = useState('estadisticas');
 
-  const [equipo] = useState<Equipo>(
-    mockEquipos.find((e) => e.id_equipo === equipoId)!
-  );
+  // Estado del equipo - se carga desde la API
+  const [equipo, setEquipo] = useState<Equipo>();
 
-  // Obtener jugadores del equipo
+  // Obtener jugadores del equipo (mock data)
   const plantilla = mockPlantillas.filter((p) => p.id_equipo === equipoId && p.activo_en_equipo);
   const jugadores = plantilla.map((p) => mockJugadores.find((j) => j.id_jugador === p.id_jugador)!);
 
-  // Obtener grupo del equipo
+  // Obtener grupo del equipo (mock data)
   const grupoEquipo = mockGrupos[0]; // Mock
 
   // Fotos de ejemplo para preview (solo para fans con equipo favorito)
@@ -76,14 +75,22 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
     { id: 4, url: 'https://via.placeholder.com/300x200/FF9800/FFFFFF?text=Foto+4' },
   ];
 
-  // Simular carga de datos
+  // Cargar datos del equipo desde la API
   useEffect(() => {
-    // Simulamos un delay de carga (en producción, esto sería una llamada a API)
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 1500);
+    const fetchEquipo = async () => {
+      try {
+        setLoading(true);
+        const response = await api.equipos.getById(equipoId);
+        setEquipo(response.data);
+      } catch (error) {
+        console.error('Error fetching equipo:', error);
+        showError('No se pudo cargar la información del equipo');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    return () => clearTimeout(timer);
+    fetchEquipo();
   }, [equipoId]);
 
   // Estadísticas del equipo
@@ -248,7 +255,7 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
 
     Alert.alert(
       'Confirmar Importación',
-      `Se importarán ${jugadores.length} jugador(es) al equipo "${equipo.nombre}".\n\n¿Deseas continuar?`,
+      `Se importarán ${jugadores.length} jugador(es) al equipo "${equipo?.nombre ?? 'Equipo'}".\n\n¿Deseas continuar?`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -346,7 +353,7 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
 
     Alert.alert(
       'Vaciar Plantilla',
-      `¿Estás seguro de que quieres eliminar TODOS los ${jugadores.length} jugadores de "${equipo.nombre}"? Esta acción no se puede deshacer.`,
+      `¿Estás seguro de que quieres eliminar TODOS los ${jugadores.length} jugadores de "${equipo?.nombre}"? Esta acción no se puede deshacer.`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -359,7 +366,7 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
                 // await api.teams.clearRoster(equipoId);
                 
                 console.log('Vaciando plantilla del equipo:', equipoId);
-                showSuccess(`Plantilla de "${equipo.nombre}" vaciada exitosamente`, 'Plantilla Vaciada');
+                showSuccess(`Plantilla de "${equipo?.nombre ?? 'Equipo'}" vaciada exitosamente`, 'Plantilla Vaciada');
                 
                 // Opcional: Volver atrás o recargar
                 // navigation.goBack();
@@ -537,6 +544,22 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
     );
   };
 
+  // Mostrar loading mientras se carga el equipo
+  if (loading || !equipo) {
+    return (
+      <SafeAreaView style={styles.container} edges={['bottom']}>
+        <GradientHeader
+          title="Cargando..."
+          onBackPress={() => navigation.goBack()}
+        />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Cargando información del equipo...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <GradientHeader
@@ -562,11 +585,11 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
       {/* Logo del Equipo */}
       <View style={styles.logoContainer}>
         <Image
-          source={equipo?.logo ? { uri: equipo.logo } : require('../../assets/InterLOGO.png')}
+          source={equipo.logo ? { uri: equipo.logo } : require('../../assets/InterLOGO.png')}
           style={styles.teamLogo}
           resizeMode="contain"
         />
-        <Text style={styles.teamName}>{equipo?.nombre || 'Equipo'}</Text>
+        <Text style={styles.teamName}>{equipo.nombre}</Text>
       </View>
 
       {/* Tabs */}
@@ -604,6 +627,86 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
             return (
               <View key={tab.id} style={styles.page}>
                 <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                  {/* Información del Equipo */}
+                  {(equipo.nombre_corto || equipo.color_primario || equipo.nombre_delegado) && (
+                    <View style={styles.teamInfoSection}>
+                      {equipo.nombre_corto && (
+                        <InfoCard
+                          title="Nombre Corto"
+                          value={equipo.nombre_corto}
+                          icon="text-short"
+                          iconColor={colors.primary}
+                        />
+                      )}
+
+                      {/* Colores del Equipo */}
+                      {(equipo.color_primario || equipo.color_secundario) && (
+                        <Card style={styles.colorsCard}>
+                          <Text style={styles.cardTitle}>Colores del Equipo</Text>
+                          <View style={styles.colorsContainer}>
+                            {equipo.color_primario && (
+                              <View style={styles.colorItem}>
+                                <View
+                                  style={[
+                                    styles.colorPreview,
+                                    {
+                                      backgroundColor: equipo.color_primario,
+                                      borderWidth: equipo.color_primario.toLowerCase() === '#ffffff' ? 1 : 0,
+                                      borderColor: colors.border,
+                                    },
+                                  ]}
+                                />
+                                <Text style={styles.colorLabel}>Primario</Text>
+                                <Text style={styles.colorValue}>{equipo.color_primario}</Text>
+                              </View>
+                            )}
+                            {equipo.color_secundario && (
+                              <View style={styles.colorItem}>
+                                <View
+                                  style={[
+                                    styles.colorPreview,
+                                    {
+                                      backgroundColor: equipo.color_secundario,
+                                      borderWidth: equipo.color_secundario.toLowerCase() === '#ffffff' ? 1 : 0,
+                                      borderColor: colors.border,
+                                    },
+                                  ]}
+                                />
+                                <Text style={styles.colorLabel}>Secundario</Text>
+                                <Text style={styles.colorValue}>{equipo.color_secundario}</Text>
+                              </View>
+                            )}
+                          </View>
+                        </Card>
+                      )}
+
+                      {/* Información del Delegado */}
+                      {(equipo.nombre_delegado || equipo.telefono_delegado || equipo.email_delegado) && (
+                        <Card style={styles.delegadoCard}>
+                          <Text style={styles.cardTitle}>Información del Delegado</Text>
+                          {equipo.nombre_delegado && (
+                            <View style={styles.delegadoRow}>
+                              <MaterialCommunityIcons name="account" size={20} color={colors.textSecondary} />
+                              <Text style={styles.delegadoText}>{equipo.nombre_delegado}</Text>
+                            </View>
+                          )}
+                          {equipo.telefono_delegado && (
+                            <View style={styles.delegadoRow}>
+                              <MaterialCommunityIcons name="phone" size={20} color={colors.textSecondary} />
+                              <Text style={styles.delegadoText}>{equipo.telefono_delegado}</Text>
+                            </View>
+                          )}
+                          {equipo.email_delegado && (
+                            <View style={styles.delegadoRow}>
+                              <MaterialCommunityIcons name="email" size={20} color={colors.textSecondary} />
+                              <Text style={styles.delegadoText}>{equipo.email_delegado}</Text>
+                            </View>
+                          )}
+                        </Card>
+                      )}
+                    </View>
+                  )}
+
                   {/* Estadísticas Compactas Estilo Barcelona */}
                   <View style={styles.compactStatsContainer}>
                     <View style={styles.compactStatsGrid}>
@@ -1658,5 +1761,68 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: colors.white,
+  },
+  // Estilos para información del equipo
+  teamInfoSection: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    gap: 16,
+  },
+  colorsCard: {
+    padding: 16,
+  },
+  colorsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 16,
+    gap: 20,
+  },
+  colorItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  colorPreview: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    marginBottom: 8,
+  },
+  colorLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginBottom: 4,
+    fontWeight: '600',
+  },
+  colorValue: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    fontFamily: 'monospace',
+  },
+  delegadoCard: {
+    padding: 16,
+  },
+  delegadoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 8,
+  },
+  delegadoText: {
+    fontSize: 15,
+    color: colors.textPrimary,
+    flex: 1,
+  },
+  // Estilos para estado de carga
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: colors.textSecondary,
+    textAlign: 'center',
   },
 });

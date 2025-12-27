@@ -2,7 +2,7 @@
 // 📅 EDICIONES TYPES
 // ============================================
 
-export type EstadoEdicion = 'abierto' | 'cerrado' | 'en_curso';
+export type EstadoEdicion = 'abierto' | 'cerrado' | 'en juego';
 
 export interface TorneoInfoEdicion {
   logo: string | null;

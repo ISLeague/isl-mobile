@@ -9,14 +9,14 @@ import {
   Modal,
   ActivityIndicator,
   FlatList,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import api from '../../api';
-import { Torneo, Pais } from '../../api/types';
-import { Edicion } from '../../api/types/ediciones.types';
 import { Categoria } from '../../api/types/categorias.types';
+import { EdicionCategoria } from '../../api/types/edicion-categorias.types';
 import { useAuth } from '../../contexts/AuthContext';
 
 export const TournamentCategoriesScreen = ({ navigation, route }: any) => {
@@ -29,10 +29,16 @@ export const TournamentCategoriesScreen = ({ navigation, route }: any) => {
     (usuario?.id_torneos && usuario.id_torneos.includes(torneo.id_torneo)) ||
     (usuario?.id_ediciones && usuario.id_ediciones.includes(edicion.id_edicion));
 
-  const [assignedCategorias, setAssignedCategorias] = useState<Categoria[]>([]);
+  const [assignedCategorias, setAssignedCategorias] = useState<EdicionCategoria[]>([]);
   const [allCategorias, setAllCategorias] = useState<Categoria[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAssignModal, setShowAssignModal] = useState(false);
+  const [showFormModal, setShowFormModal] = useState(false);
+  const [selectedCategoria, setSelectedCategoria] = useState<Categoria | null>(null);
+  const [maxEquipos, setMaxEquipos] = useState('16');
+  const [maxJugadores, setMaxJugadores] = useState('18');
+  const [minJugadores, setMinJugadores] = useState('11');
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     loadCategorias();
@@ -45,52 +51,91 @@ export const TournamentCategoriesScreen = ({ navigation, route }: any) => {
       // Load all global categories - handle errors gracefully
       try {
         const allResponse = await api.categorias.list();
+        console.log('📋 All categorias loaded:', allResponse.data);
         setAllCategorias(allResponse.data || []);
       } catch (error: any) {
-        if (error?.response?.status === 404) {
-          setAllCategorias([]);
-        } else {
-          console.error('Error loading global categories:', error);
-          setAllCategorias([]);
-        }
+        console.log('⚠️ Error loading all categorias:', error);
+        setAllCategorias([]);
       }
 
       // Load categories assigned to this edition - handle errors gracefully
       try {
-        const assignedResponse = await api.categorias.getByEdition(edicion.id_edicion);
-        setAssignedCategorias(assignedResponse.data || []);
+        const assignedResponse = await api.edicionCategorias.list({
+          id_edicion: edicion.id_edicion,
+        });
+        console.log('✅ Assigned categorias loaded:', assignedResponse.data.data);
+        setAssignedCategorias(assignedResponse.data.data || []);
       } catch (error: any) {
-        if (error?.response?.status === 404) {
-          setAssignedCategorias([]);
-        } else {
-          console.error('Error loading assigned categories:', error);
-          setAssignedCategorias([]);
-        }
+        console.log('⚠️ Error loading assigned categorias:', error);
+        setAssignedCategorias([]);
       }
     } catch (error) {
-      console.error('Error in loadCategorias:', error);
+      console.log('❌ Outer error loading categorias:', error);
+      setAllCategorias([]);
+      setAssignedCategorias([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAssignCategory = async (categoria: Categoria) => {
+  const handleCategorySelect = (categoria: Categoria) => {
+    setSelectedCategoria(categoria);
+    setShowAssignModal(false);
+    setShowFormModal(true);
+  };
+
+  const handleAssignCategory = async () => {
+    if (!selectedCategoria) return;
+
+    if (!maxEquipos.trim() || !maxJugadores.trim() || !minJugadores.trim()) {
+      Alert.alert('Error', 'Todos los campos son obligatorios');
+      return;
+    }
+
+    const maxEquiposNum = parseInt(maxEquipos);
+    const maxJugadoresNum = parseInt(maxJugadores);
+    const minJugadoresNum = parseInt(minJugadores);
+
+    if (isNaN(maxEquiposNum) || isNaN(maxJugadoresNum) || isNaN(minJugadoresNum)) {
+      Alert.alert('Error', 'Los valores deben ser números válidos');
+      return;
+    }
+
+    if (minJugadoresNum > maxJugadoresNum) {
+      Alert.alert('Error', 'El mínimo de jugadores no puede ser mayor al máximo');
+      return;
+    }
+
     try {
-      // TODO: Call API to assign category to edition
-      // For now, just add to local state
-      Alert.alert('Éxito', `Categoría "${categoria.nombre}" asignada correctamente`);
-      setShowAssignModal(false);
+      setIsSaving(true);
+      await api.edicionCategorias.create({
+        id_edicion: edicion.id_edicion,
+        id_categoria: selectedCategoria.id_categoria,
+        max_equipos: maxEquiposNum,
+        max_jugadores_por_equipo: maxJugadoresNum,
+        min_jugadores_por_equipo: minJugadoresNum,
+      });
+
+      setShowFormModal(false);
+      setSelectedCategoria(null);
+      setMaxEquipos('16');
+      setMaxJugadores('18');
+      setMinJugadores('11');
+      Alert.alert('Éxito', `Categoría "${selectedCategoria.nombre}" asignada correctamente`);
       loadCategorias();
     } catch (error) {
       console.error('Error assigning category:', error);
       Alert.alert('Error', 'No se pudo asignar la categoría');
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const handleRemoveCategory = (categoria: Categoria) => {
+  const handleRemoveCategory = (edicionCategoria: EdicionCategoria) => {
+    const categoriaNombre = edicionCategoria.categoria?.nombre || 'esta categoría';
     Alert.alert(
       'Quitar Categoría',
-      `¿Deseas quitar "${categoria.nombre}" de esta edición? Los equipos asociados se eliminarán.`,
+      `¿Deseas quitar "${categoriaNombre}" de esta edición? Los equipos asociados se eliminarán.`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -98,11 +143,10 @@ export const TournamentCategoriesScreen = ({ navigation, route }: any) => {
           style: 'destructive',
           onPress: async () => {
             try {
-              // TODO: Call API to remove category assignment
+              // TODO: Call API to remove category assignment (endpoint needed)
               Alert.alert('Éxito', 'Categoría removida correctamente');
               loadCategorias();
             } catch (error) {
-              console.error('Error removing category:', error);
               Alert.alert('Error', 'No se pudo quitar la categoría');
             }
           },
@@ -111,15 +155,27 @@ export const TournamentCategoriesScreen = ({ navigation, route }: any) => {
     );
   };
 
-  const handleCategoryPress = (categoria: Categoria) => {
+  const handleCategoryPress = (edicionCategoria: EdicionCategoria) => {
     // Navigate to category management (teams, groups, etc.)
-    navigation.navigate('CategoryManagement', { torneo, edicion, pais, categoria });
+    navigation.navigate('CategoryManagement', {
+      torneo,
+      edicion,
+      pais,
+      categoria: edicionCategoria.categoria,
+      edicionCategoria,
+    });
   };
 
   // Filter out already assigned categories
   const availableCategorias = allCategorias.filter(
-    cat => !assignedCategorias.some(assigned => assigned.id === cat.id)
+    cat => !assignedCategorias.some(assigned => assigned.id_categoria === cat.id_categoria)
   );
+
+  console.log('🔍 TournamentCategoriesScreen - Estado actual:');
+  console.log('  - All categorias:', allCategorias.length);
+  console.log('  - Assigned categorias:', assignedCategorias.length);
+  console.log('  - Available categorias:', availableCategorias.length);
+  console.log('  - Show modal:', showAssignModal);
 
   if (loading) {
     return (
@@ -153,6 +209,14 @@ export const TournamentCategoriesScreen = ({ navigation, route }: any) => {
               </Text>
             </View>
           </View>
+          {isSuperAdmin && (
+            <TouchableOpacity
+              style={styles.settingsButton}
+              onPress={() => navigation.navigate('ManageCategories', { pais })}
+            >
+              <MaterialCommunityIcons name="cog" size={24} color={colors.primary} />
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Info Banner */}
@@ -194,7 +258,10 @@ export const TournamentCategoriesScreen = ({ navigation, route }: any) => {
               {canAssignCategories && (
                 <TouchableOpacity
                   style={styles.assignFirstButton}
-                  onPress={() => setShowAssignModal(true)}
+                  onPress={() => {
+                    console.log('🎯 Assign first button pressed - opening modal');
+                    setShowAssignModal(true);
+                  }}
                 >
                   <Text style={styles.assignFirstButtonText}>
                     Asignar Primera Categoría
@@ -204,11 +271,11 @@ export const TournamentCategoriesScreen = ({ navigation, route }: any) => {
             </View>
           ) : (
             <View style={styles.categoriesList}>
-              {assignedCategorias.map((categoria) => (
+              {assignedCategorias.map((edicionCat) => (
                 <TouchableOpacity
-                  key={categoria.id}
+                  key={edicionCat.id_edicion_categoria}
                   style={styles.categoryCard}
-                  onPress={() => handleCategoryPress(categoria)}
+                  onPress={() => handleCategoryPress(edicionCat)}
                   activeOpacity={0.7}
                 >
                   <View style={styles.categoryMain}>
@@ -218,8 +285,12 @@ export const TournamentCategoriesScreen = ({ navigation, route }: any) => {
                       color={colors.primary}
                     />
                     <View style={styles.categoryInfo}>
-                      <Text style={styles.categoryName}>{categoria.nombre}</Text>
-                      <Text style={styles.categorySubtitle}>Toca para gestionar</Text>
+                      <Text style={styles.categoryName}>
+                        {edicionCat.categoria?.nombre || 'Categoría'}
+                      </Text>
+                      <Text style={styles.categorySubtitle}>
+                        {edicionCat.max_equipos} equipos • {edicionCat.min_jugadores_por_equipo}-{edicionCat.max_jugadores_por_equipo} jugadores
+                      </Text>
                     </View>
                   </View>
 
@@ -229,7 +300,7 @@ export const TournamentCategoriesScreen = ({ navigation, route }: any) => {
                         style={styles.removeButton}
                         onPress={(e) => {
                           e.stopPropagation();
-                          handleRemoveCategory(categoria);
+                          handleRemoveCategory(edicionCat);
                         }}
                         activeOpacity={0.7}
                       >
@@ -259,7 +330,10 @@ export const TournamentCategoriesScreen = ({ navigation, route }: any) => {
       {assignedCategorias.length > 0 && canAssignCategories && (
         <TouchableOpacity
           style={styles.fab}
-          onPress={() => setShowAssignModal(true)}
+          onPress={() => {
+            console.log('🎯 FAB button pressed - opening modal');
+            setShowAssignModal(true);
+          }}
           activeOpacity={0.8}
         >
           <Text style={styles.fabIcon}>+</Text>
@@ -271,7 +345,10 @@ export const TournamentCategoriesScreen = ({ navigation, route }: any) => {
         visible={showAssignModal}
         transparent
         animationType="slide"
-        onRequestClose={() => setShowAssignModal(false)}
+        onRequestClose={() => {
+          console.log('🚫 Modal onRequestClose called');
+          setShowAssignModal(false);
+        }}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -287,6 +364,10 @@ export const TournamentCategoriesScreen = ({ navigation, route }: any) => {
             </View>
 
             <View style={styles.modalBody}>
+              {(() => {
+                console.log('🎨 Modal rendering - available categorias:', availableCategorias.length);
+                return null;
+              })()}
               {availableCategorias.length === 0 ? (
                 <View style={styles.emptyModal}>
                   <MaterialCommunityIcons
@@ -295,22 +376,46 @@ export const TournamentCategoriesScreen = ({ navigation, route }: any) => {
                     color={colors.textSecondary}
                   />
                   <Text style={styles.emptyModalTitle}>
-                    No hay categorías disponibles
+                    {allCategorias.length === 0
+                      ? 'No hay categorías creadas'
+                      : 'No hay categorías disponibles'}
                   </Text>
                   <Text style={styles.emptyModalText}>
-                    Todas las categorías ya están asignadas a esta edición.
+                    {allCategorias.length === 0
+                      ? 'Aún no se han creado categorías globales en el sistema.'
+                      : 'Todas las categorías ya están asignadas a esta edición.'}
                     {'\n\n'}
-                    Si necesitas una nueva categoría, pídele a un superadmin que la cree en la sección de Gestión de Categorías.
+                    {isSuperAdmin
+                      ? 'Puedes crear nuevas categorías desde el botón de configuración en el header.'
+                      : 'Contacta a un superadmin para crear nuevas categorías.'}
                   </Text>
+                  {isSuperAdmin && (
+                    <TouchableOpacity
+                      style={styles.createCategoryButton}
+                      onPress={() => {
+                        setShowAssignModal(false);
+                        navigation.navigate('ManageCategories', { pais });
+                      }}
+                    >
+                      <MaterialCommunityIcons
+                        name="plus-circle"
+                        size={20}
+                        color={colors.white}
+                      />
+                      <Text style={styles.createCategoryButtonText}>
+                        Ir a Gestión de Categorías
+                      </Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               ) : (
                 <FlatList
                   data={availableCategorias}
-                  keyExtractor={(item) => item.id.toString()}
+                  keyExtractor={(item) => item.id_categoria.toString()}
                   renderItem={({ item: categoria }) => (
                     <TouchableOpacity
                       style={styles.modalCategoryCard}
-                      onPress={() => handleAssignCategory(categoria)}
+                      onPress={() => handleCategorySelect(categoria)}
                       activeOpacity={0.7}
                     >
                       <View style={styles.modalCategoryInfo}>
@@ -334,6 +439,90 @@ export const TournamentCategoriesScreen = ({ navigation, route }: any) => {
                   contentContainerStyle={styles.modalList}
                 />
               )}
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Form Modal for Assignment Details */}
+      <Modal
+        visible={showFormModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowFormModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                Configurar {selectedCategoria?.nombre}
+              </Text>
+              <TouchableOpacity onPress={() => setShowFormModal(false)}>
+                <MaterialCommunityIcons
+                  name="close"
+                  size={24}
+                  color={colors.textPrimary}
+                />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.formModalBody}>
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Máximo de Equipos</Text>
+                <TextInput
+                  style={styles.input}
+                  value={maxEquipos}
+                  onChangeText={setMaxEquipos}
+                  placeholder="16"
+                  keyboardType="numeric"
+                  placeholderTextColor={colors.textSecondary}
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Máximo de Jugadores por Equipo</Text>
+                <TextInput
+                  style={styles.input}
+                  value={maxJugadores}
+                  onChangeText={setMaxJugadores}
+                  placeholder="18"
+                  keyboardType="numeric"
+                  placeholderTextColor={colors.textSecondary}
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Mínimo de Jugadores por Equipo</Text>
+                <TextInput
+                  style={styles.input}
+                  value={minJugadores}
+                  onChangeText={setMinJugadores}
+                  placeholder="11"
+                  keyboardType="numeric"
+                  placeholderTextColor={colors.textSecondary}
+                />
+              </View>
+
+              <View style={styles.formActions}>
+                <TouchableOpacity
+                  style={styles.cancelButton}
+                  onPress={() => setShowFormModal(false)}
+                >
+                  <Text style={styles.cancelButtonText}>Cancelar</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.saveButton}
+                  onPress={handleAssignCategory}
+                  disabled={isSaving}
+                >
+                  {isSaving ? (
+                    <ActivityIndicator size="small" color={colors.white} />
+                  ) : (
+                    <Text style={styles.saveButtonText}>Asignar</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         </View>
@@ -391,6 +580,12 @@ const styles = StyleSheet.create({
   },
   headerText: {
     flex: 1,
+  },
+  settingsButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   title: {
     fontSize: 20,
@@ -568,7 +763,60 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   modalBody: {
+    minHeight: 300,
+    maxHeight: 500,
+  },
+  formModalBody: {
+    padding: 20,
+  },
+  formGroup: {
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: 8,
+  },
+  input: {
+    backgroundColor: colors.backgroundGray,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: colors.textPrimary,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  formActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 8,
+  },
+  cancelButton: {
     flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  saveButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+  },
+  saveButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.white,
   },
   modalList: {
     paddingHorizontal: 20,
@@ -613,6 +861,22 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: colors.textPrimary,
+  },
+  createCategoryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: colors.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginTop: 16,
+  },
+  createCategoryButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.white,
   },
 });
 

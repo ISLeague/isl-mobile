@@ -18,8 +18,8 @@ import { EstadoEdicion } from '../../api/types/ediciones.types';
 import { useAuth } from '../../contexts/AuthContext';
 
 const ESTADOS: { value: EstadoEdicion; label: string; color: string }[] = [
-  { value: 'abierto', label: 'Abierto', color: '#4caf50' },
-  { value: 'en_curso', label: 'En Curso', color: '#2196f3' },
+  { value: 'abierto', label: 'Abierto', color: '#0ba8bdff' },
+  { value: 'en juego', label: 'En Juego', color: '#07b101ff' },
   { value: 'cerrado', label: 'Cerrado', color: '#9e9e9e' },
 ];
 
@@ -211,7 +211,7 @@ export const CreateEditionScreen = ({ navigation, route }: any) => {
             </View>
             <Text style={styles.helperText}>
               {estado === 'abierto' && 'Inscripciones abiertas para equipos'}
-              {estado === 'en_curso' && 'Torneo en curso, partidos activos'}
+              {estado === 'en juego' && 'Torneo en curso, partidos activos'}
               {estado === 'cerrado' && 'Torneo finalizado'}
             </Text>
           </View>
