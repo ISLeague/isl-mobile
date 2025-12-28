@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -15,12 +15,11 @@ import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { colors } from '../../theme/colors';
 import { useToast } from '../../contexts/ToastContext';
-import { Ronda, Partido, Equipo } from '../../types';
-import { mockRondas, mockPartidos, mockEquipos, mockGrupos, mockClasificacion } from '../../data/mockData';
+import { Ronda, Partido, Equipo, Grupo, Clasificacion } from '../../api/types';
 import { SearchBar, FAB, Button } from '../../components/common';
-import { useSearch } from '../../hooks';
 import { formatDate } from '../../utils/formatters';
 import { safeAsync, getUserFriendlyMessage } from '../../utils/errorHandling';
+import api from '../../api';
 
 interface FixtureManagementScreenProps {
   navigation: any;
@@ -30,30 +29,37 @@ interface FixtureManagementScreenProps {
 export const FixtureManagementScreen: React.FC<FixtureManagementScreenProps> = ({ navigation, route }) => {
   const { isAdmin = false, idEdicionCategoria } = route.params || {};
   const { showSuccess, showError, showInfo } = useToast();
-  
+
   const [rondas, setRondas] = useState<Ronda[]>([]);
   const [partidos, setPartidos] = useState<Partido[]>([]);
+  const [equipos, setEquipos] = useState<Equipo[]>([]);
+  const [grupos, setGrupos] = useState<Grupo[]>([]);
+  const [clasificaciones, setClasificaciones] = useState<Clasificacion[]>([]);
   const [expandedRondas, setExpandedRondas] = useState<{ [key: number]: boolean }>({});
   const [closestRondaId, setClosestRondaId] = useState<number | null>(null);
-  
-  const {
-    searchQuery,
-    setSearchQuery,
-    filteredData: filteredEquipos,
-    clearSearch,
-  } = useSearch(mockEquipos, 'nombre');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const loadData = useCallback(async () => {
     const result = await safeAsync(
       async () => {
+        const [rondasResponse, partidosResponse, equiposResponse] = await Promise.all([
+          api.rondas.list(),
+          api.partidos.list(),
+          idEdicionCategoria ? api.equipos.list(idEdicionCategoria) : Promise.resolve({ success: true, data: [] }),
+        ]);
+
+        const allRondas = rondasResponse.success && rondasResponse.data ? rondasResponse.data : [];
+        const allPartidos = partidosResponse.success && partidosResponse.data ? partidosResponse.data : [];
+        const allEquipos = equiposResponse.success && equiposResponse.data ? equiposResponse.data : [];
+
         // Cargar rondas ordenadas por orden descendente
-        const sortedRondas: Ronda[] = [...mockRondas].sort((a, b) => b.orden - a.orden);
-        
+        const sortedRondas: Ronda[] = [...allRondas].sort((a, b) => (b.orden || 0) - (a.orden || 0));
+
         // Encontrar la ronda más cercana a la fecha actual
         const today = new Date();
         let closestRondaId: number | null = null;
         let minDiff = Infinity;
-        
+
         sortedRondas.forEach((ronda: Ronda) => {
           const rondaDate = new Date(ronda.fecha_inicio);
           const diff = Math.abs(rondaDate.getTime() - today.getTime());
@@ -62,33 +68,37 @@ export const FixtureManagementScreen: React.FC<FixtureManagementScreenProps> = (
             closestRondaId = ronda.id_ronda;
           }
         });
-        
-        return { sortedRondas, closestRondaId, partidos: mockPartidos };
+
+        // TODO: Load grupos and clasificaciones when available
+        return { sortedRondas, closestRondaId, partidos: allPartidos, equipos: allEquipos, grupos: [], clasificaciones: [] };
       },
       'loadFixtureData',
       {
         severity: 'high',
-        fallbackValue: { sortedRondas: [], closestRondaId: null, partidos: [] },
+        fallbackValue: { sortedRondas: [], closestRondaId: null, partidos: [], equipos: [], grupos: [], clasificaciones: [] },
         onError: (error) => {
           showError(getUserFriendlyMessage(error), 'Error al cargar fixture');
         }
       }
     );
-    
+
     if (result) {
       setRondas(result.sortedRondas);
       setPartidos(result.partidos);
+      setEquipos(result.equipos);
+      setGrupos(result.grupos);
+      setClasificaciones(result.clasificaciones);
       setClosestRondaId(result.closestRondaId);
-      
+
       if (result.closestRondaId !== null) {
         setExpandedRondas({ [result.closestRondaId]: true });
       }
-      
+
       if (result.sortedRondas.length > 0) {
         showInfo(`${result.sortedRondas.length} rondas cargadas`);
       }
     }
-  }, [showError, showInfo]);
+  }, [showError, showInfo, idEdicionCategoria]);
 
   useEffect(() => {
     loadData();
@@ -107,28 +117,30 @@ export const FixtureManagementScreen: React.FC<FixtureManagementScreenProps> = (
     return partidos
       .filter(p => {
         if (p.id_ronda !== rondaId) return false;
-        
+
         if (!searchQuery) return true;
-        
-        const equipoLocal = mockEquipos.find(e => e.id_equipo === p.id_equipo_local);
-        const equipoVisitante = mockEquipos.find(e => e.id_equipo === p.id_equipo_visitante);
-        
-        return filteredEquipos.some(fe => 
-          fe.id_equipo === equipoLocal?.id_equipo || 
-          fe.id_equipo === equipoVisitante?.id_equipo
-        );
+
+        const equipoLocal = equipos.find(e => e.id_equipo === p.id_equipo_local);
+        const equipoVisitante = equipos.find(e => e.id_equipo === p.id_equipo_visitante);
+
+        // Manual search filtering
+        const query = searchQuery.toLowerCase();
+        const localNombre = equipoLocal?.nombre?.toLowerCase() || '';
+        const visitanteNombre = equipoVisitante?.nombre?.toLowerCase() || '';
+
+        return localNombre.includes(query) || visitanteNombre.includes(query);
       })
       .map(p => ({
         ...p,
-        equipo_local: mockEquipos.find(e => e.id_equipo === p.id_equipo_local)!,
-        equipo_visitante: mockEquipos.find(e => e.id_equipo === p.id_equipo_visitante)!,
+        equipo_local: equipos.find(e => e.id_equipo === p.id_equipo_local)!,
+        equipo_visitante: equipos.find(e => e.id_equipo === p.id_equipo_visitante)!,
       }))
       .sort((a, b) => {
         const dateA = new Date(`${a.fecha} ${a.hora || '00:00'}`);
         const dateB = new Date(`${b.fecha} ${b.hora || '00:00'}`);
         return dateA.getTime() - dateB.getTime();
       });
-  }, [partidos, searchQuery, filteredEquipos]);
+  }, [partidos, searchQuery, equipos]);
 
   const handleCreateRonda = useCallback(() => {
     console.log('Crear nueva ronda');
@@ -142,8 +154,8 @@ export const FixtureManagementScreen: React.FC<FixtureManagementScreenProps> = (
 
   const handleGenerateFixture = () => {
     // Validar que todos los grupos tengan la misma cantidad de equipos
-    const gruposConEquipos = mockGrupos.map(grupo => {
-      const equiposEnGrupo = mockClasificacion.filter(c => c.id_grupo === grupo.id_grupo);
+    const gruposConEquipos = grupos.map(grupo => {
+      const equiposEnGrupo = clasificaciones.filter(c => c.id_grupo === grupo.id_grupo);
       return {
         grupo: grupo.nombre,
         cantidad: equiposEnGrupo.length,
@@ -276,7 +288,7 @@ export const FixtureManagementScreen: React.FC<FixtureManagementScreenProps> = (
           <View style={styles.partidoDate}>
             <MaterialCommunityIcons name="calendar" size={14} color={colors.textSecondary} />
             <Text style={styles.partidoDateText}>
-              {formatDate(partido.fecha)} {partido.hora && `- ${partido.hora}`}
+              {formatDate(partido.fecha || '')} {partido.hora && `- ${partido.hora}`}
             </Text>
           </View>
           
@@ -389,7 +401,7 @@ export const FixtureManagementScreen: React.FC<FixtureManagementScreenProps> = (
                 <Text style={[styles.rondaNombre, isClosest && styles.rondaNombreClosest]}>
                   {ronda.nombre}
                 </Text>
-                {ronda.es_amistosa && (
+                {ronda.tipo === 'amistosa' && (
                   <View style={styles.amistosaChip}>
                     <MaterialCommunityIcons name="handshake" size={12} color={colors.white} />
                     <Text style={styles.amistosaText}>Amistosa</Text>
@@ -464,7 +476,7 @@ export const FixtureManagementScreen: React.FC<FixtureManagementScreenProps> = (
           value={searchQuery}
           onChangeText={setSearchQuery}
           placeholder="Buscar equipo en fixture..."
-          onClear={clearSearch}
+          onClear={() => setSearchQuery('')}
         />
       </View>
 

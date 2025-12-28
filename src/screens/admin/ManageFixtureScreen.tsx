@@ -12,6 +12,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../../theme/colors';
 import api from '../../api';
+import { Fase } from '../../api/types';
+import { safeAsync } from '../../utils/errorHandling';
 
 export const ManageFixtureScreen = ({ navigation, route }: any) => {
   const { torneo, pais, categoria } = route.params;
@@ -41,29 +43,42 @@ export const ManageFixtureScreen = ({ navigation, route }: any) => {
   }, [selectedCategory]);
 
   const loadData = async () => {
-    try {
-      setLoading(true);
-      
-      // Cargar categorías si no las tenemos
-      if (categorias.length === 0) {
-        const cats = await api.categorias.getByEdition(torneo.id_edicion);
-        setCategorias(cats.map(c => ({
-          ...c.categoria,
-          id_edicion_categoria: c.id_edicion_categoria,
-        })));
+    const result = await safeAsync(
+      async () => {
+        // Cargar categorías si no las tenemos
+        let categoriasData = categorias;
+        if (categorias.length === 0) {
+          const categoriasResponse = await api.categorias.getByEdition(torneo.id_edicion);
+          categoriasData = categoriasResponse.success && categoriasResponse.data
+            ? categoriasResponse.data.map((c: any) => ({
+                ...c.categoria,
+                id_edicion_categoria: c.id_edicion_categoria,
+              }))
+            : [];
+        }
+
+        // Cargar fases de la categoría seleccionada
+        const fasesResponse = await api.fases.list(selectedCategory.id_edicion_categoria);
+        const fasesData = fasesResponse.success && fasesResponse.data
+          ? fasesResponse.data.map((fase: Fase) => ({
+              ...fase,
+              expanded: false,
+            }))
+          : [];
+
+        return { categorias: categoriasData, fases: fasesData };
+      },
+      'ManageFixtureScreen - loadData',
+      { fallbackValue: { categorias: [], fases: [] } }
+    );
+
+    if (result) {
+      if (result.categorias.length > 0 && categorias.length === 0) {
+        setCategorias(result.categorias);
       }
-      
-      // Cargar fases de la categoría seleccionada
-      const fasesData = await api.competition.getPhases(selectedCategory.id_edicion_categoria);
-      setFases(fasesData.map(fase => ({
-        ...fase,
-        expanded: false,
-      })));
-    } catch (error) {
-      console.error('Error cargando datos:', error);
-    } finally {
-      setLoading(false);
+      setFases(result.fases);
     }
+    setLoading(false);
   };
 
   const handleCategorySelect = (cat: any) => {

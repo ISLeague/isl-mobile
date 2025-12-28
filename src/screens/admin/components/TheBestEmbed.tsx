@@ -41,19 +41,19 @@ export const TheBestEmbed: React.FC<TheBestEmbedProps> = ({ navigation, idEdicio
       // Fetch top scorers
       const goleadoresResponse = await api.estadisticas.goleadores(idEdicionCategoria, 10);
       if (goleadoresResponse.success && goleadoresResponse.data) {
-        setGoleadores(goleadoresResponse.data);
+        setGoleadores(goleadoresResponse.data.goleadores || []);
       }
 
       // Fetch top assists
       const asistenciasResponse = await api.estadisticas.asistencias(idEdicionCategoria, 10);
       if (asistenciasResponse.success && asistenciasResponse.data) {
-        setAsistencias(asistenciasResponse.data);
+        setAsistencias(asistenciasResponse.data.asistencias || []);
       }
 
       // Fetch team statistics
       const equiposResponse = await api.estadisticas.equiposGlobal(idEdicionCategoria);
       if (equiposResponse.success && equiposResponse.data) {
-        setEstadisticasEquipos(equiposResponse.data);
+        setEstadisticasEquipos(equiposResponse.data.estadisticas || []);
       }
     } catch (error) {
       console.error('Error loading statistics:', error);

@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../../theme/colors';
-import { Grupo } from '../../../types';
+import { Grupo } from '../../../api/types';
 import { SearchBar } from '../../../components/common';
 import { useSearch } from '../../../hooks';
 

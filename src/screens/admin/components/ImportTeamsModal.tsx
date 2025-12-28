@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../../theme/colors';
-import { Equipo, Grupo } from '../../../types';
+import { Equipo, Grupo } from '../../../api/types';
 
 interface Jugador {
   nombre: string;

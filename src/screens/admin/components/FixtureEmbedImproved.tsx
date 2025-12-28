@@ -17,12 +17,11 @@ import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { colors } from '../../../theme/colors';
 import { useToast } from '../../../contexts/ToastContext';
-import { Ronda, Partido, Equipo } from '../../../types';
-import { mockRondas, mockPartidos, mockEquipos, mockCanchas, mockLocales } from '../../../data/mockData';
+import { Ronda, Partido, Equipo } from '../../../api/types';
 import { SearchBar, FAB } from '../../../components/common';
-import { useSearch } from '../../../hooks';
 import { formatDate } from '../../../utils/formatters';
 import { safeAsync, getUserFriendlyMessage } from '../../../utils/errorHandling';
+import api from '../../../api';
 
 interface FixtureEmbedImprovedProps {
   navigation: any;
@@ -38,29 +37,36 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
   const { showError, showInfo } = useToast();
   const [rondas, setRondas] = useState<Ronda[]>([]);
   const [partidos, setPartidos] = useState<Partido[]>([]);
+  const [equipos, setEquipos] = useState<Equipo[]>([]);
   const [expandedRondas, setExpandedRondas] = useState<{ [key: number]: boolean }>({});
   const [loading, setLoading] = useState(true);
-
-  const {
-    searchQuery,
-    setSearchQuery,
-    filteredData: filteredEquipos,
-    clearSearch,
-  } = useSearch(mockEquipos, 'nombre');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const loadData = useCallback(async () => {
     setLoading(true);
     const result = await safeAsync(
       async () => {
-        // Filtrar solo rondas de fase_grupos y amistosa (sin eliminatorias)
-        const sortedRondas: Ronda[] = [...mockRondas]
+        // Load rondas from API
+        const rondasResponse = await api.rondas.list();
+        const allRondas = rondasResponse.success && rondasResponse.data ? rondasResponse.data : [];
+
+        // Filter only fase_grupos and amistosa (no knockout rounds)
+        const sortedRondas: Ronda[] = allRondas
           .filter((r: Ronda) => r.tipo === 'fase_grupos' || r.tipo === 'amistosa')
-          .sort((a, b) => b.orden - a.orden); // Rondas en orden descendente
-        
+          .sort((a: Ronda, b: Ronda) => b.orden - a.orden);
+
+        // Load partidos from API
+        const partidosResponse = await api.partidos.list();
+        const allPartidos = partidosResponse.success && partidosResponse.data ? partidosResponse.data : [];
+
+        // Load equipos from API
+        const equiposResponse = await api.equipos.list(idEdicionCategoria || 1);
+        const allEquipos = equiposResponse.success && equiposResponse.data ? equiposResponse.data : [];
+
         const today = new Date();
         let closestRondaId: number | null = null;
         let minDiff = Infinity;
-        
+
         sortedRondas.forEach((ronda: Ronda) => {
           const rondaDate = new Date(ronda.fecha_inicio);
           const diff = Math.abs(rondaDate.getTime() - today.getTime());
@@ -69,23 +75,24 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
             closestRondaId = ronda.id_ronda;
           }
         });
-        
-        return { sortedRondas, closestRondaId, partidos: mockPartidos };
+
+        return { sortedRondas, closestRondaId, partidos: allPartidos, equipos: allEquipos };
       },
       'loadFixtureData',
       {
         severity: 'high',
-        fallbackValue: { sortedRondas: [], closestRondaId: null, partidos: [] },
+        fallbackValue: { sortedRondas: [], closestRondaId: null, partidos: [], equipos: [] },
         onError: (error) => {
           showError(getUserFriendlyMessage(error), 'Error al cargar fixture');
         }
       }
     );
-    
+
     if (result) {
       setRondas(result.sortedRondas);
       setPartidos(result.partidos);
-      
+      setEquipos(result.equipos);
+
       if (result.closestRondaId !== null) {
         setExpandedRondas({ [result.closestRondaId]: true });
       }
@@ -108,29 +115,30 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
     return partidos
       .filter(p => {
         if (p.id_ronda !== rondaId) return false;
-        
+
         if (!searchQuery) return true;
-        
-        const equipoLocal = mockEquipos.find(e => e.id_equipo === p.id_equipo_local);
-        const equipoVisitante = mockEquipos.find(e => e.id_equipo === p.id_equipo_visitante);
-        
-        return filteredEquipos.some(fe => 
-          fe.id_equipo === equipoLocal?.id_equipo || 
-          fe.id_equipo === equipoVisitante?.id_equipo
+
+        const equipoLocal = equipos.find(e => e.id_equipo === p.id_equipo_local);
+        const equipoVisitante = equipos.find(e => e.id_equipo === p.id_equipo_visitante);
+
+        const queryLower = searchQuery.toLowerCase();
+        return (
+          equipoLocal?.nombre?.toLowerCase().includes(queryLower) ||
+          equipoVisitante?.nombre?.toLowerCase().includes(queryLower)
         );
       })
       .map(p => ({
         ...p,
-        equipo_local: mockEquipos.find(e => e.id_equipo === p.id_equipo_local)!,
-        equipo_visitante: mockEquipos.find(e => e.id_equipo === p.id_equipo_visitante)!,
-        cancha: mockCanchas.find(c => c.id_cancha === p.id_cancha),
+        equipo_local: equipos.find(e => e.id_equipo === p.id_equipo_local)!,
+        equipo_visitante: equipos.find(e => e.id_equipo === p.id_equipo_visitante)!,
+        cancha: undefined, // TODO: Load cancha data from API when available
       }))
       .sort((a, b) => {
-        const dateA = new Date(`${a.fecha} ${a.hora || '00:00'}`);
-        const dateB = new Date(`${b.fecha} ${b.hora || '00:00'}`);
+        const dateA = new Date(a.fecha_hora || '');
+        const dateB = new Date(b.fecha_hora || '');
         return dateB.getTime() - dateA.getTime();
       });
-  }, [partidos, searchQuery, filteredEquipos]);
+  }, [partidos, searchQuery, equipos]);
 
   const handleEditPartido = (partido: Partido) => {
     navigation.navigate('EditPartido', { partido });
@@ -175,7 +183,7 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
         <View style={styles.partidoHeader}>
           <View style={styles.partidoInfo}>
             <MaterialCommunityIcons name="calendar" size={14} color={colors.textSecondary} />
-            <Text style={styles.fechaText}>{formatDate(partido.fecha)}</Text>
+            <Text style={styles.fechaText}>{formatDate(partido.fecha || partido.fecha_hora)}</Text>
             {partido.hora && (
               <>
                 <MaterialCommunityIcons name="clock" size={14} color={colors.textSecondary} style={{ marginLeft: 8 }} />
@@ -190,17 +198,7 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
           )}
         </View>
 
-        {partido.cancha && (
-          <View style={styles.canchaContainer}>
-            <MaterialCommunityIcons name="soccer-field" size={14} color={colors.textSecondary} />
-            <View style={styles.canchaTextContainer}>
-              <Text style={styles.canchaLocalText}>
-                {mockLocales.find(l => l.id_local === partido.cancha!.id_local)?.nombre || 'Local'}
-              </Text>
-              <Text style={styles.canchaText}>{partido.cancha.nombre}</Text>
-            </View>
-          </View>
-        )}
+        {/* TODO: Show cancha info when API is available */}
 
         <View style={styles.equiposContainer}>
           <View style={styles.equipoRow}>
@@ -638,7 +636,7 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
         value={searchQuery}
         onChangeText={setSearchQuery}
         placeholder="Buscar equipo..."
-        onClear={clearSearch}
+        onClear={() => setSearchQuery('')}
       />
 
       <FlatList

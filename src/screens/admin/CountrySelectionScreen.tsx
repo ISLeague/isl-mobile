@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../../theme/colors';
 import { Button } from '../../components/common/Button';
 import api from '../../api';
-import { Pais } from '../../types';
+import { Pais } from '../../api/types';
 import { useAuth } from '../../contexts/AuthContext';
 
 export const CountrySelectionScreen = ({ navigation }: any) => {
@@ -67,6 +67,7 @@ export const CountrySelectionScreen = ({ navigation }: any) => {
     const newCountry: Pais = {
       id_pais: paises.length + 1,
       nombre: newCountryName,
+      codigo_iso: '',
       emoji: newCountryEmoji || '🌎',
     };
 

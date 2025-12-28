@@ -15,9 +15,7 @@ import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Card, SearchBar, FAB } from '../../../components/common';
 import { colors } from '../../../theme/colors';
-import { Grupo, Clasificacion, Equipo } from '../../../types';
-import { mockEquipos } from '../../../data/mockData';
-import { useSearch } from '../../../hooks';
+import { Grupo, Clasificacion, Equipo } from '../../../api/types';
 import { AddTeamToGroupModal } from './AddTeamToGroupModal';
 import { MoveTeamToGroupModal } from './MoveTeamToGroupModal';
 import ImportTeamsModal from './ImportTeamsModal';
@@ -28,28 +26,29 @@ interface GroupStageEmbedProps {
   navigation: any;
   isAdmin?: boolean;
   idFase?: number;
+  idEdicionCategoria?: number;
 }
 
 // Función helper para determinar el color de clasificación basado en la posición y configuración del grupo
 const getClasificacionColor = (posicion: number, grupo: Grupo) => {
   const equiposOro = grupo.equipos_pasan_oro || 0;
   const equiposPlata = grupo.equipos_pasan_plata || 0;
-  
+
   // Primeras posiciones van a Oro (dorado)
   if (posicion <= equiposOro) {
     return '#FFD700'; // Dorado
   }
-  
+
   // Siguientes posiciones van a Plata (plateado)
   if (posicion <= equiposOro + equiposPlata) {
     return '#C0C0C0'; // Plateado
   }
-  
+
   // Resto de equipos (no clasifican) - gris muy claro casi blanco
   return '#F5F5F5';
 };
 
-export const GroupStageEmbed: React.FC<GroupStageEmbedProps> = ({ navigation, isAdmin = false, idFase }) => {
+export const GroupStageEmbed: React.FC<GroupStageEmbedProps> = ({ navigation, isAdmin = false, idFase, idEdicionCategoria }) => {
   const [grupos, setGrupos] = useState<Grupo[]>([]);
   const [clasificaciones, setClasificaciones] = useState<{ [grupoId: number]: (Clasificacion & { equipo: Equipo })[] }>({});
   const [loading, setLoading] = useState(true);
@@ -59,14 +58,8 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps> = ({ navigation, is
   const [importTeamsModalVisible, setImportTeamsModalVisible] = useState(false);
   const [selectedGrupoId, setSelectedGrupoId] = useState<number | null>(null);
   const [selectedClasificacion, setSelectedClasificacion] = useState<(Clasificacion & { equipo: Equipo }) | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const { showSuccess, showError, showWarning } = useToast();
-
-  const {
-    searchQuery,
-    setSearchQuery,
-    filteredData: filteredEquipos,
-    clearSearch,
-  } = useSearch(mockEquipos, 'nombre');
 
   const loadGruposAndClasificacion = useCallback(async () => {
     if (!idFase) {
@@ -198,7 +191,7 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps> = ({ navigation, is
     setImportTeamsModalVisible(true);
   };
 
-  const handleConfirmImport = (teams: Partial<Equipo>[], grupoId: number) => {
+  const handleConfirmImport = (teams: Array<Partial<Equipo> & { jugadores?: any[] }>, grupoId: number) => {
     const grupo = grupos.find(g => g.id_grupo === grupoId);
     console.log('Importar equipos:', teams, 'al grupo', grupo?.nombre);
     // TODO: Llamar a la API para crear equipos e importarlos al grupo
@@ -215,7 +208,8 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps> = ({ navigation, is
       .filter((c) => {
         // Filtrar por búsqueda si hay query
         if (!searchQuery) return true;
-        return filteredEquipos.some(fe => fe.id_equipo === c.equipo?.id_equipo);
+        const equipoNombre = c.equipo?.nombre?.toLowerCase() || '';
+        return equipoNombre.includes(searchQuery.toLowerCase());
       })
       .sort((a, b) => a.posicion - b.posicion);
   };
@@ -494,7 +488,7 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps> = ({ navigation, is
           value={searchQuery}
           onChangeText={setSearchQuery}
           placeholder="Buscar equipo en grupos..."
-          onClear={clearSearch}
+          onClear={() => setSearchQuery('')}
         />
       </View>
 
@@ -536,6 +530,7 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps> = ({ navigation, is
           grupoNombre={grupos.find(g => g.id_grupo === selectedGrupoId)?.nombre || ''}
           equiposEnGrupo={getEquiposByGrupo(selectedGrupoId).map(c => c.id_equipo)}
           onAddTeam={handleAddTeam}
+          idEdicionCategoria={idEdicionCategoria || 1}
         />
       )}
 

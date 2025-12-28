@@ -18,7 +18,7 @@ export { estadisticasService } from './services/estadisticas.service';
 export { fasesService } from './services/fases.service';
 export { gruposService } from './services/grupos.service';
 export { jugadoresService } from './services/jugadores.service';
-export { localesService } from './services/locales.service';
+export { localesService, canchasService } from './services/locales.service';
 export { notificacionesService } from './services/notificaciones.service';
 export { paisesService } from './services/paises.service';
 export { partidosService } from './services/partidos.service';
@@ -44,7 +44,7 @@ import { estadisticasService } from './services/estadisticas.service';
 import { fasesService } from './services/fases.service';
 import { gruposService } from './services/grupos.service';
 import { jugadoresService } from './services/jugadores.service';
-import { localesService } from './services/locales.service';
+import { localesService, canchasService } from './services/locales.service';
 import { notificacionesService } from './services/notificaciones.service';
 import { paisesService } from './services/paises.service';
 import { partidosService } from './services/partidos.service';
@@ -81,6 +81,7 @@ export const api = {
   grupos: gruposService,
   jugadores: jugadoresService,
   locales: localesService,
+  canchas: canchasService,
   notificaciones: notificacionesService,
   paises: paisesService,
   partidos: partidosService,
@@ -98,4 +99,3 @@ export const api = {
 export default api;
 
 // También exportar mockApi para testing
-export { mockApi } from './mockApi';

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,11 +13,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import { Button, Modal, SearchBar } from '../../components/common';
-import { Equipo, Partido } from '../../types';
-import { mockEquipos, mockGrupos, mockClasificacion } from '../../data/mockData';
-import { useSearch } from '../../hooks';
+import { Equipo, Clasificacion, Grupo } from '../../api/types';
 import { generarPartidosAmistososAutomaticos } from '../../utils/fixtureGenerator';
 import { useToast } from '../../contexts/ToastContext';
+import api from '../../api';
+import { safeAsync } from '../../utils/errorHandling';
 
 interface CreateRondaAmistosaScreenProps {
   navigation: any;
@@ -36,12 +36,12 @@ interface PartidoAmistoso {
 export const CreateRondaAmistosaScreen: React.FC<CreateRondaAmistosaScreenProps> = ({ navigation, route }) => {
   const { idEdicionCategoria } = route.params || {};
   const { showSuccess, showError, showInfo } = useToast();
-  
+
   const [nombre, setNombre] = useState('Amistosos - Fecha 1');
   const [fechaInicio, setFechaInicio] = useState('');
   const [partidos, setPartidos] = useState<PartidoAmistoso[]>([]);
   const [showAddPartidoModal, setShowAddPartidoModal] = useState(false);
-  
+
   // Estados para agregar partido
   const [selectedLocal, setSelectedLocal] = useState<Equipo | null>(null);
   const [selectedVisitante, setSelectedVisitante] = useState<Equipo | null>(null);
@@ -49,36 +49,63 @@ export const CreateRondaAmistosaScreen: React.FC<CreateRondaAmistosaScreenProps>
   const [horaPartido, setHoraPartido] = useState('');
   const [selectingTeamFor, setSelectingTeamFor] = useState<'local' | 'visitante' | null>(null);
 
-  const {
-    searchQuery: searchQueryLocal,
-    setSearchQuery: setSearchQueryLocal,
-    filteredData: filteredEquiposLocal,
-    clearSearch: clearSearchLocal,
-  } = useSearch(mockEquipos, 'nombre');
+  // Estados para datos de API
+  const [equipos, setEquipos] = useState<Equipo[]>([]);
+  const [clasificaciones, setClasificaciones] = useState<Clasificacion[]>([]);
+  const [grupos, setGrupos] = useState<Grupo[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const {
-    searchQuery: searchQueryVisitante,
-    setSearchQuery: setSearchQueryVisitante,
-    filteredData: filteredEquiposVisitante,
-    clearSearch: clearSearchVisitante,
-  } = useSearch(mockEquipos, 'nombre');
+  // Estados para búsqueda manual
+  const [searchQueryLocal, setSearchQueryLocal] = useState('');
+  const [searchQueryVisitante, setSearchQueryVisitante] = useState('');
+
+  // Load data from API
+  useEffect(() => {
+    const loadData = async () => {
+      if (!idEdicionCategoria) {
+        setLoading(false);
+        return;
+      }
+
+      const result = await safeAsync(
+        async () => {
+          const equiposResponse = await api.equipos.list(idEdicionCategoria);
+          const equiposData = equiposResponse.success && equiposResponse.data ? equiposResponse.data : [];
+
+          // TODO: Load grupos and clasificaciones when available
+          return { equipos: equiposData, grupos: [], clasificaciones: [] };
+        },
+        'CreateRondaAmistosaScreen - loadData',
+        { fallbackValue: { equipos: [], grupos: [], clasificaciones: [] } }
+      );
+
+      if (result) {
+        setEquipos(result.equipos);
+        setGrupos(result.grupos);
+        setClasificaciones(result.clasificaciones);
+      }
+      setLoading(false);
+    };
+
+    loadData();
+  }, [idEdicionCategoria]);
 
   // Obtener equipos de diferentes grupos para amistosos (memoizado)
   const getEquiposDisponiblesParaAmistosos = useCallback((equipoSeleccionado?: Equipo): Equipo[] => {
-    if (!equipoSeleccionado) return mockEquipos;
-    
+    if (!equipoSeleccionado) return equipos;
+
     // Encontrar el grupo del equipo seleccionado
-    const clasificacion = mockClasificacion.find(c => c.id_equipo === equipoSeleccionado.id_equipo);
-    if (!clasificacion) return mockEquipos;
-    
+    const clasificacion = clasificaciones.find(c => c.id_equipo === equipoSeleccionado.id_equipo);
+    if (!clasificacion) return equipos;
+
     // Filtrar equipos que NO están en el mismo grupo
-    const equiposOtrosGrupos = mockEquipos.filter(equipo => {
-      const clasifEquipo = mockClasificacion.find(c => c.id_equipo === equipo.id_equipo);
+    const equiposOtrosGrupos = equipos.filter(equipo => {
+      const clasifEquipo = clasificaciones.find(c => c.id_equipo === equipo.id_equipo);
       return clasifEquipo && clasifEquipo.id_grupo !== clasificacion.id_grupo;
     });
-    
+
     return equiposOtrosGrupos;
-  }, []);
+  }, [equipos, clasificaciones]);
 
   // Generar automáticamente partidos amistosos
   const handleGenerarAutomaticamente = () => {
@@ -93,9 +120,9 @@ export const CreateRondaAmistosaScreen: React.FC<CreateRondaAmistosaScreenProps>
           onPress: () => {
             try {
               const partidosGenerados = generarPartidosAmistososAutomaticos(
-                mockGrupos,
-                mockClasificacion,
-                mockEquipos,
+                grupos,
+                clasificaciones,
+                equipos,
                 fechaInicio || '2025-01-01'
               );
 
@@ -234,7 +261,7 @@ export const CreateRondaAmistosaScreen: React.FC<CreateRondaAmistosaScreenProps>
   };
 
   const getEquipoById = (id: number): Equipo | undefined => {
-    return mockEquipos.find(e => e.id_equipo === id);
+    return equipos.find(e => e.id_equipo === id);
   };
 
   const renderPartidoItem = (partido: PartidoAmistoso) => {
@@ -291,15 +318,20 @@ export const CreateRondaAmistosaScreen: React.FC<CreateRondaAmistosaScreenProps>
     const selectedEquipo = isLocal ? selectedLocal : selectedVisitante;
     const searchQuery = isLocal ? searchQueryLocal : searchQueryVisitante;
     const setSearchQuery = isLocal ? setSearchQueryLocal : setSearchQueryVisitante;
-    const filteredEquipos = isLocal ? filteredEquiposLocal : filteredEquiposVisitante;
-    const clearSearch = isLocal ? clearSearchLocal : clearSearchVisitante;
     const otherTeam = isLocal ? selectedVisitante : selectedLocal;
-    
+
     // Filtrar equipos disponibles basado en reglas de amistosos
     const equiposDisponibles = getEquiposDisponiblesParaAmistosos(otherTeam || undefined);
-    const equiposFiltrados = filteredEquipos.filter(e => 
-      equiposDisponibles.some(ed => ed.id_equipo === e.id_equipo) &&
-      (!otherTeam || e.id_equipo !== otherTeam.id_equipo)
+
+    // Manual search filtering
+    const filteredEquipos = equiposDisponibles.filter((e: Equipo) => {
+      if (!searchQuery) return true;
+      const equipoNombre = e.nombre?.toLowerCase() || '';
+      return equipoNombre.includes(searchQuery.toLowerCase());
+    });
+
+    const equiposFiltrados = filteredEquipos.filter((e: Equipo) =>
+      !otherTeam || e.id_equipo !== otherTeam.id_equipo
     );
 
     return (
@@ -328,9 +360,9 @@ export const CreateRondaAmistosaScreen: React.FC<CreateRondaAmistosaScreenProps>
               value={searchQuery}
               onChangeText={setSearchQuery}
               placeholder="Buscar equipo..."
-              onClear={clearSearch}
+              onClear={() => setSearchQuery('')}
             />
-            
+
             <ScrollView style={styles.teamList} nestedScrollEnabled>
               {equiposFiltrados.map(equipo => (
                 <TouchableOpacity
@@ -339,10 +371,10 @@ export const CreateRondaAmistosaScreen: React.FC<CreateRondaAmistosaScreenProps>
                   onPress={() => {
                     if (isLocal) {
                       setSelectedLocal(equipo);
-                      clearSearchLocal();
+                      setSearchQueryLocal('');
                     } else {
                       setSelectedVisitante(equipo);
-                      clearSearchVisitante();
+                      setSearchQueryVisitante('');
                     }
                   }}
                 >
@@ -473,8 +505,8 @@ export const CreateRondaAmistosaScreen: React.FC<CreateRondaAmistosaScreenProps>
           setSelectedVisitante(null);
           setFechaPartido('');
           setHoraPartido('');
-          clearSearchLocal();
-          clearSearchVisitante();
+          setSearchQueryLocal('');
+          setSearchQueryVisitante('');
         }}
         title="Agregar Partido Amistoso"
         fullHeight

@@ -12,9 +12,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Card, SearchBar, Modal } from '../../../components/common';
 import { colors } from '../../../theme/colors';
-import { useTeamFollow, useSearch } from '../../../hooks';
-import { mockEquipos, mockClasificacion } from '../../../data/mockData';
+import { useTeamFollow } from '../../../hooks';
 import { useAuth } from '../../../contexts/AuthContext';
+import { Equipo, Clasificacion } from '../../../api/types';
+import { safeAsync } from '../../../utils/errorHandling';
+import api from '../../../api';
 
 interface MyTeamEmbedProps {
   navigation: any;
@@ -25,13 +27,43 @@ export const MyTeamEmbed: React.FC<MyTeamEmbedProps> = ({ navigation, edicionCat
   const { isGuest } = useAuth();
   const { followedTeam, loading, followTeam } = useTeamFollow(edicionCategoriaId);
   const [showSearchModal, setShowSearchModal] = useState(false);
-  
-  const {
-    searchQuery,
-    setSearchQuery,
-    filteredData: filteredEquipos,
-    clearSearch,
-  } = useSearch(mockEquipos, 'nombre');
+  const [equipos, setEquipos] = useState<Equipo[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [clasificaciones, setClasificaciones] = useState<Clasificacion[]>([]);
+
+  // Load equipos and clasificaciones from API
+  useEffect(() => {
+    const loadData = async () => {
+      const result = await safeAsync(
+        async () => {
+          const equiposResponse = await api.equipos.list(edicionCategoriaId);
+          const equiposData = equiposResponse.success && equiposResponse.data ? equiposResponse.data : [];
+
+          // TODO: Load clasificaciones from API when grupo ID is available
+          // For now, we'll leave it empty as we don't have a direct endpoint
+          return { equipos: equiposData, clasificaciones: [] };
+        },
+        'MyTeamEmbed - loadData',
+        {
+          fallbackValue: { equipos: [], clasificaciones: [] },
+        }
+      );
+
+      if (result) {
+        setEquipos(result.equipos);
+        setClasificaciones(result.clasificaciones);
+      }
+    };
+
+    loadData();
+  }, [edicionCategoriaId]);
+
+  // Manual search filtering
+  const filteredEquipos = equipos.filter(equipo => {
+    if (!searchQuery) return true;
+    const equipoNombre = equipo.nombre?.toLowerCase() || '';
+    return equipoNombre.includes(searchQuery.toLowerCase());
+  });
 
   // Si es invitado, mostrar mensaje
   if (isGuest) {
@@ -70,10 +102,10 @@ export const MyTeamEmbed: React.FC<MyTeamEmbedProps> = ({ navigation, edicionCat
     }
   }, [followedTeam]);
 
-  const handleSelectTeam = async (equipo: typeof mockEquipos[0]) => {
+  const handleSelectTeam = async (equipo: Equipo) => {
     // Cerrar el modal primero
     setShowSearchModal(false);
-    clearSearch();
+    setSearchQuery('');
     // Luego actualizar el equipo
     await followTeam(equipo);
   };
@@ -123,7 +155,7 @@ export const MyTeamEmbed: React.FC<MyTeamEmbedProps> = ({ navigation, edicionCat
           visible={showSearchModal}
           onClose={() => {
             setShowSearchModal(false);
-            clearSearch();
+            setSearchQuery('');
           }}
           title="Buscar Equipo"
         >
@@ -132,7 +164,7 @@ export const MyTeamEmbed: React.FC<MyTeamEmbedProps> = ({ navigation, edicionCat
               value={searchQuery}
               onChangeText={setSearchQuery}
               placeholder="Buscar equipo..."
-              onClear={clearSearch}
+              onClear={() => setSearchQuery('')}
             />
 
             <ScrollView style={styles.modalList} showsVerticalScrollIndicator={false}>
@@ -168,7 +200,8 @@ export const MyTeamEmbed: React.FC<MyTeamEmbedProps> = ({ navigation, edicionCat
   };
 
   // Obtener estadísticas del equipo
-  const teamStats = mockClasificacion.find(c => c.id_equipo === followedTeam.id_equipo) || {
+  // TODO: Load team stats from clasificacion API when available
+  const teamStats = clasificaciones.find(c => c.id_equipo === followedTeam.id_equipo) || {
     pj: 0,
     gf: 0,
     puntos: 0,
@@ -238,7 +271,7 @@ export const MyTeamEmbed: React.FC<MyTeamEmbedProps> = ({ navigation, edicionCat
         visible={showSearchModal}
         onClose={() => {
           setShowSearchModal(false);
-          clearSearch();
+          setSearchQuery('');
         }}
         title="Cambiar Equipo"
       >
@@ -247,7 +280,7 @@ export const MyTeamEmbed: React.FC<MyTeamEmbedProps> = ({ navigation, edicionCat
             value={searchQuery}
             onChangeText={setSearchQuery}
             placeholder="Buscar equipo..."
-            onClear={clearSearch}
+            onClear={() => setSearchQuery('')}
           />
 
           <ScrollView style={styles.modalList} showsVerticalScrollIndicator={false}>

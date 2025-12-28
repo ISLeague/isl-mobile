@@ -5,7 +5,17 @@ import { GradientHeader, Card } from '../../components/common';
 import { colors } from '../../theme/colors';
 import { useAuth } from '../../contexts/AuthContext';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import { Torneo, Edicion, Usuario } from '../../types';
+import { Torneo, Edicion } from '../../api/types';
+
+// Extended user interface with admin-specific properties
+interface UsuarioAdmin {
+  id_usuario?: number;
+  email?: string;
+  rol?: string;
+  id_pais?: number;
+  torneos?: Torneo[];
+  ediciones?: Edicion[];
+}
 
 interface TournamentAdminDashboardScreenProps {
   navigation: any;
@@ -13,6 +23,7 @@ interface TournamentAdminDashboardScreenProps {
 
 export const TournamentAdminDashboardScreen: React.FC<TournamentAdminDashboardScreenProps> = ({ navigation }) => {
   const { usuario, suplantarIdentidad, usuarioReal } = useAuth();
+  const usuarioAdmin = usuario as UsuarioAdmin;
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -23,7 +34,6 @@ export const TournamentAdminDashboardScreen: React.FC<TournamentAdminDashboardSc
   const handleTournamentPress = (torneo: Torneo, edicion: Edicion) => {
     navigation.navigate('TournamentCategories', {
       torneo,
-      pais: torneo.pais,
     });
   };
 
@@ -35,7 +45,7 @@ export const TournamentAdminDashboardScreen: React.FC<TournamentAdminDashboardSc
 
   const handleVerComoFan = () => {
     if (!usuario) return;
-    
+
     // Si ya está suplantando, no hacer nada (ya es fan)
     if (usuarioReal) {
       navigation.navigate('Main', {
@@ -43,19 +53,19 @@ export const TournamentAdminDashboardScreen: React.FC<TournamentAdminDashboardSc
       });
       return;
     }
-    
+
     // Crear un usuario fan temporal para suplantar
-    const fanTemporal: Usuario = {
+    const fanTemporal = {
       id_usuario: 999999, // ID temporal
-      email: `fan.temporal.${usuario.id_usuario}@isl.com`,
+      email: `fan.temporal.${usuarioAdmin.id_usuario}@isl.com`,
       rol: 'fan',
-      id_pais: usuario.id_pais || 0,
-      id_admin_suplantando: usuario.id_usuario,
+      id_pais: usuarioAdmin.id_pais || 0,
+      id_admin_suplantando: usuarioAdmin.id_usuario,
     };
-    
+
     // Usar suplantarIdentidad para cambiar el contexto
     suplantarIdentidad(fanTemporal.id_usuario);
-    
+
     // Actualizar el usuario manualmente para que sea fan
     // (Esto es temporal hasta que la API real maneje la suplantación)
     setTimeout(() => {
@@ -65,7 +75,7 @@ export const TournamentAdminDashboardScreen: React.FC<TournamentAdminDashboardSc
     }, 100);
   };
 
-  if (!usuario?.torneos || usuario.torneos.length === 0) {
+  if (!usuarioAdmin?.torneos || usuarioAdmin.torneos.length === 0) {
     return (
       <SafeAreaView style={styles.container} edges={['bottom']}>
         <GradientHeader
@@ -107,15 +117,15 @@ export const TournamentAdminDashboardScreen: React.FC<TournamentAdminDashboardSc
         <View style={styles.welcomeSection}>
           <Text style={styles.welcomeText}>¡Hola, Admin!</Text>
           <Text style={styles.subtitleText}>
-            Tienes {usuario.torneos.length} {usuario.torneos.length === 1 ? 'torneo asignado' : 'torneos asignados'}
+            Tienes {usuarioAdmin.torneos?.length || 0} {usuarioAdmin.torneos?.length === 1 ? 'torneo asignado' : 'torneos asignados'}
           </Text>
         </View>
 
         <View style={styles.tournamentsSection}>
           <Text style={styles.sectionTitle}>Tus Torneos</Text>
-          
-          {usuario.torneos.map((torneo: Torneo, index: number) => {
-            const edicion = usuario.ediciones?.[index];
+
+          {usuarioAdmin.torneos?.map((torneo: Torneo, index: number) => {
+            const edicion = usuarioAdmin.ediciones?.[index];
             if (!edicion) return null;
 
             return (
@@ -132,12 +142,6 @@ export const TournamentAdminDashboardScreen: React.FC<TournamentAdminDashboardSc
                     <View style={styles.tournamentInfo}>
                       <Text style={styles.tournamentName}>{torneo.nombre}</Text>
                       <Text style={styles.editionText}>Edición {edicion.numero}</Text>
-                      {torneo.pais && (
-                        <View style={styles.countryRow}>
-                          <Text style={styles.countryEmoji}>{torneo.pais.emoji}</Text>
-                          <Text style={styles.countryName}>{torneo.pais.nombre}</Text>
-                        </View>
-                      )}
                     </View>
                     <MaterialCommunityIcons name="chevron-right" size={24} color={colors.textSecondary} />
                   </View>

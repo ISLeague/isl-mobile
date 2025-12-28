@@ -12,7 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import { Button, ImagePickerInput } from '../../components/common';
-import { Equipo } from '../../types';
+import { Equipo } from '../../api/types';
 
 interface EditTeamScreenProps {
   navigation: any;

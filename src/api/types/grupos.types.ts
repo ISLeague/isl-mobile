@@ -2,12 +2,16 @@
 // 🏆 GRUPOS TYPES
 // ============================================
 
+import type { Equipo } from './equipos.types';
+
 export interface Grupo {
   id_grupo: number;
   nombre: string;
   id_fase: number;
   cantidad_equipos: number;
   orden: number;
+  equipos_pasan_oro?: number;
+  equipos_pasan_plata?: number;
   created_at?: string;
   updated_at?: string;
 }
@@ -48,6 +52,24 @@ export interface GenerarFixtureResponse {
   partidos_generados: number;
   rondas: number;
   partidos: PartidoGenerado[];
+}
+
+// Tipo para una fila de clasificación con datos del equipo
+export interface Clasificacion {
+  id_clasificacion: number;
+  id_equipo: number;
+  id_grupo: number;
+  posicion: number;
+  puntos: number;
+  pj: number;
+  pg: number;
+  pe: number;
+  pp: number;
+  gf: number;
+  gc: number;
+  dif: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface ClasificacionEquipo {
@@ -108,8 +130,13 @@ export interface GenerarFixtureApiResponse {
   timestamp: string;
 }
 
+export interface ClasificacionConEquipo {
+  clasificacion: Clasificacion;
+  equipo: Equipo;
+}
+
 export interface ClasificacionApiResponse {
   success: boolean;
-  data: ClasificacionResponse;
+  data: ClasificacionConEquipo[];
   timestamp: string;
 }

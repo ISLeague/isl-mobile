@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, Alert, ScrollView } from 'react-native';
 import { GradientHeader, Input, Button } from '../../components/common';
 import { colors } from '../../theme/colors';
-import { Pais } from '../../types';
+import { Pais } from '../../api/types';
 
 interface EditCountryScreenProps {
   navigation: any;

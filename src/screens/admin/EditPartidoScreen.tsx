@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -15,9 +15,9 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import { useToast } from '../../contexts/ToastContext';
 import { Button } from '../../components/common';
-import { Partido, Equipo } from '../../types';
-import { mockEquipos, mockCanchas, mockLocales } from '../../data/mockData';
+import { Partido, Equipo, Local, Cancha } from '../../api/types';
 import { safeAsync, getUserFriendlyMessage } from '../../utils/errorHandling';
+import api from '../../api';
 
 interface EditPartidoScreenProps {
   navigation: any;
@@ -28,14 +28,17 @@ export const EditPartidoScreen: React.FC<EditPartidoScreenProps> = ({ navigation
   const { partido } = route.params as { partido: Partido };
   const { showSuccess, showError, showWarning } = useToast();
 
+  // Estados para datos de API
+  const [equipos, setEquipos] = useState<Equipo[]>([]);
+  const [locales, setLocales] = useState<Local[]>([]);
+  const [canchas, setCanchas] = useState<Cancha[]>([]);
+  const [dataLoading, setDataLoading] = useState(true);
+
   const [equipoLocalId, setEquipoLocalId] = useState(partido.id_equipo_local);
   const [equipoVisitanteId, setEquipoVisitanteId] = useState(partido.id_equipo_visitante);
-  const [fecha, setFecha] = useState(partido.fecha);
+  const [fecha, setFecha] = useState(partido.fecha || '');
   const [hora, setHora] = useState(partido.hora || '');
-  
-  // Inicializar localId basándose en la cancha del partido
-  const canchaInicial = partido.id_cancha ? mockCanchas.find(c => c.id_cancha === partido.id_cancha) : null;
-  const [localId, setLocalId] = useState<number | null>(canchaInicial?.id_local || null);
+  const [localId, setLocalId] = useState<number | null>(null);
   const [canchaId, setCanchaId] = useState<number | null>(partido.id_cancha || null);
   const [loading, setLoading] = useState(false);
   const [showEquipoLocalModal, setShowEquipoLocalModal] = useState(false);
@@ -45,11 +48,65 @@ export const EditPartidoScreen: React.FC<EditPartidoScreenProps> = ({ navigation
   const [searchLocal, setSearchLocal] = useState('');
   const [searchVisitante, setSearchVisitante] = useState('');
 
-  const equipoLocal = equipoLocalId ? mockEquipos.find(e => e.id_equipo === equipoLocalId) : null;
-  const equipoVisitante = equipoVisitanteId ? mockEquipos.find(e => e.id_equipo === equipoVisitanteId) : null;
+  // Load data from API
+  useEffect(() => {
+    const loadData = async () => {
+      const result = await safeAsync(
+        async () => {
+          // Get edicionCategoriaId from route params
+          const edicionCategoriaId = route.params?.idEdicionCategoria;
+
+          const [equiposResponse, localesResponse] = await Promise.all([
+            edicionCategoriaId ? api.equipos.list(edicionCategoriaId) : Promise.resolve({ success: true, data: [] }),
+            edicionCategoriaId ? api.locales.list(edicionCategoriaId) : Promise.resolve({ success: true, data: { locales: [] } }),
+          ]);
+
+          const equiposData = equiposResponse.success && equiposResponse.data ? equiposResponse.data : [];
+          const localesData = localesResponse.success && localesResponse.data?.locales ? localesResponse.data.locales : [];
+
+          return { equipos: equiposData, locales: localesData };
+        },
+        'EditPartidoScreen - loadData',
+        { fallbackValue: { equipos: [], locales: [] } }
+      );
+
+      if (result) {
+        setEquipos(result.equipos);
+        setLocales(result.locales);
+      }
+      setDataLoading(false);
+    };
+
+    loadData();
+  }, [route.params?.idEdicionCategoria]);
+
+  // Load canchas when local changes
+  useEffect(() => {
+    if (localId) {
+      const loadCanchas = async () => {
+        const result = await safeAsync(
+          async () => {
+            const canchasResponse = await api.canchas.list(localId);
+            return canchasResponse.success && canchasResponse.data?.canchas ? canchasResponse.data.canchas : [];
+          },
+          'EditPartidoScreen - loadCanchas',
+          { fallbackValue: [] }
+        );
+        if (result) {
+          setCanchas(result);
+        }
+      };
+      loadCanchas();
+    } else {
+      setCanchas([]);
+    }
+  }, [localId]);
+
+  const equipoLocal = equipoLocalId ? equipos.find(e => e.id_equipo === equipoLocalId) : null;
+  const equipoVisitante = equipoVisitanteId ? equipos.find(e => e.id_equipo === equipoVisitanteId) : null;
 
   // Equipos ordenados alfabéticamente
-  const equiposOrdenados = [...mockEquipos].sort((a, b) => a.nombre.localeCompare(b.nombre));
+  const equiposOrdenados = [...equipos].sort((a, b) => a.nombre.localeCompare(b.nombre));
 
   // Equipos para modal local (filtrados y con búsqueda)
   const equiposLocalesFiltrados = equiposOrdenados
@@ -62,20 +119,20 @@ export const EditPartidoScreen: React.FC<EditPartidoScreenProps> = ({ navigation
     .filter(e => e.nombre.toLowerCase().includes(searchVisitante.toLowerCase()));
 
   // Canchas filtradas por local seleccionado
-  const canchasDelLocal = localId 
-    ? mockCanchas.filter(cancha => cancha.id_local === localId)
+  const canchasDelLocal = localId
+    ? canchas.filter(cancha => cancha.id_local === localId)
     : [];
 
   const getLocalNombre = (id: number | null) => {
     if (!id) return 'Sin local';
-    return mockLocales.find(l => l.id_local === id)?.nombre || 'Local no encontrado';
+    return locales.find(l => l.id_local === id)?.nombre || 'Local no encontrado';
   };
 
   const getCanchaNombre = (id: number | null) => {
     if (!id) return 'Sin cancha';
-    const cancha = mockCanchas.find(c => c.id_cancha === id);
+    const cancha = canchas.find(c => c.id_cancha === id);
     if (!cancha) return 'Cancha no encontrada';
-    const local = mockLocales.find(l => l.id_local === cancha.id_local);
+    const local = locales.find(l => l.id_local === cancha.id_local);
     return `${cancha.nombre} - ${local?.nombre || ''}`;
   };
 
@@ -472,7 +529,7 @@ export const EditPartidoScreen: React.FC<EditPartidoScreenProps> = ({ navigation
               >
                 <Text style={styles.modalItemText}>Sin local</Text>
               </TouchableOpacity>
-              {mockLocales.map(local => (
+              {locales.map(local => (
                 <TouchableOpacity
                   key={local.id_local}
                   style={[
@@ -529,7 +586,7 @@ export const EditPartidoScreen: React.FC<EditPartidoScreenProps> = ({ navigation
                     <Text style={styles.modalItemText}>Sin cancha</Text>
                   </TouchableOpacity>
                   {canchasDelLocal.map(cancha => {
-                    const localNombre = mockLocales.find(l => l.id_local === cancha.id_local)?.nombre || '';
+                    const localNombre = locales.find(l => l.id_local === cancha.id_local)?.nombre || '';
                     return (
                       <TouchableOpacity
                         key={cancha.id_cancha}

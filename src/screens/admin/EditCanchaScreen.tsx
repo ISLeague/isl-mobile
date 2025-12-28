@@ -12,7 +12,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Button } from '../../components/common/Button';
 import { Input } from '../../components/common/Input';
 import { colors } from '../../theme/colors';
-import { Cancha } from '../../types';
+import { Cancha } from '../../api/types';
 
 export const EditCanchaScreen = ({ navigation, route }: any) => {
   const { cancha, nombreLocal } = route.params as { cancha: Cancha; nombreLocal: string };

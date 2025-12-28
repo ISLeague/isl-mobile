@@ -12,7 +12,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Button } from '../../components/common/Button';
 import { Input } from '../../components/common/Input';
 import { colors } from '../../theme/colors';
-import { Local } from '../../types';
+import { Local } from '../../api/types';
 
 export const EditLocalScreen = ({ navigation, route }: any) => {
   const { local } = route.params as { local: Local };

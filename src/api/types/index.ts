@@ -42,6 +42,9 @@ export * from './partidos.types';
 // Rondas
 export * from './rondas.types';
 
+// Sponsors
+export * from './sponsors.types';
+
 // Torneos
 export * from './torneos.types';
 

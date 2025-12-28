@@ -11,11 +11,10 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../../theme/colors';
 import { Modal, SearchBar, Button, Input } from '../../../components/common';
-import { Equipo } from '../../../types';
-import { mockEquipos } from '../../../data/mockData';
-import { useSearch } from '../../../hooks';
+import { Equipo } from '../../../api/types';
 import { useToast } from '../../../contexts/ToastContext';
 import { safeAsync } from '../../../utils/errorHandling';
+import { api } from '../../../api';
 
 interface AddTeamToGroupModalProps {
   visible: boolean;
@@ -24,6 +23,7 @@ interface AddTeamToGroupModalProps {
   grupoNombre: string;
   equiposEnGrupo: number[]; // IDs de equipos ya en el grupo
   onAddTeam: (equipoId: number) => void;
+  idEdicionCategoria: number;
 }
 
 type TabType = 'existing' | 'create';
@@ -35,22 +35,54 @@ export const AddTeamToGroupModal: React.FC<AddTeamToGroupModalProps> = ({
   grupoNombre,
   equiposEnGrupo,
   onAddTeam,
+  idEdicionCategoria,
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('existing');
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
   const [newTeamName, setNewTeamName] = useState('');
   const [newTeamLogo, setNewTeamLogo] = useState('');
+  const [equipos, setEquipos] = useState<Equipo[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const { showSuccess, showWarning, showError } = useToast();
-  
+
+  // Load equipos from API when modal is visible
+  useEffect(() => {
+    const loadEquipos = async () => {
+      if (!visible) return;
+
+      const result = await safeAsync(
+        async () => {
+          const response = await api.equipos.list(idEdicionCategoria);
+          return response.success && response.data ? response.data : [];
+        },
+        'AddTeamToGroupModal - loadEquipos',
+        {
+          fallbackValue: [],
+          onError: (error) => {
+            showError(error.message, 'Error al Cargar Equipos');
+          },
+        }
+      );
+
+      if (result) {
+        setEquipos(result);
+      }
+    };
+
+    loadEquipos();
+  }, [visible, idEdicionCategoria, showError]);
+
   // Filtrar equipos que NO están en el grupo
-  const equiposDisponibles = mockEquipos.filter(
+  const equiposDisponibles = equipos.filter(
     equipo => !equiposEnGrupo.includes(equipo.id_equipo)
   );
 
-  const { searchQuery, setSearchQuery, filteredData, clearSearch } = useSearch<Equipo>(
-    equiposDisponibles,
-    'nombre'
-  );
+  // Manual search filtering
+  const filteredData = equiposDisponibles.filter(equipo => {
+    if (!searchQuery) return true;
+    const equipoNombre = equipo.nombre?.toLowerCase() || '';
+    return equipoNombre.includes(searchQuery.toLowerCase());
+  });
 
   const handleAddTeam = async () => {
     if (!selectedTeamId) {
@@ -83,17 +115,19 @@ export const AddTeamToGroupModal: React.FC<AddTeamToGroupModalProps> = ({
     await safeAsync(
       async () => {
         // TODO: Llamar a la API para crear el equipo
-        // const nuevoEquipo = await api.teams.createTeam({
+        // const response = await api.equipos.create({
         //   nombre: newTeamName.trim(),
-        //   logo: newTeamLogo.trim() || 'https://via.placeholder.com/100',
+        //   logo_url: newTeamLogo.trim() || 'https://via.placeholder.com/100',
+        //   id_edicion_categoria: idEdicionCategoria,
         // });
+        // const nuevoEquipoId = response.data.id_equipo;
 
         // Simular creación con un ID temporal
-        const nuevoEquipoId = mockEquipos.length + 1;
-        
-        // TODO: Agregar el nuevo equipo al grupo
+        const nuevoEquipoId = equipos.length + 1;
+
+        // TODO: Agregar el nuevo equipo al grupo via API
         onAddTeam(nuevoEquipoId);
-        
+
         showSuccess(`Equipo "${newTeamName}" creado y agregado al grupo`, 'Equipo Creado');
         resetAndClose();
       },
@@ -111,7 +145,7 @@ export const AddTeamToGroupModal: React.FC<AddTeamToGroupModalProps> = ({
     setNewTeamName('');
     setNewTeamLogo('');
     setActiveTab('existing');
-    clearSearch();
+    setSearchQuery('');
     onClose();
   };
 
@@ -249,7 +283,7 @@ export const AddTeamToGroupModal: React.FC<AddTeamToGroupModalProps> = ({
               value={searchQuery}
               onChangeText={setSearchQuery}
               placeholder="Buscar equipo..."
-              onClear={clearSearch}
+              onClear={() => setSearchQuery('')}
             />
 
             {equiposDisponibles.length === 0 ? (

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -15,7 +15,9 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import { Button } from '../../components/common/Button';
 import { GradientHeader } from '../../components/common';
-import { mockPartidos, mockEquipos, mockJugadores, getEquipoById, getJugadoresByEquipo } from '../../data/mockData';
+import { Partido, Equipo, Jugador } from '../../api/types';
+import api from '../../api';
+import { safeAsync } from '../../utils/errorHandling';
 
 export const LoadResultsScreen = ({ navigation, route }: any) => {
   const { torneo } = route.params;
@@ -24,8 +26,54 @@ export const LoadResultsScreen = ({ navigation, route }: any) => {
   const [marcadorVisitante, setMarcadorVisitante] = useState('');
   const [eventos, setEventos] = useState<any[]>([]);
   const [showEventModal, setShowEventModal] = useState(false);
+  const [partidos, setPartidos] = useState<Partido[]>([]);
+  const [equipos, setEquipos] = useState<Equipo[]>([]);
+  const [jugadores, setJugadores] = useState<Jugador[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const partidosPendientes = mockPartidos.filter(
+  // Load data from API
+  useEffect(() => {
+    const loadData = async () => {
+      const result = await safeAsync(
+        async () => {
+          const [partidosResponse, equiposResponse, jugadoresResponse] = await Promise.all([
+            api.partidos.list(),
+            route.params?.idEdicionCategoria ? api.equipos.list(route.params.idEdicionCategoria) : Promise.resolve({ success: true, data: [] }),
+            api.jugadores.list(),
+          ]);
+
+          const partidosData = partidosResponse.success && partidosResponse.data ? partidosResponse.data : [];
+          const equiposData = equiposResponse.success && equiposResponse.data ? equiposResponse.data : [];
+          const jugadoresData = jugadoresResponse.success && jugadoresResponse.data ? jugadoresResponse.data : [];
+
+          return { partidos: partidosData, equipos: equiposData, jugadores: jugadoresData };
+        },
+        'LoadResultsScreen - loadData',
+        { fallbackValue: { partidos: [], equipos: [], jugadores: [] } }
+      );
+
+      if (result) {
+        setPartidos(result.partidos);
+        setEquipos(result.equipos);
+        setJugadores(result.jugadores);
+      }
+      setLoading(false);
+    };
+
+    loadData();
+  }, [route.params?.idEdicionCategoria]);
+
+  // Helper function to get equipo by id
+  const getEquipoById = (id: number): Equipo | undefined => {
+    return equipos.find(e => e.id_equipo === id);
+  };
+
+  // Helper function to get jugadores by equipo
+  const getJugadoresByEquipo = (idEquipo: number): Jugador[] => {
+    return jugadores.filter(j => j.id_equipo === idEquipo);
+  };
+
+  const partidosPendientes = partidos.filter(
     p => p.estado_partido === 'Pendiente'
   ).slice(0, 4);
 
@@ -123,7 +171,7 @@ export const LoadResultsScreen = ({ navigation, route }: any) => {
                 >
                   <View style={styles.matchInfo}>
                     <Text style={styles.matchDate}>
-                      {new Date(partido.fecha).toLocaleDateString('es-ES')} - {partido.hora}
+                      {new Date(partido.fecha || '').toLocaleDateString('es-ES')} - {partido.hora}
                     </Text>
                     <View style={styles.teamsContainer}>
                       <View style={styles.team}>
@@ -163,7 +211,7 @@ export const LoadResultsScreen = ({ navigation, route }: any) => {
         {/* Match Header */}
         <View style={styles.matchHeader}>
           <Text style={styles.matchHeaderDate}>
-            {new Date(selectedMatch.fecha).toLocaleDateString('es-ES')} - {selectedMatch.hora}
+            {new Date(selectedMatch.fecha || '').toLocaleDateString('es-ES')} - {selectedMatch.hora}
           </Text>
           <View style={styles.matchHeaderTeams}>
             <View style={styles.matchHeaderTeam}>

@@ -39,6 +39,15 @@ export interface Partido {
   estado: EstadoPartido;
   id_local?: number;
   id_cancha?: number;
+  id_ronda?: number;
+  // Alias para compatibilidad
+  marcador_local?: number;
+  marcador_visitante?: number;
+  penales_local?: number;
+  penales_visitante?: number;
+  fecha?: string;
+  hora?: string;
+  estado_partido?: string;
   created_at?: string;
   updated_at?: string;
 }

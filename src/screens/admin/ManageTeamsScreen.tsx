@@ -13,17 +13,43 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../../theme/colors';
 import { useToast } from '../../contexts/ToastContext';
 import { Button } from '../../components/common/Button';
-import { mockEquipos } from '../../data/mockData';
-import { Equipo } from '../../types';
+import { Equipo } from '../../api/types';
 import { safeAsync } from '../../utils/errorHandling';
+import api from '../../api';
 
 export const ManageTeamsScreen = ({ navigation, route }: any) => {
   const { torneo } = route.params;
   const { showSuccess, showError, showWarning } = useToast();
-  const [equipos, setEquipos] = useState<Equipo[]>(mockEquipos.slice(0, 8));
+  const [equipos, setEquipos] = useState<Equipo[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [newTeamName, setNewTeamName] = useState('');
   const [newTeamLogo, setNewTeamLogo] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  // Load equipos from API
+  useEffect(() => {
+    const loadEquipos = async () => {
+      const result = await safeAsync(
+        async () => {
+          const idEdicionCategoria = route.params?.idEdicionCategoria || torneo?.id_edicion_categoria;
+          if (!idEdicionCategoria) {
+            return [];
+          }
+          const equiposResponse = await api.equipos.list(idEdicionCategoria);
+          return equiposResponse.success && equiposResponse.data ? equiposResponse.data : [];
+        },
+        'ManageTeamsScreen - loadEquipos',
+        { fallbackValue: [] }
+      );
+
+      if (result) {
+        setEquipos(result);
+      }
+      setLoading(false);
+    };
+
+    loadEquipos();
+  }, [route.params?.idEdicionCategoria, torneo?.id_edicion_categoria]);
 
   const handleCreateTeam = async () => {
     if (!newTeamName.trim()) {

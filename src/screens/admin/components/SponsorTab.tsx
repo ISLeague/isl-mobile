@@ -11,9 +11,9 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../../theme/colors';
-import { Sponsor } from '../../../types';
-import { mockSponsors } from '../../../data/mockData';
+import { Sponsor } from '../../../api/types';
 import { useAuth } from '../../../contexts/AuthContext';
+import { mockSponsors } from '../../../data/mockData';
 
 interface SponsorTabProps {
   idEdicionCategoria: number;

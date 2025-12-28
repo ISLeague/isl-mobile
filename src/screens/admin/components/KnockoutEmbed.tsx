@@ -13,12 +13,12 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../../theme/colors';
-import { Ronda, Partido, Equipo } from '../../../types';
-import { mockRondas, mockPartidos, mockEquipos, mockCanchas, mockLocales } from '../../../data/mockData';
+import { Ronda, Partido, Equipo } from '../../../api/types';
 import { formatDate } from '../../../utils/formatters';
 import { FAB, SearchBar } from '../../../components/common';
 import { useToast } from '../../../contexts/ToastContext';
-import { useSearch } from '../../../hooks';
+import { safeAsync, getUserFriendlyMessage } from '../../../utils/errorHandling';
+import api from '../../../api';
 
 interface KnockoutEmbedProps {
   navigation: any;
@@ -54,36 +54,63 @@ const getSubtipoIcon = (subtipo: SubtipoEliminatoria) => {
   }
 };
 
-export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({ 
-  navigation, 
+export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
+  navigation,
   isAdmin = false,
   idEdicionCategoria,
 }) => {
   const { showInfo, showError } = useToast();
   const [rondas, setRondas] = useState<Ronda[]>([]);
   const [partidos, setPartidos] = useState<Partido[]>([]);
+  const [equipos, setEquipos] = useState<Equipo[]>([]);
   const [expandedRondas, setExpandedRondas] = useState<{ [key: number]: boolean }>({});
   const [selectedSubtipo, setSelectedSubtipo] = useState<SubtipoEliminatoria>('oro');
   const [torneoFinalizado, setTorneoFinalizado] = useState(false);
-  const [knockoutActivo, setKnockoutActivo] = useState(true); // Control para activar/desactivar knockout
-  
-  // Hook de búsqueda
-  const {
-    searchQuery,
-    setSearchQuery,
-    filteredData: filteredEquipos,
-    clearSearch,
-  } = useSearch(mockEquipos, 'nombre');
+  const [knockoutActivo, setKnockoutActivo] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadData();
   }, []);
 
-  const loadData = () => {
-    // Filtrar solo rondas de tipo eliminatorias
-    const eliminatoriasRondas = mockRondas.filter(r => r.tipo === 'eliminatorias');
-    setRondas(eliminatoriasRondas);
-    setPartidos(mockPartidos);
+  const loadData = async () => {
+    setLoading(true);
+    const result = await safeAsync(
+      async () => {
+        // Load rondas from API
+        const rondasResponse = await api.rondas.list();
+        const allRondas = rondasResponse.success && rondasResponse.data ? rondasResponse.data : [];
+
+        // Filter only eliminatorias rounds
+        const eliminatoriasRondas: Ronda[] = allRondas.filter((r: Ronda) => r.tipo === 'eliminatorias');
+
+        // Load partidos from API
+        const partidosResponse = await api.partidos.list();
+        const allPartidos = partidosResponse.success && partidosResponse.data ? partidosResponse.data : [];
+
+        // Load equipos from API
+        const equiposResponse = await api.equipos.list(idEdicionCategoria || 1);
+        const allEquipos = equiposResponse.success && equiposResponse.data ? equiposResponse.data : [];
+
+        return { eliminatoriasRondas, partidos: allPartidos, equipos: allEquipos };
+      },
+      'loadKnockoutData',
+      {
+        severity: 'high',
+        fallbackValue: { eliminatoriasRondas: [], partidos: [], equipos: [] },
+        onError: (error) => {
+          showError(getUserFriendlyMessage(error), 'Error al cargar eliminatorias');
+        }
+      }
+    );
+
+    if (result) {
+      setRondas(result.eliminatoriasRondas);
+      setPartidos(result.partidos);
+      setEquipos(result.equipos);
+    }
+    setLoading(false);
   };
 
   // Asegurar que el selectedSubtipo sea válido cuando cambian las rondas
@@ -114,9 +141,9 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
       .filter(p => p.id_ronda === rondaId)
       .map(p => ({
         ...p,
-        equipo_local: mockEquipos.find(e => e.id_equipo === p.id_equipo_local)!,
-        equipo_visitante: mockEquipos.find(e => e.id_equipo === p.id_equipo_visitante)!,
-        cancha: mockCanchas.find(c => c.id_cancha === p.id_cancha),
+        equipo_local: equipos.find(e => e.id_equipo === p.id_equipo_local)!,
+        equipo_visitante: equipos.find(e => e.id_equipo === p.id_equipo_visitante)!,
+        // TODO: Load cancha data from API when available
       }))
       .filter(p => {
         // Filtrar por búsqueda si hay query
@@ -129,8 +156,8 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
       })
       .sort((a, b) => {
         // Ordenar por fecha y hora descendente (más tarde primero - arriba)
-        const dateA = new Date(`${a.fecha} ${a.hora || '00:00'}`);
-        const dateB = new Date(`${b.fecha} ${b.hora || '00:00'}`);
+        const dateA = new Date(a.fecha_hora || '');
+        const dateB = new Date(b.fecha_hora || '');
         return dateB.getTime() - dateA.getTime();
       });
   };
@@ -297,7 +324,7 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
         <View style={styles.partidoHeader}>
           <View style={styles.fechaHoraContainer}>
             <MaterialCommunityIcons name="calendar" size={14} color={colors.textSecondary} />
-            <Text style={styles.fechaText}>{formatDate(partido.fecha)}</Text>
+            <Text style={styles.fechaText}>{formatDate(partido.fecha || partido.fecha_hora || '')}</Text>
             {partido.hora && (
               <>
                 <MaterialCommunityIcons name="clock-outline" size={14} color={colors.textSecondary} />
@@ -320,17 +347,7 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
           </View>
         </View>
 
-        {partido.cancha && (
-          <View style={styles.canchaContainer}>
-            <MaterialCommunityIcons name="soccer-field" size={14} color={colors.textSecondary} />
-            <View style={styles.canchaTextContainer}>
-              <Text style={styles.canchaLocalText}>
-                {mockLocales.find(l => l.id_local === partido.cancha!.id_local)?.nombre || 'Local'}
-              </Text>
-              <Text style={styles.canchaText}>{partido.cancha.nombre}</Text>
-            </View>
-          </View>
-        )}
+        {/* TODO: Show cancha info when API is available */}
 
         <View style={styles.equiposContainer}>
           <View style={styles.equipoRow}>
@@ -621,7 +638,7 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
           value={searchQuery}
           onChangeText={setSearchQuery}
           placeholder="Buscar equipo en eliminatorias..."
-          onClear={clearSearch}
+          onClear={() => setSearchQuery('')}
         />
       </View>
 

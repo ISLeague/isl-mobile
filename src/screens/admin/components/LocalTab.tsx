@@ -12,8 +12,10 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../../theme/colors';
-import { Cancha, Local as LocalType } from '../../../types';
+import { Cancha, Local as LocalType } from '../../../api/types';
 import { useAuth } from '../../../contexts/AuthContext';
+import { safeAsync } from '../../../utils/errorHandling';
+import api from '../../../api';
 
 interface LocalTabProps {
   idEdicionCategoria: number;
@@ -25,9 +27,9 @@ interface LocalTabProps {
   onDeleteCancha?: (idCancha: number, nombreLocal: string) => void;
 }
 
-export const LocalTab: React.FC<LocalTabProps> = ({ 
-  idEdicionCategoria, 
-  onCreateLocal, 
+export const LocalTab: React.FC<LocalTabProps> = ({
+  idEdicionCategoria,
+  onCreateLocal,
   onCreateCancha,
   onEditLocal,
   onDeleteLocal,
@@ -35,43 +37,50 @@ export const LocalTab: React.FC<LocalTabProps> = ({
   onDeleteCancha,
 }) => {
   const { isAdmin } = useAuth();
-  const [locales, setLocales] = useState<(LocalType & { canchas: Cancha[] })[]>([]);
+  const [locales, setLocales] = useState<LocalType[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadLocales();
-  }, []);
+  }, [idEdicionCategoria]);
 
   const loadLocales = async () => {
-    try {
-      const mockLocales = [
-        { id_local: 1, nombre: 'Complejo Deportivo Villa El Salvador', latitud: -12.2167, longitud: -76.9333 },
-        { id_local: 2, nombre: 'Polideportivo San Borja', latitud: -12.0897, longitud: -77.0028 },
-        { id_local: 3, nombre: 'Campo Deportivo Miraflores', latitud: -12.1203, longitud: -77.0282 },
-        { id_local: 4, nombre: 'Estadio Municipal de Surco', latitud: -12.1444, longitud: -77.0103 },
-      ];
+    setLoading(true);
+    const result = await safeAsync(
+      async () => {
+        // Load locales from API
+        const localesResponse = await api.locales.list(idEdicionCategoria);
+        const allLocales = localesResponse.success && localesResponse.data?.locales
+          ? localesResponse.data.locales
+          : [];
 
-      const mockCanchas = [
-        { id_cancha: 1, nombre: 'Cancha Principal A', id_local: 1 },
-        { id_cancha: 2, nombre: 'Cancha Principal B', id_local: 1 },
-        { id_cancha: 3, nombre: 'Cancha Sintética 1', id_local: 2 },
-        { id_cancha: 4, nombre: 'Cancha Sintética 2', id_local: 2 },
-        { id_cancha: 5, nombre: 'Cancha A', id_local: 3 },
-        { id_cancha: 6, nombre: 'Cancha B', id_local: 3 },
-        { id_cancha: 7, nombre: 'Cancha Central', id_local: 4 },
-      ];
+        // Load canchas for each local
+        const localesConCanchas = await Promise.all(
+          allLocales.map(async (local: LocalType) => {
+            const canchasResponse = await api.canchas.list(local.id_local);
+            const canchas = canchasResponse.success && canchasResponse.data?.canchas
+              ? canchasResponse.data.canchas
+              : [];
 
-      const localesConCanchas = mockLocales.map(local => ({
-        ...local,
-        canchas: mockCanchas.filter(c => c.id_local === local.id_local),
-      }));
+            return {
+              ...local,
+              canchas: canchas as Cancha[],
+            };
+          })
+        );
 
-      setLocales(localesConCanchas);
-    } catch (error) {
-      console.error('Error cargando locales:', error);
-    } finally {
-      setLoading(false);
+        return localesConCanchas;
+      },
+      'LocalTab - loadLocales',
+      {
+        fallbackValue: [],
+      }
+    );
+
+    if (result) {
+      setLocales(result);
     }
+    setLoading(false);
   };
 
   const openWaze = (latitud: number, longitud: number) => {
@@ -120,7 +129,7 @@ export const LocalTab: React.FC<LocalTabProps> = ({
             <View style={styles.localInfo}>
               <Text style={styles.localName}>{local.nombre}</Text>
               <Text style={styles.localCanchas}>
-                {local.canchas.length} {local.canchas.length === 1 ? 'cancha' : 'canchas'}
+                {local.canchas?.length || 0} {(local.canchas?.length || 0) === 1 ? 'cancha' : 'canchas'}
               </Text>
             </View>
             {/* Botones de editar/eliminar local - Solo admins */}
@@ -177,7 +186,7 @@ export const LocalTab: React.FC<LocalTabProps> = ({
           </View>
 
           {/* Lista de canchas */}
-          {local.canchas.length > 0 && (
+          {local.canchas && local.canchas.length > 0 && (
             <View style={styles.canchasContainer}>
               <Text style={styles.canchasTitle}>Canchas:</Text>
               {local.canchas.map((cancha) => (

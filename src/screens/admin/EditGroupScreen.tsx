@@ -12,7 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import { Button } from '../../components/common';
-import { Grupo } from '../../types';
+import { Grupo } from '../../api/types';
 
 interface EditGroupScreenProps {
   navigation: any;
@@ -25,7 +25,6 @@ export const EditGroupScreen: React.FC<EditGroupScreenProps> = ({ navigation, ro
   const [nombre, setNombre] = useState(grupo.nombre);
   const [equiposPasanOro, setEquiposPasanOro] = useState(grupo.equipos_pasan_oro?.toString() || '2');
   const [equiposPasanPlata, setEquiposPasanPlata] = useState(grupo.equipos_pasan_plata?.toString() || '0');
-  const [tipoClasificacion, setTipoClasificacion] = useState<string>(grupo.tipo_clasificacion || 'pasa_copa_general');
 
   const tiposClasificacion = [
     { value: 'pasa_copa_general', label: 'Copa General', icon: '🏆' },
@@ -52,7 +51,6 @@ export const EditGroupScreen: React.FC<EditGroupScreenProps> = ({ navigation, ro
     const grupoData = {
       ...grupo,
       nombre,
-      tipo_clasificacion: tipoClasificacion,
       equipos_pasan_oro: oro,
       equipos_pasan_plata: plata,
     };

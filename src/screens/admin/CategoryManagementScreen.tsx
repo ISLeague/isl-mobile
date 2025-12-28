@@ -320,7 +320,7 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
             if (tab.id === 'grupos') {
               return (
                 <View key={tab.id} style={styles.pageWrapper}>
-                  <GroupStageEmbed navigation={navigation} isAdmin={true} idFase={idFase} />
+                  <GroupStageEmbed navigation={navigation} isAdmin={true} idFase={idFase} idEdicionCategoria={idEdicionCategoria} />
                 </View>
               );
             } else if (tab.id === 'fixture') {
@@ -408,7 +408,7 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
             } else if (tab.id === 'grupos') {
               return (
                 <View key={tab.id} style={styles.pageWrapper}>
-                  <GroupStageEmbed navigation={navigation} isAdmin={false} idFase={idFase} />
+                  <GroupStageEmbed navigation={navigation} isAdmin={false} idFase={idFase} idEdicionCategoria={idEdicionCategoria} />
                 </View>
               );
             } else if (tab.id === 'fixture') {
