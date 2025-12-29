@@ -53,10 +53,10 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
   // Tabs diferentes para admin y fan (invitados ven lo mismo que fans)
   const tabs = isAdmin
     ? [
+        { id: 'equipos', label: 'Equipos' },
         { id: 'grupos', label: 'Grupos' },
         { id: 'fixture', label: 'Fixture' },
         { id: 'knockout', label: 'Knockout' },
-        { id: 'equipos', label: 'Equipos' },
         { id: 'local', label: 'Local' },
         { id: 'sponsors', label: 'Sponsors' },
       ]

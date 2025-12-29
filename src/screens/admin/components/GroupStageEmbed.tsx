@@ -33,6 +33,7 @@ interface GroupStageEmbedProps {
 const getClasificacionColor = (posicion: number, grupo: Grupo) => {
   const equiposOro = grupo.equipos_pasan_oro || 0;
   const equiposPlata = grupo.equipos_pasan_plata || 0;
+  const equiposBronce = grupo.equipos_pasan_bronce || 0;
 
   // Primeras posiciones van a Oro (dorado)
   if (posicion <= equiposOro) {
@@ -42,6 +43,10 @@ const getClasificacionColor = (posicion: number, grupo: Grupo) => {
   // Siguientes posiciones van a Plata (plateado)
   if (posicion <= equiposOro + equiposPlata) {
     return '#C0C0C0'; // Plateado
+  }
+
+  if (posicion <= equiposOro + equiposPlata + equiposBronce) {
+    return '#CD7F32'; // Bronce
   }
 
   // Resto de equipos (no clasifican) - gris muy claro casi blanco

@@ -9,9 +9,9 @@ export interface Grupo {
   nombre: string;
   id_fase: number;
   cantidad_equipos: number;
-  orden: number;
   equipos_pasan_oro?: number;
   equipos_pasan_plata?: number;
+  equipos_pasan_bronce?: number;
   created_at?: string;
   updated_at?: string;
 }
