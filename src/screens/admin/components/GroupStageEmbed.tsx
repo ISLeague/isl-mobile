@@ -79,6 +79,8 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps & { refreshTrigger?:
   const [selectedGrupoNombre, setSelectedGrupoNombre] = useState<string>('');
   const [selectedClasificacion, setSelectedClasificacion] = useState<(Clasificacion & { equipo: Equipo }) | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [deletingGrupo, setDeletingGrupo] = useState(false);
+  const [deletingGrupoNombre, setDeletingGrupoNombre] = useState('');
 
   // Estados para editar reglas
   const [equiposOro, setEquiposOro] = useState('');
@@ -90,7 +92,7 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps & { refreshTrigger?:
   const [descripcionReglas, setDescripcionReglas] = useState('');
   const [savingReglas, setSavingReglas] = useState(false);
 
-  const { showSuccess, showError, showWarning } = useToast();
+  const { showSuccess, showError, showWarning, showInfo } = useToast();
 
   const loadGruposAndClasificacion = useCallback(async () => {
     if (!idFase) {
@@ -196,26 +198,53 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps & { refreshTrigger?:
     const equiposEnGrupo = clasificaciones[grupo.id_grupo]?.length || 0;
 
     Alert.alert(
-      'Eliminar Grupo',
+      '¿Eliminar Grupo?',
       equiposEnGrupo > 0
-        ? `¿Deseas eliminar el grupo "${grupo.nombre}"? Tiene ${equiposEnGrupo} equipos asignados que también serán removidos.`
-        : `¿Deseas eliminar el grupo "${grupo.nombre}"?`,
+        ? `¿Estás seguro de eliminar el grupo "${grupo.nombre}"?\n\nTiene ${equiposEnGrupo} ${equiposEnGrupo === 1 ? 'equipo asignado' : 'equipos asignados'} que también ${equiposEnGrupo === 1 ? 'será removido' : 'serán removidos'}.`
+        : `¿Estás seguro de eliminar el grupo "${grupo.nombre}"?`,
       [
-        { text: 'Cancelar', style: 'cancel' },
         {
-          text: 'Eliminar',
+          text: 'Cancelar',
+          style: 'cancel'
+        },
+        {
+          text: 'Sí, Eliminar',
           style: 'destructive',
           onPress: async () => {
             try {
+              setDeletingGrupo(true);
+              setDeletingGrupoNombre(grupo.nombre);
+
+              console.log(`🗑️ [GroupStageEmbed] Eliminando grupo "${grupo.nombre}" (ID: ${grupo.id_grupo})`);
+              showInfo(`Eliminando grupo "${grupo.nombre}"...`, 'Procesando');
+
               const response = await api.grupos.delete(grupo.id_grupo, equiposEnGrupo > 0);
 
               if (response.success) {
-                showSuccess(`Grupo "${grupo.nombre}" eliminado exitosamente`);
-                loadGruposAndClasificacion(); // Recargar datos
+                console.log(`✅ [GroupStageEmbed] Grupo "${grupo.nombre}" eliminado exitosamente`);
+
+                // Actualizar el estado local inmediatamente sin recargar
+                setGrupos(prevGrupos => prevGrupos.filter(g => g.id_grupo !== grupo.id_grupo));
+                setClasificaciones(prevClasif => {
+                  const newClasif = { ...prevClasif };
+                  delete newClasif[grupo.id_grupo];
+                  return newClasif;
+                });
+
+                showSuccess(
+                  `Grupo "${grupo.nombre}" eliminado exitosamente`,
+                  '¡Grupo eliminado!'
+                );
+              } else {
+                showError('No se pudo eliminar el grupo', 'Error');
               }
-            } catch (error) {
-              console.error('Error eliminando grupo:', error);
-              showError('Error al eliminar el grupo');
+            } catch (error: any) {
+              console.error('❌ [GroupStageEmbed] Error eliminando grupo:', error);
+              const errorMessage = error?.response?.data?.message || 'Error al eliminar el grupo';
+              showError(errorMessage, 'Error al eliminar');
+            } finally {
+              setDeletingGrupo(false);
+              setDeletingGrupoNombre('');
             }
           },
         },
@@ -877,6 +906,21 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps & { refreshTrigger?:
           </View>
         </View>
       </Modal>
+
+      {/* Loading Overlay para eliminación de grupo */}
+      {deletingGrupo && (
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loadingCard}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.loadingText}>
+              Eliminando grupo "{deletingGrupoNombre}"...
+            </Text>
+            <Text style={styles.loadingSubtext}>
+              Por favor espera, esto puede tomar unos momentos
+            </Text>
+          </View>
+        </View>
+      )}
     </GestureHandlerRootView>
   );
 };
@@ -893,9 +937,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.backgroundGray,
   },
   loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: colors.textSecondary,
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginTop: 20,
+    textAlign: 'center',
   },
   searchSection: {
     padding: 16,
@@ -1215,6 +1261,35 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: colors.white,
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  loadingCard: {
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    padding: 32,
+    alignItems: 'center',
+    minWidth: 280,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  loadingSubtext: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginTop: 8,
+    textAlign: 'center',
   },
 });
 

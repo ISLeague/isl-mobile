@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Alert,
   ActivityIndicator,
   Modal,
 } from 'react-native';
@@ -26,14 +25,16 @@ interface CreateGroupsFlowScreenProps {
 }
 
 export const CreateGroupsFlowScreen: React.FC<CreateGroupsFlowScreenProps> = ({ navigation, route }) => {
-  const { idEdicionCategoria } = route.params || {};
-  const { showSuccess, showError } = useToast();
+  const { idEdicionCategoria, onGroupsCreated } = route.params || {};
+  const { showSuccess, showError, showInfo } = useToast();
 
   const [loading, setLoading] = useState(true);
   const [faseGrupos, setFaseGrupos] = useState<Fase | null>(null);
   const [creatingFase, setCreatingFase] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [showIndividualModal, setShowIndividualModal] = useState(false);
+  const [creatingGroups, setCreatingGroups] = useState(false);
+  const [creationStatus, setCreationStatus] = useState<string>('');
 
   // Estados para creación bulk
   const [cantidadGrupos, setCantidadGrupos] = useState('4');
@@ -146,13 +147,24 @@ export const CreateGroupsFlowScreen: React.FC<CreateGroupsFlowScreenProps> = ({ 
 
     if (cantGrupos <= 0 || cantEquipos <= 0) {
       console.warn('⚠️ [CreateGruposBulk] Validación fallida: cantidad inválida');
-      Alert.alert('Error', 'La cantidad de grupos y equipos debe ser mayor a 0');
+      showError('La cantidad de grupos y equipos debe ser mayor a 0', 'Datos inválidos');
+      return;
+    }
+
+    // Validar que haya al menos un equipo más que los que clasifican
+    const totalEquiposClasifican = oro + plata + bronce;
+    if (cantEquipos <= totalEquiposClasifican) {
+      console.warn('⚠️ [CreateGruposBulk] Validación fallida: no hay suficientes equipos');
+      showError(
+        `Debe haber al menos ${totalEquiposClasifican + 1} equipos por grupo.\n\nActualmente ${totalEquiposClasifican} equipos clasifican (${oro} oro, ${plata} plata, ${bronce} bronce).\n\nNecesitas al menos 1 equipo que no clasifique.`,
+        'Equipos insuficientes'
+      );
       return;
     }
 
     if (!faseGrupos) {
       console.warn('⚠️ [CreateGruposBulk] Validación fallida: no hay fase de grupos');
-      Alert.alert('Error', 'No hay una fase de grupos creada');
+      showError('No hay una fase de grupos creada', 'Error');
       return;
     }
 
@@ -171,76 +183,160 @@ export const CreateGroupsFlowScreen: React.FC<CreateGroupsFlowScreenProps> = ({ 
 
     console.log('🏗️ [CreateGruposBulk] Request data:', JSON.stringify(requestData, null, 2));
 
-    const result = await safeAsync(
-      async () => {
-        console.log('⏳ [CreateGruposBulk] Llamando a api.grupos.createBulk...');
-        const response = await api.grupos.createBulk(requestData);
-        console.log('✅ [CreateGruposBulk] Respuesta recibida:', JSON.stringify(response, null, 2));
-        return response;
-      },
-      'createGruposBulk',
-      {
-        fallbackValue: null,
-        onError: (error: any) => {
-          console.error('❌ [CreateGruposBulk] Error capturado:', error);
-          console.error('❌ [CreateGruposBulk] Error message:', error?.message);
-          console.error('❌ [CreateGruposBulk] Error response:', error?.response?.data);
-          console.error('❌ [CreateGruposBulk] Error status:', error?.response?.status);
-          showError('Error al crear los grupos');
-        }
-      }
-    );
-
-    console.log('📊 [CreateGruposBulk] Resultado final:', result);
-
-    if (result && result.success) {
-      console.log('🎉 [CreateGruposBulk] Grupos creados exitosamente');
-      showSuccess(`${result.data.grupos_creados} grupos creados exitosamente`);
+    try {
+      setCreatingGroups(true);
+      setCreationStatus(`Generando ${cantGrupos} grupos...`);
       setShowBulkModal(false);
-      navigation.goBack();
-    } else {
-      console.log('⚠️ [CreateGruposBulk] No se pudieron crear los grupos');
+
+      showInfo(`Generando ${cantGrupos} grupos...`, 'Creando grupos');
+
+      const result = await safeAsync(
+        async () => {
+          console.log('⏳ [CreateGruposBulk] Llamando a api.grupos.createBulk...');
+          const response = await api.grupos.createBulk(requestData);
+          console.log('✅ [CreateGruposBulk] Respuesta recibida:', JSON.stringify(response, null, 2));
+          return response;
+        },
+        'createGruposBulk',
+        {
+          fallbackValue: null,
+          onError: (error: any) => {
+            console.error('❌ [CreateGruposBulk] Error capturado:', error);
+            console.error('❌ [CreateGruposBulk] Error message:', error?.message);
+            console.error('❌ [CreateGruposBulk] Error response:', error?.response?.data);
+            console.error('❌ [CreateGruposBulk] Error status:', error?.response?.status);
+            showError('Error al crear los grupos', 'Error');
+          }
+        }
+      );
+
+      console.log('📊 [CreateGruposBulk] Resultado final:', result);
+
+      if (result && result.success) {
+        console.log('🎉 [CreateGruposBulk] Grupos creados exitosamente');
+        setCreationStatus('');
+
+        showSuccess(
+          `${result.data.grupos_creados} grupos creados exitosamente`,
+          '¡Grupos generados!'
+        );
+
+        // Esperar 1.5 segundos para que el usuario vea el toast de éxito
+        setTimeout(() => {
+          setCreatingGroups(false);
+
+          // Si hay callback, llamarlo
+          if (onGroupsCreated) {
+            onGroupsCreated();
+          }
+
+          // Volver a la pantalla anterior
+          navigation.goBack();
+        }, 1500);
+      } else {
+        console.log('⚠️ [CreateGruposBulk] No se pudieron crear los grupos');
+        setCreatingGroups(false);
+        setCreationStatus('');
+      }
+    } catch (error) {
+      console.error('❌ [CreateGruposBulk] Error inesperado:', error);
+      setCreatingGroups(false);
+      setCreationStatus('');
+      showError('Error inesperado al crear los grupos', 'Error');
     }
   };
 
   const handleCreateGrupoIndividual = async () => {
     if (!nombreGrupo.trim()) {
-      Alert.alert('Error', 'El nombre del grupo es requerido');
+      showError('El nombre del grupo es requerido', 'Dato requerido');
       return;
     }
 
     if (!faseGrupos) {
-      Alert.alert('Error', 'No hay una fase de grupos creada');
+      showError('No hay una fase de grupos creada', 'Error');
       return;
     }
 
-    const result = await safeAsync(
-      async () => {
-        const response = await api.grupos.create({
-          id_fase: faseGrupos.id_fase,
-          nombre: nombreGrupo,
-          cantidad_equipos: parseInt(cantidadEquipos) || undefined,
-          equipos_oro: parseInt(equiposOro) || undefined,
-          equipos_plata: parseInt(equiposPlata) || undefined,
-          equipos_bronce: parseInt(equiposBronce) || undefined,
-          posiciones_oro: posOro.trim() || undefined,
-          posiciones_plata: posPlata.trim() || undefined,
-          posiciones_bronce: posBronce.trim() || undefined,
-          descripcion_clasificacion: descripcion.trim() || undefined,
-        });
-        return response;
-      },
-      'createGrupoIndividual',
-      {
-        fallbackValue: null,
-        onError: () => showError('Error al crear el grupo')
-      }
-    );
+    // Validar que haya al menos un equipo más que los que clasifican
+    const cantEquipos = parseInt(cantidadEquipos) || 0;
+    const oro = parseInt(equiposOro) || 0;
+    const plata = parseInt(equiposPlata) || 0;
+    const bronce = parseInt(equiposBronce) || 0;
+    const totalEquiposClasifican = oro + plata + bronce;
 
-    if (result && result.success) {
-      showSuccess(`Grupo "${nombreGrupo}" creado exitosamente`);
+    if (cantEquipos > 0 && cantEquipos <= totalEquiposClasifican) {
+      console.warn('⚠️ [CreateGrupoIndividual] Validación fallida: no hay suficientes equipos');
+      showError(
+        `Debe haber al menos ${totalEquiposClasifican + 1} equipos en el grupo.\n\nActualmente ${totalEquiposClasifican} equipos clasifican (${oro} oro, ${plata} plata, ${bronce} bronce).\n\nNecesitas al menos 1 equipo que no clasifique.`,
+        'Equipos insuficientes'
+      );
+      return;
+    }
+
+    try {
+      setCreatingGroups(true);
+      setCreationStatus(`Creando grupo "${nombreGrupo}"...`);
       setShowIndividualModal(false);
-      navigation.goBack();
+
+      showInfo(`Creando grupo "${nombreGrupo}"...`, 'Creando grupo');
+
+      const result = await safeAsync(
+        async () => {
+          console.log('⏳ [CreateGrupoIndividual] Llamando a api.grupos.create...');
+          const response = await api.grupos.create({
+            id_fase: faseGrupos.id_fase,
+            nombre: nombreGrupo,
+            cantidad_equipos: parseInt(cantidadEquipos) || undefined,
+            equipos_oro: parseInt(equiposOro) || undefined,
+            equipos_plata: parseInt(equiposPlata) || undefined,
+            equipos_bronce: parseInt(equiposBronce) || undefined,
+            posiciones_oro: posOro.trim() || undefined,
+            posiciones_plata: posPlata.trim() || undefined,
+            posiciones_bronce: posBronce.trim() || undefined,
+            descripcion_clasificacion: descripcion.trim() || undefined,
+          });
+          console.log('✅ [CreateGrupoIndividual] Grupo creado:', response);
+          return response;
+        },
+        'createGrupoIndividual',
+        {
+          fallbackValue: null,
+          onError: (error) => {
+            console.error('❌ [CreateGrupoIndividual] Error:', error);
+            showError('Error al crear el grupo', 'Error');
+          }
+        }
+      );
+
+      if (result && result.success) {
+        setCreationStatus('');
+
+        showSuccess(
+          `Grupo "${nombreGrupo}" creado exitosamente`,
+          '¡Grupo creado!'
+        );
+
+        // Esperar 1.5 segundos para que el usuario vea el toast de éxito
+        setTimeout(() => {
+          setCreatingGroups(false);
+
+          // Si hay callback, llamarlo
+          if (onGroupsCreated) {
+            onGroupsCreated();
+          }
+
+          // Volver a la pantalla anterior
+          navigation.goBack();
+        }, 1500);
+      } else {
+        setCreatingGroups(false);
+        setCreationStatus('');
+      }
+    } catch (error) {
+      console.error('❌ [CreateGrupoIndividual] Error inesperado:', error);
+      setCreatingGroups(false);
+      setCreationStatus('');
+      showError('Error inesperado al crear el grupo', 'Error');
     }
   };
 
@@ -637,6 +733,19 @@ export const CreateGroupsFlowScreen: React.FC<CreateGroupsFlowScreenProps> = ({ 
           </View>
         </View>
       </Modal>
+
+      {/* Loading Overlay con estado de creación */}
+      {creatingGroups && (
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loadingCard}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.loadingText}>{creationStatus}</Text>
+            <Text style={styles.loadingSubtext}>
+              Por favor espera, esto puede tomar unos momentos
+            </Text>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 };
@@ -652,9 +761,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: colors.textSecondary,
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginTop: 20,
+    textAlign: 'center',
   },
   scrollView: {
     flex: 1,
@@ -808,5 +919,34 @@ const styles = StyleSheet.create({
   },
   modalButton: {
     flex: 1,
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  loadingCard: {
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    padding: 32,
+    alignItems: 'center',
+    minWidth: 280,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  loadingSubtext: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginTop: 8,
+    textAlign: 'center',
   },
 });

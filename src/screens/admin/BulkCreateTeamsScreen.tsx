@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import * as DocumentPicker from 'expo-document-picker';
+import { useToast } from '../../contexts/ToastContext';
 import api from '../../api';
 
 interface BulkCreateTeamsScreenProps {
@@ -24,10 +25,12 @@ export const BulkCreateTeamsScreen: React.FC<BulkCreateTeamsScreenProps> = ({
   route,
 }) => {
   const { idEdicionCategoria, onTeamsCreated } = route.params;
+  const { showSuccess, showError, showInfo } = useToast();
 
   const [selectedFile, setSelectedFile] = useState<any>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState<any>(null);
+  const [uploadStatus, setUploadStatus] = useState<string>('');
 
   const handlePickFile = async () => {
     try {
@@ -49,12 +52,16 @@ export const BulkCreateTeamsScreen: React.FC<BulkCreateTeamsScreenProps> = ({
 
   const handleUpload = async () => {
     if (!selectedFile) {
-      Alert.alert('Error', 'Por favor selecciona un archivo CSV');
+      showError('Por favor selecciona un archivo CSV', 'Archivo requerido');
       return;
     }
 
     try {
       setIsUploading(true);
+      setUploadStatus('Procesando archivo CSV...');
+
+      console.log('📊 [BulkCreateTeams] Iniciando importación de equipos');
+      showInfo('Procesando archivo CSV...', 'Importando equipos');
 
       // Crear objeto File para la API
       const file = {
@@ -63,35 +70,39 @@ export const BulkCreateTeamsScreen: React.FC<BulkCreateTeamsScreenProps> = ({
         name: selectedFile.name,
       } as any;
 
+      setUploadStatus('Creando equipos en el servidor...');
       const response = await api.equipos.createBulk(idEdicionCategoria, file);
 
+      console.log('✅ [BulkCreateTeams] Respuesta del servidor:', response.data);
+
       setUploadResult(response.data);
+      setUploadStatus('');
 
       if (response.data.failed === 0) {
-        Alert.alert(
-          'Éxito',
+        showSuccess(
           `Se crearon ${response.data.successful} equipos correctamente`,
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                onTeamsCreated?.();
-                navigation.goBack();
-              },
-            },
-          ]
+          '¡Importación exitosa!'
         );
+
+        setTimeout(() => {
+          onTeamsCreated?.();
+          navigation.goBack();
+        }, 2000);
       } else {
-        Alert.alert(
-          'Importación Completada con Errores',
-          `Exitosos: ${response.data.successful}\nFallidos: ${response.data.failed}\n\nRevisa los detalles abajo.`
+        showError(
+          `Exitosos: ${response.data.successful}, Fallidos: ${response.data.failed}`,
+          'Importación completada con errores'
         );
       }
     } catch (error: any) {
-      console.error('Error uploading CSV:', error);
+      console.error('❌ [BulkCreateTeams] Error uploading CSV:', error);
+      console.error('❌ [BulkCreateTeams] Error details:', error?.response?.data);
+
       const errorMessage =
         error?.response?.data?.message || 'No se pudo importar el archivo';
-      Alert.alert('Error', errorMessage);
+
+      showError(errorMessage, 'Error al importar');
+      setUploadStatus('');
     } finally {
       setIsUploading(false);
     }
@@ -298,6 +309,19 @@ export const BulkCreateTeamsScreen: React.FC<BulkCreateTeamsScreenProps> = ({
           </TouchableOpacity>
         )}
       </ScrollView>
+
+      {/* Loading Overlay con estado */}
+      {isUploading && (
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loadingCard}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.loadingText}>{uploadStatus}</Text>
+            <Text style={styles.loadingSubtext}>
+              Por favor espera, esto puede tomar unos momentos
+            </Text>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 };
@@ -540,6 +564,42 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     lineHeight: 20,
     marginBottom: 4,
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  loadingCard: {
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    padding: 32,
+    alignItems: 'center',
+    minWidth: 280,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  loadingText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginTop: 20,
+    textAlign: 'center',
+  },
+  loadingSubtext: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginTop: 8,
+    textAlign: 'center',
   },
 });
 

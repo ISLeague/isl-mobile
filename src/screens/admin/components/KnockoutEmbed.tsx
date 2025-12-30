@@ -9,13 +9,16 @@ import {
   Switch,
   Alert,
   Share,
+  Modal,
+  TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../../theme/colors';
-import { Ronda, Partido, Equipo } from '../../../api/types';
+import { Ronda, Partido, Equipo, Fase, Local, TipoCopa } from '../../../api/types';
 import { formatDate } from '../../../utils/formatters';
-import { FAB, SearchBar } from '../../../components/common';
+import { FAB, SearchBar, Button } from '../../../components/common';
 import { useToast } from '../../../contexts/ToastContext';
 import { safeAsync, getUserFriendlyMessage } from '../../../utils/errorHandling';
 import api from '../../../api';
@@ -59,7 +62,7 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
   isAdmin = false,
   idEdicionCategoria,
 }) => {
-  const { showInfo, showError } = useToast();
+  const { showInfo, showError, showSuccess, showWarning } = useToast();
   const [rondas, setRondas] = useState<Ronda[]>([]);
   const [partidos, setPartidos] = useState<Partido[]>([]);
   const [equipos, setEquipos] = useState<Equipo[]>([]);
@@ -69,6 +72,17 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
   const [knockoutActivo, setKnockoutActivo] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
+
+  // Estados para generar knockout desde grupos
+  const [generarKnockoutModalVisible, setGenerarKnockoutModalVisible] = useState(false);
+  const [fechaInicio, setFechaInicio] = useState('');
+  const [diasEntrePartidos, setDiasEntrePartidos] = useState('2');
+  const [idLocalDefault, setIdLocalDefault] = useState<number | null>(null);
+  const [generatingKnockout, setGeneratingKnockout] = useState(false);
+  const [generationStatus, setGenerationStatus] = useState('');
+  const [locales, setLocales] = useState<Local[]>([]);
+  const [showLocalesModal, setShowLocalesModal] = useState(false);
+  const [idFaseGrupos, setIdFaseGrupos] = useState<number | null>(null);
 
   useEffect(() => {
     loadData();
@@ -111,6 +125,177 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
       setEquipos(result.equipos);
     }
     setLoading(false);
+  };
+
+  const loadLocales = async () => {
+    if (!idEdicionCategoria) return;
+
+    const result = await safeAsync(
+      async () => {
+        const response = await api.locales.list(idEdicionCategoria);
+        const filtered = response.success && response.data?.locales
+          ? response.data.locales
+          : [];
+        return filtered;
+      },
+      'loadLocales',
+      {
+        severity: 'medium',
+        fallbackValue: [],
+        onError: (error) => {
+          showError(getUserFriendlyMessage(error), 'Error al cargar locales');
+        }
+      }
+    );
+
+    setLocales(result);
+  };
+
+  const handleGenerarKnockout = async () => {
+    // Validar que tengamos una fase de grupos
+    if (!idFaseGrupos) {
+      showError('Primero debes seleccionar la fase de grupos de origen');
+      return;
+    }
+
+    // Validar fecha
+    if (!fechaInicio.trim()) {
+      showError('Debes ingresar una fecha de inicio');
+      return;
+    }
+
+    // Validar días entre partidos
+    const dias = parseInt(diasEntrePartidos);
+    if (isNaN(dias) || dias < 1) {
+      showError('Los días entre partidos deben ser al menos 1');
+      return;
+    }
+
+    // Validar local
+    if (!idLocalDefault) {
+      showError('Debes seleccionar un local');
+      return;
+    }
+
+    setGenerarKnockoutModalVisible(false);
+    await executeKnockoutGeneration();
+  };
+
+  const executeKnockoutGeneration = async () => {
+    setGeneratingKnockout(true);
+
+    try {
+      // FASE 1: Obtener lista de fases existentes
+      setGenerationStatus('Verificando fases existentes...');
+      const fasesResponse = await api.fases.list(idEdicionCategoria!);
+      const fasesExistentes = fasesResponse.success && fasesResponse.data ? fasesResponse.data : [];
+
+      // FASE 2: Crear fases de knockout si no existen
+      const copas: TipoCopa[] = ['oro', 'plata', 'bronce'];
+      const fasesCreadasOExistentes: { [key in TipoCopa]?: Fase } = {};
+
+      for (const copa of copas) {
+        const faseExistente = fasesExistentes.find(
+          (f: Fase) => f.tipo === 'knockout' && f.copa === copa
+        );
+
+        if (faseExistente) {
+          setGenerationStatus(`Fase de ${copa.toUpperCase()} ya existe`);
+          fasesCreadasOExistentes[copa] = faseExistente;
+        } else {
+          setGenerationStatus(`Creando fase de ${copa.toUpperCase()}...`);
+
+          const createResponse = await api.fases.create({
+            nombre: `Eliminatorias ${copa.charAt(0).toUpperCase() + copa.slice(1)}`,
+            tipo: 'knockout',
+            copa: copa,
+            orden: copa === 'oro' ? 2 : copa === 'plata' ? 3 : 4,
+            id_edicion_categoria: idEdicionCategoria!,
+            partidos_ida_vuelta: false,
+            permite_empate: false,
+            permite_penales: true,
+          });
+
+          if (createResponse.success && createResponse.data) {
+            fasesCreadasOExistentes[copa] = createResponse.data;
+            showSuccess(`Fase de ${copa.toUpperCase()} creada`);
+          } else {
+            throw new Error(`No se pudo crear la fase de ${copa}`);
+          }
+        }
+      }
+
+      // FASE 3: Avanzar equipos desde grupos a knockout
+      setGenerationStatus('Clasificando equipos según reglas...');
+
+      const avanzarResponse = await api.fases.avanzarEquipos({
+        id_fase_origen: idFaseGrupos!,
+        aplicar_reglas: true,
+      });
+
+      if (!avanzarResponse.success || !avanzarResponse.data) {
+        throw new Error('No se pudieron avanzar los equipos');
+      }
+
+      const { equipos_avanzados, por_copa, detalle } = avanzarResponse.data;
+
+      showInfo(
+        `${equipos_avanzados} equipos clasificados:\n` +
+        `Oro: ${por_copa.oro} | Plata: ${por_copa.plata} | Bronce: ${por_copa.bronce}`
+      );
+
+      // FASE 4: Generar eliminatorias para cada copa
+      const dias = parseInt(diasEntrePartidos);
+
+      for (const copa of copas) {
+        const fase = fasesCreadasOExistentes[copa];
+        if (!fase) continue;
+
+        const equiposEnCopa = detalle.filter(e => e.copa_destino === copa);
+
+        if (equiposEnCopa.length === 0) {
+          setGenerationStatus(`No hay equipos en copa ${copa.toUpperCase()}`);
+          continue;
+        }
+
+        setGenerationStatus(`Generando eliminatorias de ${copa.toUpperCase()}...`);
+
+        const generarResponse = await api.fases.generarEliminatorias({
+          id_fase: fase.id_fase,
+          fecha_inicio: fechaInicio,
+          dias_entre_partidos: dias,
+          id_local_default: idLocalDefault!,
+        });
+
+        if (generarResponse.success && generarResponse.data) {
+          const { partidos_generados, ronda } = generarResponse.data;
+          showSuccess(
+            `Copa ${copa.toUpperCase()}: ${partidos_generados} partidos generados para ${ronda}`
+          );
+        } else {
+          showWarning(`No se pudieron generar eliminatorias para ${copa}`);
+        }
+      }
+
+      setGenerationStatus('¡Proceso completado!');
+      showSuccess('Knockout generado exitosamente');
+
+      // Recargar datos
+      await loadData();
+
+      // Limpiar formulario
+      setFechaInicio('');
+      setDiasEntrePartidos('2');
+      setIdLocalDefault(null);
+      setIdFaseGrupos(null);
+
+    } catch (error: any) {
+      console.error('Error generando knockout:', error);
+      showError(getUserFriendlyMessage(error), 'Error al generar knockout');
+    } finally {
+      setGeneratingKnockout(false);
+      setGenerationStatus('');
+    }
   };
 
   // Asegurar que el selectedSubtipo sea válido cuando cambian las rondas
@@ -570,18 +755,18 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
       {isAdmin && (
         <View style={styles.finalizarContainer}>
           <View style={styles.finalizarInfo}>
-            <MaterialCommunityIcons 
-              name={knockoutActivo ? "trophy" : "trophy-outline"} 
-              size={24} 
-              color={knockoutActivo ? colors.primary : colors.textSecondary} 
+            <MaterialCommunityIcons
+              name={knockoutActivo ? "trophy" : "trophy-outline"}
+              size={24}
+              color={knockoutActivo ? colors.primary : colors.textSecondary}
             />
             <View style={styles.finalizarTextContainer}>
               <Text style={styles.finalizarTitle}>
                 {knockoutActivo ? 'Knockout Activo' : 'Knockout Inactivo'}
               </Text>
               <Text style={styles.finalizarSubtitle}>
-                {knockoutActivo 
-                  ? 'Los fans pueden ver el knockout' 
+                {knockoutActivo
+                  ? 'Los fans pueden ver el knockout'
                   : 'El knockout está oculto para los fans'}
               </Text>
             </View>
@@ -592,6 +777,29 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
             trackColor={{ false: colors.border, true: colors.primary }}
             thumbColor={colors.white}
           />
+        </View>
+      )}
+
+      {/* Botón para generar knockout desde grupos (solo admin) */}
+      {isAdmin && (
+        <View style={styles.generarKnockoutContainer}>
+          <TouchableOpacity
+            style={styles.generarKnockoutButton}
+            onPress={async () => {
+              await loadLocales();
+              setGenerarKnockoutModalVisible(true);
+            }}
+            activeOpacity={0.7}
+          >
+            <MaterialCommunityIcons name="trophy-variant" size={24} color={colors.primary} />
+            <View style={styles.generarKnockoutTextContainer}>
+              <Text style={styles.generarKnockoutTitle}>Generar Knockout desde Grupos</Text>
+              <Text style={styles.generarKnockoutSubtitle}>
+                Clasifica equipos y crea eliminatorias automáticamente
+              </Text>
+            </View>
+            <MaterialCommunityIcons name="chevron-right" size={24} color={colors.textSecondary} />
+          </TouchableOpacity>
         </View>
       )}
 
@@ -685,6 +893,168 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
           <Text style={styles.inactiveText}>
             La fase de knockout aún no está activa. Regresa más tarde para ver los partidos eliminatorios.
           </Text>
+        </View>
+      )}
+
+      {/* Modal para generar knockout */}
+      <Modal
+        visible={generarKnockoutModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setGenerarKnockoutModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Generar Knockout desde Grupos</Text>
+            <Text style={styles.modalSubtitle}>
+              Configura los parámetros para generar las eliminatorias automáticamente
+            </Text>
+
+            {/* Selector de fase de grupos */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Fase de Grupos (Origen) *</Text>
+              <TouchableOpacity
+                style={styles.pickerButton}
+                onPress={async () => {
+                  const fasesResponse = await api.fases.list(idEdicionCategoria!);
+                  const fasesGrupos = fasesResponse.success && fasesResponse.data
+                    ? fasesResponse.data.filter((f: Fase) => f.tipo === 'grupo')
+                    : [];
+
+                  if (fasesGrupos.length === 0) {
+                    showWarning('No hay fases de grupos disponibles');
+                    return;
+                  }
+
+                  Alert.alert(
+                    'Seleccionar Fase de Grupos',
+                    'Elige la fase de grupos de origen',
+                    [
+                      ...fasesGrupos.map((f: Fase) => ({
+                        text: f.nombre,
+                        onPress: () => setIdFaseGrupos(f.id_fase)
+                      })),
+                      { text: 'Cancelar' }
+                    ]
+                  );
+                }}
+              >
+                <Text style={styles.pickerButtonText}>
+                  {idFaseGrupos ? `Fase seleccionada: ${idFaseGrupos}` : 'Seleccionar fase...'}
+                </Text>
+                <MaterialCommunityIcons name="chevron-down" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Fecha de inicio */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Fecha de Inicio (YYYY-MM-DD) *</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="2024-06-01"
+                value={fechaInicio}
+                onChangeText={setFechaInicio}
+                placeholderTextColor={colors.textLight}
+              />
+            </View>
+
+            {/* Días entre partidos */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Días entre partidos *</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="2"
+                value={diasEntrePartidos}
+                onChangeText={setDiasEntrePartidos}
+                keyboardType="numeric"
+                placeholderTextColor={colors.textLight}
+              />
+            </View>
+
+            {/* Selector de local */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Local por Defecto *</Text>
+              <TouchableOpacity
+                style={styles.pickerButton}
+                onPress={() => setShowLocalesModal(true)}
+              >
+                <Text style={styles.pickerButtonText}>
+                  {idLocalDefault
+                    ? locales.find(l => l.id_local === idLocalDefault)?.nombre || 'Local seleccionado'
+                    : 'Seleccionar local...'}
+                </Text>
+                <MaterialCommunityIcons name="chevron-down" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalButtons}>
+              <Button
+                title="Cancelar"
+                onPress={() => setGenerarKnockoutModalVisible(false)}
+                variant="secondary"
+                style={styles.modalButton}
+              />
+              <Button
+                title="Generar"
+                onPress={handleGenerarKnockout}
+                style={styles.modalButton}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal para seleccionar local */}
+      <Modal
+        visible={showLocalesModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowLocalesModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.localesModalContainer}>
+            <Text style={styles.modalTitle}>Seleccionar Local</Text>
+            <ScrollView style={styles.localesList}>
+              {locales.length === 0 ? (
+                <Text style={styles.emptyText}>No hay locales disponibles</Text>
+              ) : (
+                locales.map((local) => (
+                  <TouchableOpacity
+                    key={local.id_local}
+                    style={styles.localItem}
+                    onPress={() => {
+                      setIdLocalDefault(local.id_local);
+                      setShowLocalesModal(false);
+                    }}
+                  >
+                    <MaterialCommunityIcons name="stadium" size={20} color={colors.primary} />
+                    <Text style={styles.localItemText}>{local.nombre}</Text>
+                    {idLocalDefault === local.id_local && (
+                      <MaterialCommunityIcons name="check-circle" size={20} color={colors.success} />
+                    )}
+                  </TouchableOpacity>
+                ))
+              )}
+            </ScrollView>
+            <Button
+              title="Cerrar"
+              onPress={() => setShowLocalesModal(false)}
+              variant="secondary"
+            />
+          </View>
+        </View>
+      </Modal>
+
+      {/* Loading overlay para generación de knockout */}
+      {generatingKnockout && (
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loadingCard}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.loadingText}>{generationStatus}</Text>
+            <Text style={styles.loadingSubtext}>
+              Este proceso puede tomar varios momentos...
+            </Text>
+          </View>
         </View>
       )}
     </View>
@@ -1080,6 +1450,170 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
+  },
+  // Estilos para el botón de generar knockout
+  generarKnockoutContainer: {
+    padding: 16,
+    backgroundColor: colors.white,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderLight,
+  },
+  generarKnockoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 16,
+    backgroundColor: colors.backgroundGray,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  generarKnockoutTextContainer: {
+    flex: 1,
+  },
+  generarKnockoutTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: 4,
+  },
+  generarKnockoutSubtitle: {
+    fontSize: 13,
+    color: colors.textSecondary,
+  },
+  // Estilos para los modales
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContainer: {
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 500,
+    maxHeight: '80%',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+    marginBottom: 8,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+  inputGroup: {
+    marginBottom: 16,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: 8,
+  },
+  input: {
+    backgroundColor: colors.backgroundGray,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 15,
+    color: colors.textPrimary,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  pickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.backgroundGray,
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  pickerButtonText: {
+    fontSize: 15,
+    color: colors.textPrimary,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 8,
+  },
+  modalButton: {
+    flex: 1,
+  },
+  // Estilos para el modal de locales
+  localesModalContainer: {
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+    maxHeight: '70%',
+  },
+  localesList: {
+    marginVertical: 16,
+  },
+  localItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 14,
+    backgroundColor: colors.backgroundGray,
+    borderRadius: 8,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  localItemText: {
+    flex: 1,
+    fontSize: 15,
+    color: colors.textPrimary,
+    fontWeight: '500',
+  },
+  // Estilos para loading overlay
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  loadingCard: {
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    padding: 32,
+    alignItems: 'center',
+    minWidth: 280,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  loadingText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  loadingSubtext: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginTop: 8,
+    textAlign: 'center',
   },
 });
 

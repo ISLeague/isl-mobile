@@ -66,7 +66,7 @@ export const CreateCanchaScreen = ({ navigation, route }: any) => {
       const response = await api.canchas.create({
         nombre: nombre.trim(),
         id_local: idLocal,
-        tipo_superficie: tipoSuperficie.trim() || undefined,
+        tipo_superficie: tipoSuperficie.trim() as any,
         dimensiones: dimensiones.trim() || undefined,
         capacidad_espectadores: capacidadEspectadores ? parseInt(capacidadEspectadores) : undefined,
         tiene_iluminacion: tieneIluminacion,
@@ -89,8 +89,11 @@ export const CreateCanchaScreen = ({ navigation, route }: any) => {
 
   const handleFinalizar = () => {
     setShowSuccessModal(false);
-    // Volver a la pantalla anterior (debería volver a la lista de locales actualizada)
-    navigation.goBack();
+    // Navegar a la pantalla de detalles del local
+    navigation.navigate('LocalDetailScreen', {
+      idLocal,
+      refresh: true // Para que recargue las canchas
+    });
   };
 
   const handleCrearOtra = () => {
