@@ -28,7 +28,8 @@ export const categoriasService = {
   },
 
   update: async (data: UpdateCategoriaRequest) => {
-    const response = await apiClient.put('/categorias-update', data);
+    const { id_categoria, ...updateData } = data;
+    const response = await apiClient.put(`/categorias-update/${id_categoria}`, updateData);
     return response.data;
   },
 

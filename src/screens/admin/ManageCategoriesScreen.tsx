@@ -158,6 +158,10 @@ export const ManageCategoriesScreen = ({ navigation, route }: any) => {
     try {
       setIsSaving(true);
 
+      console.log('📊 [ManageCategories] handleSaveCategory iniciado');
+      console.log('📊 [ManageCategories] Modo:', modalMode);
+      console.log('📊 [ManageCategories] Categoría seleccionada:', selectedCategoria);
+
       const categoriaData = {
         nombre: categoriaNombre.trim(),
         descripcion: categoriaDescripcion.trim(),
@@ -168,22 +172,40 @@ export const ManageCategoriesScreen = ({ navigation, route }: any) => {
         max_refuerzos: permiteRefuerzos && maxRefuerzos.trim() ? parseInt(maxRefuerzos) : undefined,
       };
 
+      console.log('📊 [ManageCategories] Datos de categoría preparados:', categoriaData);
+
       if (modalMode === 'create') {
-        await api.categorias.create(categoriaData);
+        console.log('📊 [ManageCategories] Llamando a api.categorias.create...');
+        const response = await api.categorias.create(categoriaData);
+        console.log('✅ [ManageCategories] Categoría creada exitosamente:', response);
         Alert.alert('Éxito', 'Categoría creada correctamente');
       } else if (modalMode === 'edit' && selectedCategoria) {
-        await api.categorias.update({
+        const updatePayload = {
           id_categoria: selectedCategoria.id_categoria,
           ...categoriaData,
-        });
+        };
+        console.log('📊 [ManageCategories] Llamando a api.categorias.update...');
+        console.log('📊 [ManageCategories] Payload completo de actualización:', JSON.stringify(updatePayload, null, 2));
+
+        const response = await api.categorias.update(updatePayload);
+        console.log('✅ [ManageCategories] Categoría actualizada exitosamente:', response);
         Alert.alert('Éxito', 'Categoría actualizada correctamente');
+      } else {
+        console.warn('⚠️ [ManageCategories] No se pudo determinar la acción (create/edit)');
       }
 
       setShowModal(false);
       loadCategorias();
-    } catch (error) {
-      console.error('Error saving category:', error);
-      Alert.alert('Error', 'No se pudo guardar la categoría');
+    } catch (error: any) {
+      console.error('❌ [ManageCategories] Error saving category:', error);
+      console.error('❌ [ManageCategories] Error completo:', JSON.stringify(error, null, 2));
+      console.error('❌ [ManageCategories] Error response:', error?.response);
+      console.error('❌ [ManageCategories] Error response data:', error?.response?.data);
+      console.error('❌ [ManageCategories] Error response status:', error?.response?.status);
+      console.error('❌ [ManageCategories] Error config:', error?.config);
+
+      const errorMessage = error?.response?.data?.message || error?.message || 'No se pudo guardar la categoría';
+      Alert.alert('Error', errorMessage);
     } finally {
       setIsSaving(false);
     }

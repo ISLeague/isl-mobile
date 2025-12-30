@@ -17,7 +17,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { colors } from '../../theme/colors';
 import { useToast } from '../../contexts/ToastContext';
-import { Partido } from '../../types';
+import { Partido } from '../../api/types';
 import { mockEquipos } from '../../data/mockData';
 import { formatDate } from '../../utils/formatters';
 
