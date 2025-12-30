@@ -9,6 +9,7 @@ import {
   CreatePartidoAmistosoResponse,
   GetPartidosPorJornadaRequest,
   PartidosPorJornadaResponse,
+  CreatePartidoFromFixtureRequest,
 } from '../types/partidos.types';
 
 /**
@@ -18,8 +19,10 @@ export const partidosService = {
   /**
    * Listar todos los partidos
    */
-  list: async () => {
-    const response = await apiClient.get('/partidos-list');
+  list: async (id_ronda?: number) => {
+    const response = await apiClient.get('/partidos-list', {
+      params: id_ronda ? { id_ronda } : undefined,
+    });
     return response.data;
   },
 
@@ -96,6 +99,14 @@ export const partidosService = {
     params?: GetPartidosPorJornadaRequest
   ): Promise<PartidosPorJornadaResponse> => {
     const response = await apiClient.get('/partidos-por-jornada', { params });
+    return response.data;
+  },
+
+  /**
+   * Crear partido desde fixture generado (requiere autorización)
+   */
+  createFromFixture: async (data: CreatePartidoFromFixtureRequest) => {
+    const response = await apiClient.post('/partidos-create', data);
     return response.data;
   },
 };

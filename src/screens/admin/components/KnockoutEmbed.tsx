@@ -185,7 +185,11 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
 
   const handleAddPartido = (e: any, ronda: Ronda) => {
     e.stopPropagation();
-    navigation.navigate('CreatePartido', { ronda });
+    navigation.navigate('CreatePartido', {
+      ronda,
+      idEdicionCategoria: idEdicionCategoria || 1,
+      idFase: ronda.id_fase
+    });
   };
 
   const handleExportRonda = async (e: any, ronda: Ronda) => {

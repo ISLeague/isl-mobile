@@ -29,6 +29,20 @@ export interface CreatePartidoAmistosoRequest {
   id_cancha: number;
 }
 
+export interface CreatePartidoFromFixtureRequest {
+  id_fixture: number;
+  id_equipo_local: number;
+  id_equipo_visitante: number;
+  id_ronda: number;
+  id_fase: number;
+  id_cancha: number;
+  fecha: string;
+  hora: string;
+  tipo_partido: 'clasificacion' | 'eliminatoria' | 'amistoso';
+  afecta_clasificacion: boolean;
+  observaciones?: string;
+}
+
 export interface Partido {
   id_partido: number;
   id_equipo_local: number;
@@ -63,6 +77,7 @@ export interface CreatePartidoRequest {
 export interface UpdatePartidoRequest {
   id: number;
   fecha?: string;
+  id_cancha?: number;
 }
 
 export interface PartidoResultadoRequest {

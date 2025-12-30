@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
-  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -16,6 +15,7 @@ import { Input, Button } from '../../components/common';
 import { useToast } from '../../contexts/ToastContext';
 import { safeAsync } from '../../utils/errorHandling';
 import { Partido, Cancha } from '../../api/types';
+import { FixtureGenerateResponse, EnfrentamientoFixture } from '../../api/types/rondas.types';
 import api from '../../api';
 
 interface CreateRondaFlowScreenProps {
@@ -43,44 +43,27 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
 
   // Step 2: Generate Fixture
   const [createdRondaId, setCreatedRondaId] = useState<number | null>(null);
+  const [createdFaseId, setCreatedFaseId] = useState<number | null>(null);
   const [tipoGeneracion, setTipoGeneracion] = useState<'round_robin' | 'amistoso_aleatorio'>('round_robin');
   const [idaVuelta, setIdaVuelta] = useState(false);
   const [cantidadPartidos, setCantidadPartidos] = useState('');
+  const [fixtureResponse, setFixtureResponse] = useState<FixtureGenerateResponse | null>(null);
 
-  // Step 3: Assign Canchas
-  const [partidos, setPartidos] = useState<Partido[]>([]);
+  // Step 3: Assign Details to Fixtures
   const [canchas, setCanchas] = useState<Cancha[]>([]);
-  const [selectedPartidoId, setSelectedPartidoId] = useState<number | null>(null);
-  const [showCanchaModal, setShowCanchaModal] = useState(false);
+  const [fixtureDetails, setFixtureDetails] = useState<{
+    [fixtureId: number]: {
+      fecha: string;
+      hora: string;
+      id_cancha: number | null;
+    };
+  }>({});
 
   useEffect(() => {
     if (currentStep === 'assign') {
-      loadPartidos();
       loadCanchas();
     }
   }, [currentStep]);
-
-  const loadPartidos = async () => {
-    if (!createdRondaId) return;
-
-    setLoading(true);
-    const result = await safeAsync(
-      async () => {
-        const response = await api.partidos.list();
-        return response.success && response.data
-          ? response.data.filter((p: Partido) => p.id_ronda === createdRondaId)
-          : [];
-      },
-      'CreateRondaFlow - loadPartidos',
-      {
-        fallbackValue: [],
-        onError: () => showError('Error al cargar los partidos'),
-      }
-    );
-
-    setPartidos(result);
-    setLoading(false);
-  };
 
   const loadCanchas = async () => {
     setLoading(true);
@@ -110,141 +93,288 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
       }
     );
 
-    setCanchas(result);
+    setCanchas(result || []);
     setLoading(false);
   };
 
   const handleCreateRonda = async () => {
+    console.log('🎯 [CreateRondaFlow] Iniciando creación de ronda...');
+    console.log('📝 [CreateRondaFlow] Datos del formulario:', {
+      nombre: nombre.trim(),
+      tipo,
+      subtipoEliminatoria,
+      fechaInicio,
+      fechaFin,
+      orden,
+      idEdicionCategoria,
+    });
+
     if (!nombre.trim()) {
+      console.warn('⚠️ [CreateRondaFlow] Error: Nombre vacío');
       Alert.alert('Error', 'El nombre de la ronda es requerido');
       return;
     }
 
     if (!orden.trim() || isNaN(parseInt(orden))) {
+      console.warn('⚠️ [CreateRondaFlow] Error: Orden inválido');
       Alert.alert('Error', 'El orden debe ser un número');
       return;
     }
 
     setLoading(true);
+    console.log('🔄 [CreateRondaFlow] Loading iniciado, obteniendo fase...');
 
     // Get fase for this edicion
     const fasesResult = await safeAsync(
       async () => {
+        console.log('📡 [CreateRondaFlow] Llamando a api.fases.list con id_edicion_categoria:', idEdicionCategoria);
         const response = await api.fases.list(idEdicionCategoria);
-        return response.success && response.data && response.data.length > 0
+        console.log('📥 [CreateRondaFlow] Respuesta de fases:', response);
+
+        const fase = response.success && response.data && response.data.length > 0
           ? response.data.find((f: any) => f.tipo === 'grupo') || response.data[0]
           : null;
+
+        console.log('✅ [CreateRondaFlow] Fase seleccionada:', fase);
+        return fase;
       },
       'CreateRondaFlow - getFase',
       {
         fallbackValue: null,
-        onError: () => showError('Error al obtener la fase'),
+        onError: (error) => {
+          console.error('❌ [CreateRondaFlow] Error al obtener fase:', error);
+          showError('Error al obtener la fase');
+        },
       }
     );
 
     if (!fasesResult || !fasesResult.id_fase) {
+      console.error('❌ [CreateRondaFlow] No se encontró fase válida');
       showError('No se encontró una fase válida para esta edición');
       setLoading(false);
       return;
     }
 
+    console.log('🎯 [CreateRondaFlow] Fase obtenida correctamente, id_fase:', fasesResult.id_fase);
+
+    const rondaData = {
+      nombre: nombre.trim(),
+      id_fase: fasesResult.id_fase,
+      tipo,
+      subtipo_eliminatoria: tipo === 'eliminatorias' ? subtipoEliminatoria : undefined,
+      es_amistosa: tipo === 'amistosa',
+      fecha_inicio: fechaInicio.trim() || undefined,
+      fecha_fin: fechaFin.trim() || undefined,
+      orden: parseInt(orden),
+    };
+
+    console.log('📡 [CreateRondaFlow] Enviando datos para crear ronda:', rondaData);
+
     const result = await safeAsync(
       async () => {
-        const response = await api.rondas.create({
-          nombre: nombre.trim(),
-          id_fase: fasesResult.id_fase,
-          tipo,
-          subtipo_eliminatoria: tipo === 'eliminatorias' ? subtipoEliminatoria : undefined,
-          es_amistosa: tipo === 'amistosa',
-          fecha_inicio: fechaInicio.trim() || undefined,
-          fecha_fin: fechaFin.trim() || undefined,
-          orden: parseInt(orden),
-        });
+        const response = await api.rondas.create(rondaData);
+        console.log('📥 [CreateRondaFlow] Respuesta de crear ronda:', response);
         return response;
       },
       'CreateRondaFlow - createRonda',
       {
         fallbackValue: null,
-        onError: () => showError('Error al crear la ronda'),
+        onError: (error) => {
+          console.error('❌ [CreateRondaFlow] Error al crear ronda:', error);
+          showError('Error al crear la ronda');
+        },
       }
     );
 
     setLoading(false);
+    console.log('🔄 [CreateRondaFlow] Loading finalizado');
 
     if (result && result.success && result.data) {
-      setCreatedRondaId(result.data.id_ronda || result.data.id);
+      const rondaId = result.data.id_ronda || result.data.id;
+      console.log('✅ [CreateRondaFlow] Ronda creada exitosamente! ID:', rondaId);
+      setCreatedRondaId(rondaId);
+      setCreatedFaseId(fasesResult.id_fase);
       showSuccess(`Ronda "${nombre}" creada exitosamente`);
       setCurrentStep('generate');
+      console.log('🎯 [CreateRondaFlow] Avanzando al paso: generate');
+    } else {
+      console.error('❌ [CreateRondaFlow] Falló la creación de ronda. Resultado:', result);
     }
   };
 
   const handleGenerateFixture = async () => {
-    if (!createdRondaId) return;
+    console.log('🎯 [CreateRondaFlow] Iniciando generación de fixture...');
+    console.log('📝 [CreateRondaFlow] Estado actual:', {
+      createdRondaId,
+      tipo,
+      tipoGeneracion,
+      idaVuelta,
+      cantidadPartidos,
+    });
+
+    if (!createdRondaId) {
+      console.error('❌ [CreateRondaFlow] No hay ID de ronda creada');
+      return;
+    }
 
     if (tipo === 'amistosa' && (!cantidadPartidos || parseInt(cantidadPartidos) <= 0)) {
+      console.warn('⚠️ [CreateRondaFlow] Error: Cantidad de partidos inválida para amistosa');
       Alert.alert('Error', 'Para amistosos, especifica la cantidad de partidos');
       return;
     }
 
     setLoading(true);
+    console.log('🔄 [CreateRondaFlow] Loading iniciado, generando fixture...');
+
+    const fixtureData: any = {
+      id_ronda: createdRondaId,
+      tipo_generacion: tipoGeneracion,
+      ida_vuelta: tipo === 'fase_grupos' ? idaVuelta : false,
+    };
+
+    // Solo agregar cantidad_partidos si es amistosa
+    if (tipo === 'amistosa' && cantidadPartidos) {
+      fixtureData.cantidad_partidos = parseInt(cantidadPartidos);
+    }
+
+    console.log('📡 [CreateRondaFlow] Enviando datos para generar fixture:', fixtureData);
 
     const result = await safeAsync(
       async () => {
-        const response = await api.rondas.generarFixture({
-          id_ronda: createdRondaId,
-          tipo_generacion: tipoGeneracion,
-          ida_vuelta: tipo === 'fase_grupos' ? idaVuelta : undefined,
-          cantidad_partidos: tipo === 'amistosa' ? parseInt(cantidadPartidos) : undefined,
-        });
+        const response = await api.rondas.generarFixture(fixtureData);
+        console.log('📥 [CreateRondaFlow] Respuesta de generar fixture:', response);
         return response;
       },
       'CreateRondaFlow - generateFixture',
       {
         fallbackValue: null,
-        onError: () => showError('Error al generar el fixture'),
+        onError: (error) => {
+          console.error('❌ [CreateRondaFlow] Error al generar fixture:', error);
+          showError('Error al generar el fixture');
+        },
       }
     );
 
     setLoading(false);
+    console.log('🔄 [CreateRondaFlow] Loading finalizado');
 
     if (result && result.success) {
+      console.log('✅ [CreateRondaFlow] Fixture generado exitosamente!');
+      console.log('📊 [CreateRondaFlow] Datos del fixture:', result.data);
+
+      // Store the fixture response for Step 3
+      setFixtureResponse(result);
+
+      // Initialize fixture details with empty values
+      const initialDetails: { [fixtureId: number]: { fecha: string; hora: string; id_cancha: number | null } } = {};
+      result.data.jornadas.forEach((jornada: any) => {
+        jornada.enfrentamientos.forEach((enfrentamiento: any) => {
+          initialDetails[enfrentamiento.fixture_id] = {
+            fecha: '',
+            hora: '',
+            id_cancha: null,
+          };
+        });
+      });
+      setFixtureDetails(initialDetails);
+
       showSuccess('Fixture generado exitosamente');
       setCurrentStep('assign');
+      console.log('🎯 [CreateRondaFlow] Avanzando al paso: assign');
+    } else {
+      console.error('❌ [CreateRondaFlow] Falló la generación de fixture. Resultado:', result);
     }
   };
 
-  const handleAsignCancha = async (canchaId: number) => {
-    if (!selectedPartidoId) return;
+  const handleCreatePartidos = async () => {
+    console.log('🎯 [CreateRondaFlow] Iniciando creación de partidos...');
+
+    if (!fixtureResponse || !createdRondaId || !createdFaseId) {
+      console.error('❌ [CreateRondaFlow] No hay datos de fixture o IDs');
+      showError('No hay datos de fixture disponibles');
+      return;
+    }
+
+    // Validate all fixtures have required data
+    const allFixtures: any[] = [];
+    fixtureResponse.data.jornadas.forEach((jornada) => {
+      jornada.enfrentamientos.forEach((enfrentamiento) => {
+        allFixtures.push(enfrentamiento);
+      });
+    });
+
+    // Check if all fixtures have fecha, hora, and cancha assigned
+    const missingData = allFixtures.some((fixture) => {
+      const details = fixtureDetails[fixture.fixture_id];
+      return !details || !details.fecha || !details.hora || !details.id_cancha;
+    });
+
+    if (missingData) {
+      Alert.alert('Error', 'Por favor asigna fecha, hora y cancha a todos los partidos');
+      return;
+    }
 
     setLoading(true);
+    console.log('🔄 [CreateRondaFlow] Creando partidos...');
 
-    const result = await safeAsync(
-      async () => {
-        const response = await api.partidos.update({
-          id: selectedPartidoId,
-          id_cancha: canchaId,
-        });
-        return response;
-      },
-      'CreateRondaFlow - asignCancha',
-      {
-        fallbackValue: null,
-        onError: () => showError('Error al asignar la cancha'),
+    let createdCount = 0;
+    let errorCount = 0;
+
+    // Create partidos one by one
+    for (const fixture of allFixtures) {
+      const details = fixtureDetails[fixture.fixture_id];
+
+      const tipoPartido: 'clasificacion' | 'eliminatoria' | 'amistoso' =
+        tipo === 'amistosa' ? 'amistoso' : tipo === 'eliminatorias' ? 'eliminatoria' : 'clasificacion';
+
+      const partidoData = {
+        id_fixture: fixture.fixture_id,
+        id_equipo_local: fixture.id_equipo_local,
+        id_equipo_visitante: fixture.id_equipo_visitante,
+        id_ronda: createdRondaId,
+        id_fase: createdFaseId,
+        id_cancha: details.id_cancha!,
+        fecha: details.fecha,
+        hora: details.hora,
+        tipo_partido: tipoPartido,
+        afecta_clasificacion: tipo !== 'amistosa',
+        observaciones: fixture.nombre_grupo
+          ? `Partido de ${tipo === 'amistosa' ? 'amistoso' : 'clasificación'} - Grupo ${fixture.nombre_grupo}`
+          : `Partido de ${tipo === 'amistosa' ? 'amistoso' : tipo}`,
+      };
+
+      console.log('📡 [CreateRondaFlow] Creando partido:', partidoData);
+
+      const result = await safeAsync(
+        async () => {
+          const response = await api.partidos.createFromFixture(partidoData);
+          console.log('📥 [CreateRondaFlow] Respuesta de crear partido:', response);
+          return response;
+        },
+        'CreateRondaFlow - createPartido',
+        {
+          fallbackValue: null,
+          onError: (error) => {
+            console.error('❌ [CreateRondaFlow] Error al crear partido:', error);
+            errorCount++;
+          },
+        }
+      );
+
+      if (result && result.success) {
+        createdCount++;
       }
-    );
+    }
 
     setLoading(false);
+    console.log(`✅ [CreateRondaFlow] Partidos creados: ${createdCount}/${allFixtures.length}`);
 
-    if (result && result.success) {
-      showSuccess('Cancha asignada correctamente');
-      setShowCanchaModal(false);
-      setSelectedPartidoId(null);
-      loadPartidos(); // Reload to show updated data
+    if (errorCount > 0) {
+      showError(`Se crearon ${createdCount} partidos con ${errorCount} errores`);
+    } else {
+      showSuccess(`${createdCount} partidos creados exitosamente`);
+      navigation.goBack();
     }
-  };
-
-  const handleFinish = () => {
-    navigation.goBack();
   };
 
   const renderStepIndicator = () => (
@@ -271,13 +401,17 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
         <View style={[styles.stepCircle, currentStep === 'assign' && styles.stepCircleActive]}>
           <Text style={styles.stepNumber}>3</Text>
         </View>
-        <Text style={styles.stepLabel}>Asignar Canchas</Text>
+        <Text style={styles.stepLabel}>Asignar Detalles</Text>
       </View>
     </View>
   );
 
   const renderCreateStep = () => (
-    <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={true}>
+    <ScrollView
+      style={styles.stepContent}
+      contentContainerStyle={styles.scrollContent}
+      showsVerticalScrollIndicator={true}
+    >
       <Text style={styles.sectionTitle}>Información de la Ronda</Text>
 
       <Input
@@ -397,7 +531,11 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
   );
 
   const renderGenerateStep = () => (
-    <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={true}>
+    <ScrollView
+      style={styles.stepContent}
+      contentContainerStyle={styles.scrollContent}
+      showsVerticalScrollIndicator={true}
+    >
       <Text style={styles.sectionTitle}>Generar Fixture</Text>
 
       <View style={styles.infoBox}>
@@ -499,113 +637,191 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
     </ScrollView>
   );
 
-  const renderAssignStep = () => (
-    <View style={styles.stepContent}>
-      <Text style={styles.sectionTitle}>Asignar Canchas a los Partidos</Text>
-
-      <View style={styles.infoBox}>
-        <MaterialCommunityIcons name="information" size={24} color={colors.info} />
-        <Text style={styles.infoText}>
-          Selecciona la cancha para cada partido (opcional)
-        </Text>
-      </View>
-
-      {loading ? (
+  const renderAssignStep = () => {
+    if (!fixtureResponse) {
+      return (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Cargando partidos...</Text>
+          <Text style={styles.emptyText}>No hay fixtures generados</Text>
         </View>
-      ) : (
-        <ScrollView style={styles.partidosList} showsVerticalScrollIndicator={true}>
-          {partidos.length === 0 ? (
-            <Text style={styles.emptyText}>No se generaron partidos</Text>
-          ) : (
-            partidos.map((partido) => (
-              <View key={partido.id_partido} style={styles.partidoCard}>
-                <View style={styles.partidoInfo}>
-                  <Text style={styles.partidoEquipos}>
-                    Partido {partido.id_partido}
-                  </Text>
-                  {partido.id_cancha && (
-                    <View style={styles.canchaAsignada}>
-                      <MaterialCommunityIcons name="check-circle" size={16} color={colors.success} />
-                      <Text style={styles.canchaAsignadaText}>
-                        Cancha {partido.id_cancha}
+      );
+    }
+
+    // Flatten all fixtures
+    const allFixtures: any[] = [];
+    fixtureResponse.data.jornadas.forEach((jornada) => {
+      jornada.enfrentamientos.forEach((enfrentamiento) => {
+        allFixtures.push({
+          ...enfrentamiento,
+          jornada: jornada.jornada,
+        });
+      });
+    });
+
+    return (
+      <ScrollView
+        style={styles.stepContent}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={true}
+      >
+        <Text style={styles.sectionTitle}>Asignar Detalles a los Partidos</Text>
+
+        <View style={styles.infoBox}>
+          <MaterialCommunityIcons name="information" size={24} color={colors.info} />
+          <Text style={styles.infoText}>
+            Asigna fecha, hora y cancha a cada partido generado
+          </Text>
+        </View>
+
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.loadingText}>Cargando canchas...</Text>
+          </View>
+        ) : (
+          <View>
+            {allFixtures.map((fixture, index) => {
+              const details = fixtureDetails[fixture.fixture_id] || { fecha: '', hora: '', id_cancha: null };
+              const selectedCancha = canchas.find(c => c.id_cancha === details.id_cancha);
+
+              return (
+                <View key={fixture.fixture_id} style={styles.fixtureCard}>
+                  {/* Header */}
+                  <View style={styles.fixtureHeader}>
+                    <View style={styles.fixtureHeaderLeft}>
+                      <MaterialCommunityIcons name="soccer" size={20} color={colors.primary} />
+                      <Text style={styles.fixtureTitle}>
+                        Jornada {fixture.jornada} - Partido {index + 1}
                       </Text>
                     </View>
-                  )}
-                </View>
-                <TouchableOpacity
-                  style={styles.asignarButton}
-                  onPress={() => {
-                    setSelectedPartidoId(partido.id_partido);
-                    setShowCanchaModal(true);
-                  }}
-                >
-                  <MaterialCommunityIcons
-                    name={partido.id_cancha ? 'pencil' : 'map-marker-plus'}
-                    size={20}
-                    color={colors.primary}
-                  />
-                  <Text style={styles.asignarButtonText}>
-                    {partido.id_cancha ? 'Cambiar' : 'Asignar'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            ))
-          )}
-        </ScrollView>
-      )}
+                    {fixture.nombre_grupo && (
+                      <View style={styles.groupBadge}>
+                        <Text style={styles.groupBadgeText}>Grupo {fixture.nombre_grupo}</Text>
+                      </View>
+                    )}
+                  </View>
 
-      <Button
-        title="Finalizar"
-        onPress={handleFinish}
-        style={styles.button}
-      />
+                  {/* Teams */}
+                  <View style={styles.fixtureTeams}>
+                    <Text style={styles.teamName}>{fixture.local}</Text>
+                    <Text style={styles.vsText}>VS</Text>
+                    <Text style={styles.teamName}>{fixture.visitante}</Text>
+                  </View>
 
-      {/* Modal de selección de cancha */}
-      <Modal
-        visible={showCanchaModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowCanchaModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Seleccionar Cancha</Text>
-              <TouchableOpacity onPress={() => setShowCanchaModal(false)}>
-                <MaterialCommunityIcons name="close" size={24} color={colors.textPrimary} />
-              </TouchableOpacity>
-            </View>
+                  {/* Inputs */}
+                  <View style={styles.fixtureInputs}>
+                    <View style={styles.inputRow}>
+                      <View style={styles.inputHalf}>
+                        <Text style={styles.inputLabel}>Fecha *</Text>
+                        <Input
+                          placeholder="YYYY-MM-DD"
+                          value={details.fecha}
+                          onChangeText={(text) => {
+                            setFixtureDetails({
+                              ...fixtureDetails,
+                              [fixture.fixture_id]: {
+                                ...details,
+                                fecha: text,
+                              },
+                            });
+                          }}
+                          leftIcon={<MaterialCommunityIcons name="calendar" size={18} color={colors.textLight} />}
+                        />
+                      </View>
 
-            <ScrollView style={styles.canchasList} showsVerticalScrollIndicator={true}>
-              {canchas.length === 0 ? (
-                <Text style={styles.emptyText}>No hay canchas disponibles</Text>
-              ) : (
-                canchas.map((cancha) => (
-                  <TouchableOpacity
-                    key={cancha.id_cancha}
-                    style={styles.canchaItem}
-                    onPress={() => handleAsignCancha(cancha.id_cancha)}
-                  >
-                    <MaterialCommunityIcons name="soccer-field" size={24} color={colors.primary} />
-                    <View style={styles.canchaItemInfo}>
-                      <Text style={styles.canchaItemNombre}>{cancha.nombre}</Text>
-                      {cancha.tipo_superficie && (
-                        <Text style={styles.canchaItemDetalle}>Superficie: {cancha.tipo_superficie}</Text>
-                      )}
+                      <View style={styles.inputHalf}>
+                        <Text style={styles.inputLabel}>Hora *</Text>
+                        <Input
+                          placeholder="HH:MM"
+                          value={details.hora}
+                          onChangeText={(text) => {
+                            setFixtureDetails({
+                              ...fixtureDetails,
+                              [fixture.fixture_id]: {
+                                ...details,
+                                hora: text,
+                              },
+                            });
+                          }}
+                          leftIcon={<MaterialCommunityIcons name="clock-outline" size={18} color={colors.textLight} />}
+                        />
+                      </View>
                     </View>
-                    <MaterialCommunityIcons name="chevron-right" size={24} color={colors.textLight} />
-                  </TouchableOpacity>
-                ))
-              )}
-            </ScrollView>
+
+                    {/* Cancha Selector */}
+                    <View style={styles.canchaSelector}>
+                      <Text style={styles.inputLabel}>Cancha *</Text>
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        style={styles.canchaScrollView}
+                      >
+                        {canchas.map((cancha) => (
+                          <TouchableOpacity
+                            key={cancha.id_cancha}
+                            style={[
+                              styles.canchaChip,
+                              details.id_cancha === cancha.id_cancha && styles.canchaChipSelected,
+                            ]}
+                            onPress={() => {
+                              setFixtureDetails({
+                                ...fixtureDetails,
+                                [fixture.fixture_id]: {
+                                  ...details,
+                                  id_cancha: cancha.id_cancha,
+                                },
+                              });
+                            }}
+                          >
+                            <MaterialCommunityIcons
+                              name="soccer-field"
+                              size={16}
+                              color={details.id_cancha === cancha.id_cancha ? colors.white : colors.primary}
+                            />
+                            <Text
+                              style={[
+                                styles.canchaChipText,
+                                details.id_cancha === cancha.id_cancha && styles.canchaChipTextSelected,
+                              ]}
+                            >
+                              {cancha.nombre}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
+
+                    {/* Status indicator */}
+                    {details.fecha && details.hora && details.id_cancha && (
+                      <View style={styles.completeIndicator}>
+                        <MaterialCommunityIcons name="check-circle" size={16} color={colors.success} />
+                        <Text style={styles.completeText}>Completo</Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              );
+            })}
           </View>
+        )}
+
+        <View style={styles.buttonRow}>
+          <Button
+            title="Atrás"
+            onPress={() => setCurrentStep('generate')}
+            variant="secondary"
+            style={styles.buttonHalf}
+          />
+          <Button
+            title="Crear Partidos"
+            onPress={handleCreatePartidos}
+            loading={loading}
+            disabled={loading}
+            style={styles.buttonHalf}
+          />
         </View>
-      </Modal>
-    </View>
-  );
+      </ScrollView>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -628,7 +844,7 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
             }
           }}
         >
-          <MaterialCommunityIcons name="arrow-back" size={24} color={colors.primary} />
+          <MaterialCommunityIcons name="arrow-left" size={24} color={colors.primary} />
           <Text style={styles.backButtonText}>
             {currentStep === 'create' ? 'Volver' : 'Salir'}
           </Text>
@@ -720,7 +936,10 @@ const styles = StyleSheet.create({
   },
   stepContent: {
     flex: 1,
+  },
+  scrollContent: {
     padding: 20,
+    paddingBottom: 100,
   },
   sectionTitle: {
     fontSize: 18,
@@ -916,10 +1135,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
   },
-  partidosList: {
-    flex: 1,
-    marginBottom: 16,
-  },
   partidoCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1019,5 +1234,121 @@ const styles = StyleSheet.create({
   canchaItemDetalle: {
     fontSize: 13,
     color: colors.textSecondary,
+  },
+  // New styles for fixture cards
+  fixtureCard: {
+    backgroundColor: colors.white,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  fixtureHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  fixtureHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  fixtureTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  groupBadge: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  groupBadgeText: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: colors.white,
+  },
+  fixtureTeams: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 12,
+  },
+  teamName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    flex: 1,
+    textAlign: 'center',
+  },
+  vsText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: colors.textLight,
+    paddingHorizontal: 8,
+  },
+  fixtureInputs: {
+    gap: 12,
+  },
+  inputRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  inputHalf: {
+    flex: 1,
+  },
+  inputLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: 6,
+  },
+  canchaSelector: {
+    marginTop: 4,
+  },
+  canchaScrollView: {
+    marginTop: 8,
+  },
+  canchaChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    backgroundColor: colors.white,
+    marginRight: 8,
+  },
+  canchaChipSelected: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  canchaChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  canchaChipTextSelected: {
+    color: colors.white,
+  },
+  completeIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+  },
+  completeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.success,
   },
 });

@@ -45,6 +45,8 @@ import { FixtureManagementScreen } from './src/screens/admin/FixtureManagementSc
 import { CreateRondaScreen } from './src/screens/admin/CreateRondaScreen';
 import { CreateRondaFlowScreen } from './src/screens/admin/CreateRondaFlowScreen';
 import { CreateRondaAmistosaScreen } from './src/screens/admin/CreateRondaAmistosaScreen';
+import { RondasListScreen } from './src/screens/admin/RondasListScreen';
+import { RondaDetailScreen } from './src/screens/admin/RondaDetailScreen';
 import { EditPartidoScreen } from './src/screens/admin/EditPartidoScreen';
 import { EditTeamScreen } from './src/screens/admin/EditTeamScreen';
 import { EditRondaScreen } from './src/screens/admin/EditRondaScreen';
@@ -115,6 +117,9 @@ export default function App() {
           
           {/* Fixture Management */}
           <Stack.Screen name="FixtureManagement" component={FixtureManagementScreen} />
+          <Stack.Screen name="RondasList" component={RondasListScreen} />
+          <Stack.Screen name="RondaDetail" component={RondaDetailScreen} />
+          <Stack.Screen name="CreateRondaFlow" component={CreateRondaFlowScreen} />
           <Stack.Screen name="CreateRonda" component={CreateRondaFlowScreen} />
           <Stack.Screen name="EditRonda" component={EditRondaScreen} />
           <Stack.Screen name="CreateRondaAmistosa" component={CreateRondaAmistosaScreen} />
