@@ -24,6 +24,7 @@ import { AsignarEquiposModal } from './AsignarEquiposModal';
 import { MoveTeamToGroupModal } from './MoveTeamToGroupModal';
 import { useToast } from '../../../contexts/ToastContext';
 import api from '../../../api';
+import { getLogoUri } from '../../../utils/imageUtils';
 
 interface GroupStageEmbedProps {
   navigation: any;
@@ -52,12 +53,18 @@ const getClasificacionColor = (posicion: number, grupo: Grupo) => {
     return '#CD7F32'; // Bronce
   }
 
-  // Resto de equipos (no clasifican) - gris muy claro casi blanco
-  return '#F5F5F5';
+  // Resto de equipos (no clasifican) - plata muy clarito
+  return '#E0E0E0';
 };
 
-export const GroupStageEmbed: React.FC<GroupStageEmbedProps> = ({ navigation, isAdmin = false, idFase, idEdicionCategoria }) => {
-  console.log('🎨 [GroupStageEmbed] Renderizado - Props recibidas:', { idFase, idEdicionCategoria, isAdmin });
+export const GroupStageEmbed: React.FC<GroupStageEmbedProps & { refreshTrigger?: number }> = ({
+  navigation,
+  isAdmin = false,
+  idFase,
+  idEdicionCategoria,
+  refreshTrigger
+}) => {
+  console.log('🎨 [GroupStageEmbed] Renderizado - Props recibidas:', { idFase, idEdicionCategoria, isAdmin, refreshTrigger });
 
   const [grupos, setGrupos] = useState<Grupo[]>([]);
   const [clasificaciones, setClasificaciones] = useState<{ [grupoId: number]: (Clasificacion & { equipo: Equipo })[] }>({});
@@ -172,7 +179,7 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps> = ({ navigation, is
 
   useEffect(() => {
     loadGruposAndClasificacion();
-  }, [loadGruposAndClasificacion]);
+  }, [loadGruposAndClasificacion, refreshTrigger]);
 
   const handleCreateGroup = () => {
     console.log('🔍 [GroupStageEmbed] handleCreateGroup - idEdicionCategoria:', idEdicionCategoria);
@@ -307,7 +314,7 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps> = ({ navigation, is
     if (!selectedClasificacion) return;
 
     const targetGrupo = grupos.find(g => g.id_grupo === targetGrupoId);
-    
+
     Alert.alert(
       'Confirmar Movimiento',
       `Â¿Mover "${selectedClasificacion.equipo.nombre}" a "${targetGrupo?.nombre}"?`,
@@ -330,7 +337,7 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps> = ({ navigation, is
 
   const handleAddTeam = (equipoId: number) => {
     if (!selectedGrupoId) return;
-    
+
     console.log('Agregar equipo', equipoId, 'al grupo', selectedGrupoId);
     // TODO: Llamar a la API para agregar el equipo al grupo
     // await api.groups.addTeamToGroup(selectedGrupoId, equipoId);
@@ -347,11 +354,22 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps> = ({ navigation, is
         return equipoNombre.includes(searchQuery.toLowerCase());
       })
       .sort((a, b) => {
-        if (a.posicion === null && b.posicion === null) return 0;
-        if (a.posicion === null) return 1;
-        if (b.posicion === null) return -1;
-        return a.posicion - b.posicion;
-      });
+        // Ordenamiento primario: Puntos (Descendente)
+        if (b.puntos !== a.puntos) return b.puntos - a.puntos;
+
+        // Ordenamiento secundario: Diferencia de Gol (Descendente)
+        if (b.dif !== a.dif) return b.dif - a.dif;
+
+        // Ordenamiento terciario: Goles a Favor (Descendente)
+        if (b.gf !== a.gf) return b.gf - a.gf;
+
+        return 0;
+      })
+      .map((item, index) => ({
+        ...item,
+        // Forzamos la posición basada en el índice ordenado porque la API puede devolver 0
+        posicion: index + 1
+      }));
   };
 
   const handleTeamPress = (equipoId: number) => {
@@ -365,12 +383,12 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps> = ({ navigation, is
 
   const renderClasificacionIndicator = (posicion: number, grupo: Grupo) => {
     const color = getClasificacionColor(posicion, grupo);
-    const isEliminated = color === '#F5F5F5';
+    const isEliminated = color === '#E0E0E0';
     const textColor = isEliminated ? colors.textSecondary : colors.white;
-    
+
     return (
       <View style={[
-        styles.posicionCircle, 
+        styles.posicionCircle,
         { backgroundColor: color, borderWidth: isEliminated ? 1 : 0, borderColor: colors.border }
       ]}>
         <Text style={[styles.posicionText, { color: textColor }]}>{posicion}</Text>
@@ -443,7 +461,7 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps> = ({ navigation, is
       >
         {renderClasificacionIndicator(clasificacion.posicion ?? 0, grupo)}
         <Image
-          source={clasificacion.equipo.logo ? { uri: clasificacion.equipo.logo } : require('../../../assets/InterLOGO.png')}
+          source={getLogoUri(clasificacion.equipo.logo) || require('../../../assets/InterLOGO.png')}
           style={styles.equipoLogo}
           resizeMode="cover"
         />
@@ -508,7 +526,7 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps> = ({ navigation, is
             onPress={() => handleGrupoPress(grupo)}
             activeOpacity={0.7}
           >
-            <Text style={styles.grupoNombre}>{grupo.nombre}</Text>
+            <Text style={styles.grupoNombre}>Grupo {grupo.nombre}</Text>
             <MaterialCommunityIcons
               name="chevron-right"
               size={20}
@@ -1199,5 +1217,5 @@ const styles = StyleSheet.create({
     color: colors.white,
   },
 });
-  
+
 

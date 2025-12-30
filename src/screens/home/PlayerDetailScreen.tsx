@@ -17,6 +17,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { safeAsync } from '../../utils/errorHandling';
 import api from '../../api';
+import { getLogoUri } from '../../utils/imageUtils';
 
 type Props = NativeStackScreenProps<any, 'PlayerDetail'>;
 
@@ -132,9 +133,11 @@ export const PlayerDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 <Text style={styles.playerDNI}>DNI: {jugador.dni}</Text>
               )}
 
+              {/* Removed: Weight, Height, Nationality, Position text */}
+
               <View style={styles.teamContainer}>
                 <Image
-                  source={equipo.logo ? { uri: equipo.logo } : require('../../assets/InterLOGO.png')}
+                  source={getLogoUri(equipo.logo || undefined) || require('../../assets/InterLOGO.png')}
                   style={styles.teamLogo}
                 />
                 <Text style={styles.teamName}>{equipo.nombre}</Text>

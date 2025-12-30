@@ -63,22 +63,22 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
   // Tabs diferentes para admin y fan (invitados ven lo mismo que fans)
   const tabs = isAdmin
     ? [
-        { id: 'equipos', label: 'Equipos' },
-        { id: 'grupos', label: 'Grupos' },
-        { id: 'fixture', label: 'Fixture' },
-        { id: 'knockout', label: 'Knockout' },
-        { id: 'local', label: 'Local' },
-        { id: 'sponsors', label: 'Sponsors' },
-      ]
+      { id: 'equipos', label: 'Equipos' },
+      { id: 'grupos', label: 'Grupos' },
+      { id: 'fixture', label: 'Fixture' },
+      { id: 'knockout', label: 'Knockout' },
+      { id: 'local', label: 'Local' },
+      { id: 'sponsors', label: 'Sponsors' },
+    ]
     : [
-        // Fans e invitados ven todo (invitados verán mensajes al intentar acceder)
-        { id: 'miequipo', label: 'Mi Equipo' },
-        { id: 'grupos', label: 'Grupos' },
-        { id: 'fixture', label: 'Fixture' },
-        { id: 'knockout', label: 'Knockout' },
-        { id: 'thebest', label: 'The Best' },
-        { id: 'local', label: 'Local' },
-      ];
+      // Fans e invitados ven todo (invitados verán mensajes al intentar acceder)
+      { id: 'miequipo', label: 'Mi Equipo' },
+      { id: 'grupos', label: 'Grupos' },
+      { id: 'fixture', label: 'Fixture' },
+      { id: 'knockout', label: 'Knockout' },
+      { id: 'thebest', label: 'The Best' },
+      { id: 'local', label: 'Local' },
+    ];
 
   // Animated values para el indicador
   const scrollX = useRef(new Animated.Value(0)).current;
@@ -118,13 +118,13 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
     const { x, width } = event.nativeEvent.layout;
     setTabLayouts((prev) => {
       const updated = { ...prev, [tabId]: { x, width } };
-      
+
       // Inicializar indicador en el primer tab
       if (index === 0 && Object.keys(prev).length === 0) {
         indicatorLeft.setValue(x);
         indicatorWidth.setValue(width);
       }
-      
+
       return updated;
     });
   };
@@ -138,15 +138,18 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
         (x: number) => {
           tabScrollRef.current?.scrollTo({ x: x - 20, animated: true });
         },
-        () => {}
+        () => { }
       );
     }
   };
 
-  // Refresh LocalTab when screen gains focus (after creating/editing local or cancha)
+  const [refreshGroups, setRefreshGroups] = useState(0);
+
+  // Refresh LocalTab and Groups when screen gains focus
   useFocusEffect(
     React.useCallback(() => {
       setRefreshLocalTab(prev => prev + 1);
+      setRefreshGroups(prev => prev + 1);
     }, [])
   );
 
@@ -212,16 +215,16 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
         </View>
 
         <View style={styles.headerContent}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.logoContainer}
             onPress={isAdmin ? () => setShowThemeModal(true) : undefined}
             activeOpacity={isAdmin ? 0.7 : 1}
             disabled={!isAdmin}
           >
-            <Image 
-              source={logo} 
-              style={[styles.logo, { transform: [{ scale: logoScale }] }]} 
-              resizeMode="contain" 
+            <Image
+              source={logo}
+              style={[styles.logo, { transform: [{ scale: logoScale }] }]}
+              resizeMode="contain"
             />
           </TouchableOpacity>
           <View style={styles.headerInfo}>
@@ -257,9 +260,9 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
 
         {/* --- TABS --- */}
         <View style={styles.tabsContainer}>
-          <ScrollView 
+          <ScrollView
             ref={tabScrollRef}
-            horizontal 
+            horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.tabsScrollContent}
             style={styles.tabsScroll}
@@ -286,7 +289,7 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
                 </Text>
               </TouchableOpacity>
             ))}
-            
+
             {/* Indicador animado */}
             <Animated.View
               style={[
@@ -329,7 +332,13 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
             if (tab.id === 'grupos') {
               return (
                 <View key={tab.id} style={styles.pageWrapper}>
-                  <GroupStageEmbed navigation={navigation} isAdmin={true} idFase={idFase} idEdicionCategoria={idEdicionCategoria} />
+                  <GroupStageEmbed
+                    navigation={navigation}
+                    isAdmin={true}
+                    idFase={idFase}
+                    idEdicionCategoria={idEdicionCategoria}
+                    refreshTrigger={refreshGroups}
+                  />
                 </View>
               );
             } else if (tab.id === 'fixture') {
@@ -404,8 +413,8 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
             if (tab.id === 'miequipo') {
               return (
                 <View key={tab.id} style={styles.pageWrapper}>
-                  <MyTeamEmbed 
-                    navigation={navigation} 
+                  <MyTeamEmbed
+                    navigation={navigation}
                     edicionCategoriaId={selectedCategoria.id_categoria}
                   />
                 </View>
@@ -413,7 +422,13 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
             } else if (tab.id === 'grupos') {
               return (
                 <View key={tab.id} style={styles.pageWrapper}>
-                  <GroupStageEmbed navigation={navigation} isAdmin={false} idFase={idFase} idEdicionCategoria={idEdicionCategoria} />
+                  <GroupStageEmbed
+                    navigation={navigation}
+                    isAdmin={false}
+                    idFase={idFase}
+                    idEdicionCategoria={idEdicionCategoria}
+                    refreshTrigger={refreshGroups}
+                  />
                 </View>
               );
             } else if (tab.id === 'fixture') {
@@ -456,7 +471,7 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
               );
             }
           }
-          
+
           // Fallback
           return (
             <View key={tab.id} style={styles.pageWrapper}>

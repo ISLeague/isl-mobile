@@ -23,6 +23,7 @@ import { safeAsync } from '../../utils/errorHandling';
 import { calculateAge } from '../../utils';
 import api from '../../api';
 import type { Equipo, EstadisticasDetalleEquipo, ImagenEquipo } from '../../api/types/equipos.types';
+import { getLogoUri } from '../../utils/imageUtils';
 import type { Jugador } from '../../api/types/jugadores.types';
 import type { Grupo } from '../../api/types/grupos.types';
 import type { Partido } from '../../api/types/partidos.types';
@@ -31,6 +32,15 @@ interface TeamDetailScreenProps {
   navigation: any;
   route: any;
 }
+
+// Helper para colores de posición
+const getBadgeColor = (posicion?: string) => {
+  const pos = posicion?.toLowerCase() || '';
+  if (pos.includes('portero') || pos.includes('arquero')) return '#FFD700'; // Gold
+  if (pos.includes('defensa')) return '#C0C0C0'; // Silver
+  if (pos.includes('medio') || pos.includes('volante')) return '#CD7F32'; // Bronze
+  return '#E5E4E2'; // Light Silver / Platinum (Delantero y otros)
+};
 
 export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, route }) => {
   const { equipoId } = route.params as { equipoId: number };
@@ -312,10 +322,10 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
               async () => {
                 // TODO: Llamar a la API para eliminar todos los jugadores del equipo
                 // await api.teams.clearRoster(equipoId);
-                
+
                 console.log('Vaciando plantilla del equipo:', equipoId);
                 showSuccess(`Plantilla de "${equipo?.nombre ?? 'Equipo'}" vaciada exitosamente`, 'Plantilla Vaciada');
-                
+
                 // Opcional: Volver atrás o recargar
                 // navigation.goBack();
               },
@@ -397,24 +407,24 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
 
     // Check if player is a reinforcement (from API data)
     const esRefuerzo = jugador.es_refuerzo || false;
-    
+
     // Formatear nombre según el rol del usuario
     const formatPlayerName = (nombreCompleto: string) => {
       if (isAdmin) {
         return nombreCompleto; // Admin ve nombre completo
       }
-      
+
       // Fan: mostrar "Nombre A." (primera letra del apellido)
       const partes = nombreCompleto.trim().split(' ');
       if (partes.length === 1) {
         return partes[0]; // Si solo hay una palabra, mostrarla completa
       }
-      
+
       const nombre = partes[0];
       const apellidoInicial = partes[partes.length - 1].charAt(0).toUpperCase();
       return `${nombre} ${apellidoInicial}.`;
     };
-    
+
     if (loading) {
       return (
         <Card key={`skeleton-${jugador.id_jugador}`} style={styles.playerCard}>
@@ -437,8 +447,11 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
       >
         <Card style={styles.playerCard}>
           <View style={styles.playerHeader}>
-            {/* Número de Camiseta en lugar de foto */}
-            <View style={styles.playerNumberBadge}>
+            {/* Número de Camiseta con color según posición */}
+            <View style={[
+              styles.playerNumberBadge,
+              { backgroundColor: getBadgeColor(jugador.posicion) }
+            ]}>
               <Text style={styles.playerNumberText}>#{jugador.numero_camiseta}</Text>
             </View>
             <View style={styles.playerInfo}>
@@ -532,7 +545,7 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
       {/* Logo del Equipo */}
       <View style={styles.logoContainer}>
         <Image
-          source={equipo.logo ? { uri: equipo.logo } : require('../../assets/InterLOGO.png')}
+          source={getLogoUri(equipo.logo) || require('../../assets/InterLOGO.png')}
           style={styles.teamLogo}
           resizeMode="contain"
         />
@@ -627,8 +640,8 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
                         </Card>
                       )}
 
-                      {/* Información del Delegado */}
-                      {(equipo.nombre_delegado || equipo.telefono_delegado || equipo.email_delegado) && (
+                      {/* Información del Delegado - Solo Admin */}
+                      {isAdmin && (equipo.nombre_delegado || equipo.telefono_delegado || equipo.email_delegado) && (
                         <Card style={styles.delegadoCard}>
                           <Text style={styles.cardTitle}>Información del Delegado</Text>
                           {equipo.nombre_delegado && (
@@ -655,124 +668,62 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
                   )}
 
                   {/* Estadísticas Compactas Estilo Barcelona */}
-                  {estadisticasEquipo && (
-                    <View style={styles.compactStatsContainer}>
-                      <View style={styles.compactStatsGrid}>
-                        <View style={[styles.compactStatBox, { backgroundColor: colors.textSecondary }]}>
-                          <Text style={[styles.compactStatLabel, { color: colors.white }]}>TOTAL</Text>
-                          <Text style={[styles.compactStatValue, { color: colors.white }]}>{estadisticasEquipo.partidos_jugados}</Text>
-                        </View>
-                        <View style={[styles.compactStatBox, { backgroundColor: colors.success }]}>
-                          <Text style={[styles.compactStatLabel, { color: colors.white }]}>W</Text>
-                          <Text style={[styles.compactStatValue, { color: colors.white }]}>{estadisticasEquipo.partidos_ganados}</Text>
-                        </View>
-                        <View style={[styles.compactStatBox, { backgroundColor: colors.textLight }]}>
-                          <Text style={[styles.compactStatLabel, { color: colors.white }]}>D</Text>
-                          <Text style={[styles.compactStatValue, { color: colors.white }]}>{estadisticasEquipo.partidos_empatados}</Text>
-                        </View>
-                        <View style={[styles.compactStatBox, { backgroundColor: colors.error }]}>
-                          <Text style={[styles.compactStatLabel, { color: colors.white }]}>L</Text>
-                          <Text style={[styles.compactStatValue, { color: colors.white }]}>{estadisticasEquipo.partidos_perdidos}</Text>
-                        </View>
+                  <View style={styles.compactStatsContainer}>
+                    <View style={styles.compactStatsGrid}>
+                      <View style={[styles.compactStatBox, { backgroundColor: colors.textSecondary }]}>
+                        <Text style={[styles.compactStatLabel, { color: colors.white }]}>TOTAL</Text>
+                        <Text style={[styles.compactStatValue, { color: colors.white }]}>{estadisticasEquipo?.partidos_jugados ?? 0}</Text>
+                      </View>
+                      <View style={[styles.compactStatBox, { backgroundColor: colors.success }]}>
+                        <Text style={[styles.compactStatLabel, { color: colors.white }]}>W</Text>
+                        <Text style={[styles.compactStatValue, { color: colors.white }]}>{estadisticasEquipo?.partidos_ganados ?? 0}</Text>
+                      </View>
+                      <View style={[styles.compactStatBox, { backgroundColor: colors.textLight }]}>
+                        <Text style={[styles.compactStatLabel, { color: colors.white }]}>D</Text>
+                        <Text style={[styles.compactStatValue, { color: colors.white }]}>{estadisticasEquipo?.partidos_empatados ?? 0}</Text>
+                      </View>
+                      <View style={[styles.compactStatBox, { backgroundColor: colors.error }]}>
+                        <Text style={[styles.compactStatLabel, { color: colors.white }]}>L</Text>
+                        <Text style={[styles.compactStatValue, { color: colors.white }]}>{estadisticasEquipo?.partidos_perdidos ?? 0}</Text>
                       </View>
                     </View>
-                  )}
+                  </View>
 
                   {/* TODO: Siguiente Partido - Requires API endpoint for upcoming matches */}
                   {/* TODO: Partidos Recientes - Requires API endpoint for recent matches */}
 
-                  {grupoEquipo && (
-                    <InfoCard
-                      title="Grupo"
-                      value={grupoEquipo.nombre}
-                      icon="shield"
-                      iconColor={colors.primary}
-                    />
-                  )}
+                  {/* Removed Grupo InfoCard - Team name comes from API */}
 
                   {/* Estadísticas Detalladas */}
-                  {estadisticasEquipo && (
-                    <Card style={styles.statsCard}>
-                      <Text style={styles.cardTitle}>Estadísticas Detalladas</Text>
+                  <Card style={styles.statsCard}>
+                    <Text style={styles.cardTitle}>Estadísticas Detalladas</Text>
 
-                      <View style={styles.statsGrid}>
-                        <View style={styles.statItem}>
-                          <Text style={styles.statValue}>{estadisticasEquipo.partidos_jugados}</Text>
-                          <Text style={styles.statLabel}>Partidos</Text>
-                        </View>
-                        <View style={styles.statItem}>
-                          <Text style={[styles.statValue, { color: colors.success }]}>
-                            {estadisticasEquipo.partidos_ganados}
-                          </Text>
-                          <Text style={styles.statLabel}>Ganados</Text>
-                        </View>
-                        <View style={styles.statItem}>
-                          <Text style={[styles.statValue, { color: colors.textSecondary }]}>
-                            {estadisticasEquipo.partidos_empatados}
-                          </Text>
-                          <Text style={styles.statLabel}>Empatados</Text>
-                        </View>
-                        <View style={styles.statItem}>
-                          <Text style={[styles.statValue, { color: colors.error }]}>
-                            {estadisticasEquipo.partidos_perdidos}
-                          </Text>
-                          <Text style={styles.statLabel}>Perdidos</Text>
-                        </View>
+                    <View style={styles.statsRow}>
+                      <View style={styles.statItem}>
+                        <Text style={[styles.statValue, { color: colors.success }]}>{estadisticasEquipo?.goles_favor ?? 0}</Text>
+                        <Text style={styles.statLabel}>Goles a Favor</Text>
                       </View>
-
-                      <View style={styles.divider} />
-
-                      <View style={styles.statsRow}>
-                        <View style={styles.statItem}>
-                          <Text style={styles.statValue}>{estadisticasEquipo.goles_favor}</Text>
-                          <Text style={styles.statLabel}>Goles a Favor</Text>
-                        </View>
-                        <View style={styles.statItem}>
-                          <Text style={styles.statValue}>{estadisticasEquipo.goles_contra}</Text>
-                          <Text style={styles.statLabel}>Goles en Contra</Text>
-                        </View>
-                        <View style={styles.statItem}>
-                          <Text style={[
-                            styles.statValue,
-                            { color: estadisticasEquipo.diferencia_goles > 0 ? colors.success : estadisticasEquipo.diferencia_goles < 0 ? colors.error : colors.textPrimary }
-                          ]}>
-                            {estadisticasEquipo.diferencia_goles > 0 ? '+' : ''}{estadisticasEquipo.diferencia_goles}
-                          </Text>
-                          <Text style={styles.statLabel}>Diferencia</Text>
-                        </View>
+                      <View style={styles.statItem}>
+                        <Text style={[styles.statValue, { color: colors.error }]}>{estadisticasEquipo?.goles_contra ?? 0}</Text>
+                        <Text style={styles.statLabel}>Goles en Contra</Text>
                       </View>
+                    </View>
 
-                      <View style={styles.divider} />
+                    <View style={styles.divider} />
 
-                      <View style={styles.statsRow}>
-                        <View style={styles.statItem}>
-                          <Text style={[styles.statValue, { color: colors.textPrimary }]}>
-                            {estadisticasEquipo.puntos}
-                          </Text>
-                          <Text style={styles.statLabel}>Puntos</Text>
-                        </View>
-                        <View style={styles.statItem}>
-                          <Text style={styles.statValue}>{estadisticasEquipo.posicion}º</Text>
-                          <Text style={styles.statLabel}>Posición</Text>
-                        </View>
+                    <View style={styles.statsRow}>
+                      <View style={styles.statItem}>
+                        <MaterialCommunityIcons name="card" size={32} color="#FFD700" />
+                        <Text style={styles.statValue}>{estadisticasEquipo?.tarjetas_amarillas ?? 0}</Text>
+                        <Text style={styles.statLabel}>Amarillas</Text>
                       </View>
-
-                      <View style={styles.divider} />
-
-                      <View style={styles.statsRow}>
-                        <View style={styles.statItem}>
-                          <MaterialCommunityIcons name="card" size={32} color="#FFD700" />
-                          <Text style={styles.statValue}>{estadisticasEquipo.tarjetas_amarillas}</Text>
-                          <Text style={styles.statLabel}>Amarillas</Text>
-                        </View>
-                        <View style={styles.statItem}>
-                          <MaterialCommunityIcons name="card" size={32} color={colors.error} />
-                          <Text style={styles.statValue}>{estadisticasEquipo.tarjetas_rojas}</Text>
-                          <Text style={styles.statLabel}>Rojas</Text>
-                        </View>
+                      <View style={styles.statItem}>
+                        <MaterialCommunityIcons name="card" size={32} color={colors.error} />
+                        <Text style={styles.statValue}>{estadisticasEquipo?.tarjetas_rojas ?? 0}</Text>
+                        <Text style={styles.statLabel}>Rojas</Text>
                       </View>
-                    </Card>
-                  )}
+                    </View>
+                  </Card>
 
                   <View style={styles.bottomSpacing} />
                 </ScrollView>
