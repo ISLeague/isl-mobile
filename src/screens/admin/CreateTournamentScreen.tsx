@@ -14,6 +14,7 @@ import { useToast } from '../../contexts/ToastContext';
 import { Input } from '../../components/common/Input';
 import { Button } from '../../components/common/Button';
 import { safeAsync, getUserFriendlyMessage } from '../../utils/errorHandling';
+import api from '../../api';
 
 export const CreateTournamentScreen = ({ navigation, route }: any) => {
   const { pais } = route.params;
@@ -23,24 +24,42 @@ export const CreateTournamentScreen = ({ navigation, route }: any) => {
   const [loading, setLoading] = useState(false);
 
   const handleCreate = async () => {
+    // Validaciones
     if (!nombre.trim()) {
       showWarning('El nombre del torneo es requerido', 'Campo requerido');
       return;
     }
 
+    if (!edicion.trim()) {
+      showWarning('La temporada/edición es requerida', 'Campo requerido');
+      return;
+    }
+
     setLoading(true);
 
-    const success = await safeAsync(
+    const result = await safeAsync(
       async () => {
-        // Simulación de creación - TODO: Reemplazar con llamada real a API
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        return true;
+        console.log('📊 [CreateTournament] Creando torneo:', {
+          nombre,
+          temporada: edicion,
+          id_pais: pais.id_pais,
+        });
+
+        const response = await api.torneos.create({
+          nombre: nombre.trim(),
+          temporada: edicion.trim(),
+          id_pais: pais.id_pais,
+        });
+
+        console.log('✅ [CreateTournament] Torneo creado:', response);
+        return response;
       },
       'createTournament',
       {
         severity: 'high',
-        fallbackValue: false,
+        fallbackValue: null,
         onError: (error) => {
+          console.error('❌ [CreateTournament] Error:', error);
           showError(getUserFriendlyMessage(error), 'Error al crear torneo');
         }
       }
@@ -48,7 +67,7 @@ export const CreateTournamentScreen = ({ navigation, route }: any) => {
 
     setLoading(false);
 
-    if (success) {
+    if (result && result.success) {
       showSuccess(`Torneo "${nombre}" creado correctamente`, '¡Éxito!');
       setTimeout(() => navigation.goBack(), 1500);
     }
