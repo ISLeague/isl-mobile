@@ -30,9 +30,15 @@ export const partidosService = {
    * Obtener un partido por ID
    */
   get: async (id: number) => {
-    const response = await apiClient.get('/partidos-get', {
-      params: { id },
-    });
+    const response = await apiClient.get(`/partidos-get/${id}`);
+    return response.data;
+  },
+
+  /**
+   * Obtener resultado completo de un partido con estadísticas
+   */
+  getResultado: async (id: number) => {
+    const response = await apiClient.get(`/partidos-resultado/${id}`);
     return response.data;
   },
 

@@ -48,6 +48,7 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
   const [equipoVisitante, setEquipoVisitante] = useState<any>(null);
   const [jugadoresLocal, setJugadoresLocal] = useState<any[]>([]);
   const [jugadoresVisitante, setJugadoresVisitante] = useState<any[]>([]);
+  const [rondaData, setRondaData] = useState<any>(null);
 
   const [golesLocal, setGolesLocal] = useState(partido.marcador_local || 0);
   const [golesVisitante, setGolesVisitante] = useState(partido.marcador_visitante || 0);
@@ -69,63 +70,110 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
     try {
       setLoading(true);
 
-      // Load full partido details including nested equipo_local and equipo_visitante
-      const partidoResponse = await api.partidos.get(partido.id_partido);
-      if (partidoResponse.success && partidoResponse.data) {
-        const partidoData = partidoResponse.data;
+      console.log('📊 [ResultPage] Loading partido resultado for ID:', partido.id_partido);
+
+      // Load full partido details with players and statistics in ONE call
+      const resultadoResponse = await api.partidos.getResultado(partido.id_partido);
+
+      console.log('📊 [ResultPage] Resultado response:', JSON.stringify(resultadoResponse, null, 2));
+
+      if (resultadoResponse.success && resultadoResponse.data) {
+        const data = resultadoResponse.data;
 
         // Set teams from nested objects
-        if (partidoData.equipo_local) {
-          setEquipoLocal(partidoData.equipo_local);
-        }
-        if (partidoData.equipo_visitante) {
-          setEquipoVisitante(partidoData.equipo_visitante);
+        if (data.equipo_local) {
+          console.log('📊 [ResultPage] Equipo local data:', JSON.stringify(data.equipo_local, null, 2));
+          setEquipoLocal(data.equipo_local);
+          console.log('✅ [ResultPage] Equipo local set:', data.equipo_local.nombre);
+        } else {
+          console.warn('⚠️ [ResultPage] No equipo_local in response');
         }
 
-        // Load players for each team using the correct endpoint with id_equipo parameter
-        if (equipoLocalId) {
-          const jugadoresLocalResponse = await api.jugadores.list(equipoLocalId);
-          if (jugadoresLocalResponse.success && jugadoresLocalResponse.data) {
-            const jugadoresLocalData = jugadoresLocalResponse.data;
-            setJugadoresLocal(jugadoresLocalData);
-            setEventosLocal(
-              jugadoresLocalData.map((j: any) => ({
-                id_jugador: j.id_jugador,
-                goles: 0,
-                asistencias: 0,
-                amarillas: 0,
-                rojas: 0,
-                isMVP: false
-              }))
-            );
+        if (data.equipo_visitante) {
+          console.log('📊 [ResultPage] Equipo visitante data:', JSON.stringify(data.equipo_visitante, null, 2));
+          setEquipoVisitante(data.equipo_visitante);
+          console.log('✅ [ResultPage] Equipo visitante set:', data.equipo_visitante.nombre);
+        } else {
+          console.warn('⚠️ [ResultPage] No equipo_visitante in response');
+        }
+
+        // Set ronda data from API response
+        if (data.ronda) {
+          setRondaData(data.ronda);
+          console.log('✅ [ResultPage] Ronda set:', data.ronda.nombre);
+        }
+
+        // Load existing resultado if available
+        if (data.resultado) {
+          setGolesLocal(data.resultado.marcador_local || 0);
+          setGolesVisitante(data.resultado.marcador_visitante || 0);
+
+          if (data.resultado.fue_a_penales) {
+            setPenalesEnabled(true);
+            setPenalesLocal(data.resultado.penales_local || 0);
+            setPenalesVisitante(data.resultado.penales_visitante || 0);
+          }
+
+          if (data.resultado.walkover) {
+            setWalkoverEnabled(true);
+            // Determine walkover winner from marcador
+            if (data.resultado.marcador_local === 3) {
+              setWalkoverWinner('local');
+            } else if (data.resultado.marcador_visitante === 3) {
+              setWalkoverWinner('visitante');
+            }
           }
         }
 
-        if (equipoVisitanteId) {
-          const jugadoresVisitanteResponse = await api.jugadores.list(equipoVisitanteId);
-          if (jugadoresVisitanteResponse.success && jugadoresVisitanteResponse.data) {
-            const jugadoresVisitanteData = jugadoresVisitanteResponse.data;
-            setJugadoresVisitante(jugadoresVisitanteData);
-            setEventosVisitante(
-              jugadoresVisitanteData.map((j: any) => ({
-                id_jugador: j.id_jugador,
-                goles: 0,
-                asistencias: 0,
-                amarillas: 0,
-                rojas: 0,
-                isMVP: false
-              }))
-            );
-          }
+        // Process local team players and statistics
+        if (data.equipo_local?.estadisticas_jugadores) {
+          const jugadoresLocalData = data.equipo_local.estadisticas_jugadores;
+          console.log(`✅ [ResultPage] Loaded ${jugadoresLocalData.length} jugadores for equipo local`);
+
+          setJugadoresLocal(jugadoresLocalData);
+          setEventosLocal(
+            jugadoresLocalData.map((j: any) => ({
+              id_jugador: j.id_plantilla || j.id_jugador,
+              goles: j.goles || 0,
+              asistencias: j.asistencias || 0,
+              amarillas: j.tarjetas_amarillas || 0,
+              rojas: j.tarjetas_rojas || 0,
+              isMVP: j.es_mvp || false
+            }))
+          );
+        } else {
+          console.warn('⚠️ [ResultPage] No estadisticas_jugadores found in equipo_local');
         }
+
+        // Process visiting team players and statistics
+        if (data.equipo_visitante?.estadisticas_jugadores) {
+          const jugadoresVisitanteData = data.equipo_visitante.estadisticas_jugadores;
+          console.log(`✅ [ResultPage] Loaded ${jugadoresVisitanteData.length} jugadores for equipo visitante`);
+
+          setJugadoresVisitante(jugadoresVisitanteData);
+          setEventosVisitante(
+            jugadoresVisitanteData.map((j: any) => ({
+              id_jugador: j.id_plantilla || j.id_jugador,
+              goles: j.goles || 0,
+              asistencias: j.asistencias || 0,
+              amarillas: j.tarjetas_amarillas || 0,
+              rojas: j.tarjetas_rojas || 0,
+              isMVP: j.es_mvp || false
+            }))
+          );
+        } else {
+          console.warn('⚠️ [ResultPage] No estadisticas_jugadores found in equipo_visitante');
+        }
+      } else {
+        console.error('❌ [ResultPage] Invalid resultado response:', resultadoResponse);
       }
     } catch (error) {
-      console.error('Error loading data:', error);
+      console.error('❌ [ResultPage] Error loading data:', error);
       showError('Error al cargar los datos del partido');
     } finally {
       setLoading(false);
     }
-  }, [equipoLocalId, equipoVisitanteId, showError, partido.id_partido]);
+  }, [showError, partido.id_partido]);
 
   useEffect(() => {
     loadData();
@@ -214,91 +262,37 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
       const finalGolesLocal = walkoverEnabled ? (walkoverWinner === 'local' ? 3 : 0) : golesLocal;
       const finalGolesVisitante = walkoverEnabled ? (walkoverWinner === 'visitante' ? 3 : 0) : golesVisitante;
 
-      // Collect all events from both teams
-      const eventos: any[] = [];
+      // Collect player statistics
+      const estadisticasJugadores: any[] = [];
 
-      // Process local team events
+      // Process local team stats
       eventosLocal.forEach((evento) => {
-        // Add goals
-        for (let i = 0; i < evento.goles; i++) {
-          eventos.push({
-            tipo: 'gol',
-            minuto: 0, // TODO: Add minute tracking if needed
+        // Only include players with at least one stat
+        if (evento.goles > 0 || evento.asistencias > 0 || evento.amarillas > 0 || evento.rojas > 0 || evento.isMVP) {
+          estadisticasJugadores.push({
             id_jugador: evento.id_jugador,
             id_equipo: equipoLocalId,
-          });
-        }
-
-        // Add assists
-        for (let i = 0; i < evento.asistencias; i++) {
-          eventos.push({
-            tipo: 'asistencia',
-            minuto: 0,
-            id_jugador: evento.id_jugador,
-            id_equipo: equipoLocalId,
-          });
-        }
-
-        // Add yellow cards
-        for (let i = 0; i < evento.amarillas; i++) {
-          eventos.push({
-            tipo: 'amarilla',
-            minuto: 0,
-            id_jugador: evento.id_jugador,
-            id_equipo: equipoLocalId,
-          });
-        }
-
-        // Add red cards
-        for (let i = 0; i < evento.rojas; i++) {
-          eventos.push({
-            tipo: 'roja',
-            minuto: 0,
-            id_jugador: evento.id_jugador,
-            id_equipo: equipoLocalId,
+            goles: evento.goles,
+            asistencias: evento.asistencias,
+            tarjetas_amarillas: evento.amarillas,
+            tarjetas_rojas: evento.rojas,
+            es_mvp: evento.isMVP,
           });
         }
       });
 
-      // Process visiting team events
+      // Process visiting team stats
       eventosVisitante.forEach((evento) => {
-        // Add goals
-        for (let i = 0; i < evento.goles; i++) {
-          eventos.push({
-            tipo: 'gol',
-            minuto: 0,
+        // Only include players with at least one stat
+        if (evento.goles > 0 || evento.asistencias > 0 || evento.amarillas > 0 || evento.rojas > 0 || evento.isMVP) {
+          estadisticasJugadores.push({
             id_jugador: evento.id_jugador,
             id_equipo: equipoVisitanteId,
-          });
-        }
-
-        // Add assists
-        for (let i = 0; i < evento.asistencias; i++) {
-          eventos.push({
-            tipo: 'asistencia',
-            minuto: 0,
-            id_jugador: evento.id_jugador,
-            id_equipo: equipoVisitanteId,
-          });
-        }
-
-        // Add yellow cards
-        for (let i = 0; i < evento.amarillas; i++) {
-          eventos.push({
-            tipo: 'amarilla',
-            minuto: 0,
-            id_jugador: evento.id_jugador,
-            id_equipo: equipoVisitanteId,
-          });
-        }
-
-        // Add red cards
-        for (let i = 0; i < evento.rojas; i++) {
-          eventos.push({
-            tipo: 'roja',
-            minuto: 0,
-            id_jugador: evento.id_jugador,
-            id_equipo: equipoVisitanteId,
+            goles: evento.goles,
+            asistencias: evento.asistencias,
+            tarjetas_amarillas: evento.amarillas,
+            tarjetas_rojas: evento.rojas,
+            es_mvp: evento.isMVP,
           });
         }
       });
@@ -308,8 +302,13 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
         id_partido: partido.id_partido,
         goles_local: finalGolesLocal,
         goles_visitante: finalGolesVisitante,
+        penales_local: penalesEnabled ? penalesLocal : 0,
+        penales_visitante: penalesEnabled ? penalesVisitante : 0,
+        fue_a_penales: penalesEnabled,
+        walkover: walkoverEnabled,
+        walkover_ganador: walkoverEnabled ? walkoverWinner : null,
         estado: 'finalizado',
-        eventos,
+        estadisticas_jugadores: estadisticasJugadores,
       });
 
       if (response.success) {
@@ -348,25 +347,26 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
   };
 
   const renderPlayerEvents = (jugador: any, eventosArray: PlayerEvent[], isLocal: boolean) => {
-    const playerEvent = eventosArray.find((e: PlayerEvent) => e.id_jugador === jugador.id_jugador);
+    const jugadorId = jugador.id_plantilla || jugador.id_jugador;
+    const playerEvent = eventosArray.find((e: PlayerEvent) => e.id_jugador === jugadorId);
     if (!playerEvent) return null;
 
     return (
-      <View key={jugador.id_jugador} style={styles.playerCard}>
+      <View key={jugadorId} style={styles.playerCard}>
         <View style={styles.playerHeader}>
           {jugador.numero_camiseta && (
             <View style={styles.playerNumberBadge}>
               <Text style={styles.playerNumber}>#{jugador.numero_camiseta}</Text>
             </View>
           )}
-          <Text style={styles.playerName} numberOfLines={2}>{jugador.nombre_completo}</Text>
+          <Text style={styles.playerName} numberOfLines={2}>{jugador.nombre || jugador.nombre_completo}</Text>
         </View>
         
         <View style={styles.playerEvents}>
           {/* Goles */}
           <TouchableOpacity
             style={styles.eventBadge}
-            onPress={() => setShowEventModal({ jugadorId: jugador.id_jugador, isLocal, eventType: 'goles' })}
+            onPress={() => setShowEventModal({ jugadorId, isLocal, eventType: 'goles' })}
           >
             <Text style={[styles.eventLabel, playerEvent.goles > 0 && styles.eventLabelActive]}>G</Text>
             <Text style={styles.eventValue}>{playerEvent.goles}</Text>
@@ -375,7 +375,7 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
           {/* Asistencias */}
           <TouchableOpacity
             style={styles.eventBadge}
-            onPress={() => setShowEventModal({ jugadorId: jugador.id_jugador, isLocal, eventType: 'asistencias' })}
+            onPress={() => setShowEventModal({ jugadorId, isLocal, eventType: 'asistencias' })}
           >
             <Text style={[styles.eventLabel, playerEvent.asistencias > 0 && styles.eventLabelActive]}>A</Text>
             <Text style={styles.eventValue}>{playerEvent.asistencias}</Text>
@@ -384,7 +384,7 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
           {/* Amarillas */}
           <TouchableOpacity
             style={styles.eventBadge}
-            onPress={() => setShowEventModal({ jugadorId: jugador.id_jugador, isLocal, eventType: 'amarillas' })}
+            onPress={() => setShowEventModal({ jugadorId, isLocal, eventType: 'amarillas' })}
           >
             <Text style={[styles.eventLabel, styles.eventLabelYellow, playerEvent.amarillas > 0 && styles.eventLabelActive]}>YC</Text>
             <Text style={styles.eventValue}>{playerEvent.amarillas}</Text>
@@ -395,7 +395,7 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
             style={[styles.eventBadge, (playerEvent.rojas > 0 || playerEvent.amarillas >= 2) && styles.eventBadgeRedActive]}
             onPress={() => {
               if (playerEvent.amarillas < 2) {
-                updatePlayerEvent(isLocal, jugador.id_jugador, 'rojas', playerEvent.rojas > 0 ? 0 : 1);
+                updatePlayerEvent(isLocal, jugadorId, 'rojas', playerEvent.rojas > 0 ? 0 : 1);
               }
             }}
           >
@@ -405,7 +405,7 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
           {/* MVP */}
           <TouchableOpacity
             style={[styles.mvpBadge, playerEvent.isMVP && styles.mvpBadgeActive]}
-            onPress={() => toggleMVP(isLocal, jugador.id_jugador)}
+            onPress={() => toggleMVP(isLocal, jugadorId)}
           >
             <Text style={[styles.eventLabel, playerEvent.isMVP && styles.eventLabelActive]}>MVP</Text>
           </TouchableOpacity>
@@ -564,7 +564,7 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Nombre de la Ronda */}
         <View style={styles.roundHeader}>
-          <Text style={styles.roundName}>{ronda?.nombre || 'Ronda 1'}</Text>
+          <Text style={styles.roundName}>{rondaData?.nombre || ronda?.nombre || 'Ronda 1'}</Text>
         </View>
 
         {/* Marcador Principal */}

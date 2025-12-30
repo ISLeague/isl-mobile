@@ -13,12 +13,27 @@ export interface EventoPartido {
   id_asistencia?: number;
 }
 
+export interface EstadisticaJugador {
+  id_jugador: number;
+  id_equipo: number;
+  goles: number;
+  asistencias: number;
+  tarjetas_amarillas: number;
+  tarjetas_rojas: number;
+  es_mvp: boolean;
+}
+
 export interface RegistrarResultadoRequest {
   id_partido: number;
   goles_local: number;
   goles_visitante: number;
-  estado: EstadoPartido;
-  eventos: EventoPartido[];
+  penales_local?: number;
+  penales_visitante?: number;
+  fue_a_penales?: boolean;
+  walkover?: boolean;
+  walkover_ganador?: 'local' | 'visitante' | null;
+  estado: string;
+  estadisticas_jugadores: EstadisticaJugador[];
 }
 
 export interface CreatePartidoAmistosoRequest {
@@ -89,12 +104,12 @@ export interface PartidoResultadoRequest {
 // Response types
 export interface RegistrarResultadoResponse {
   success: boolean;
+  message?: string;
   data: {
     id_partido: number;
-    goles_local: number;
-    goles_visitante: number;
-    estado: EstadoPartido;
-    eventos_registrados: number;
+    marcador_local: number;
+    marcador_visitante: number;
+    estado_partido: string;
   };
   timestamp: string;
 }
