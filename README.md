@@ -1217,3 +1217,330 @@ __tests__/
 - [ ] Sentry para error tracking
 - [ ] Analytics (Firebase/Mixpanel)
 - [ ] Feature flags
+
+---
+
+## 🐛 Problemas Conocidos y Mejoras Pendientes
+
+Esta sección lista los bugs conocidos y mejoras necesarias, indicando dónde encontrar y cómo resolver cada issue.
+
+### 🔴 Críticos (Funcionalidad Rota)
+
+#### 1. Crear Torneo No Funciona
+**Ubicación:** `src/screens/admin/CreateTournamentScreen.tsx`
+**Problema:** El formulario de creación de torneo no envía datos correctamente al API
+**Solución sugerida:**
+- Verificar el método `handleSubmit` en línea ~150
+- Revisar que `api.torneos.create()` en `src/api/services/torneos.service.ts` esté correctamente implementado
+- Validar que el payload coincida con lo que espera el backend
+- Agregar logs de debugging para ver qué se está enviando
+
+#### 2. Actualizar Torneo No Funciona
+**Ubicación:** `src/screens/admin/EditTournamentScreen.tsx`
+**Problema:** No se guardan los cambios al editar un torneo
+**Solución sugerida:**
+- Revisar el método `handleSave`
+- Verificar que `api.torneos.update()` en `src/api/services/torneos.service.ts` reciba el `id_torneo` correctamente
+- Confirmar que los campos del formulario estén vinculados al estado
+- Verificar que el endpoint PUT esté funcionando en el backend
+
+#### 3. Editar Categoría No Funciona
+**Ubicación:** `src/screens/admin/CategoryManagementScreen.tsx`
+**Problema:** Los cambios en categorías no se persisten
+**Solución sugerida:**
+- Localizar la función de edición de categoría (probablemente en un modal)
+- Revisar `api.categorias.update()` o `api.edicionCategorias.update()` en los servicios correspondientes
+- Verificar que el `id_categoria` o `id_edicion_categoria` se esté pasando correctamente
+
+#### 4. Crear Cancha No Funciona
+**Ubicación:** `src/screens/admin/CreateCanchaScreen.tsx`
+**Problema:** No se crean nuevas canchas
+**Solución sugerida:**
+- Revisar el método `handleSubmit`
+- Verificar `api.locales.createCancha()` en `src/api/services/locales.service.ts`
+- Asegurar que `id_local` se esté pasando correctamente al crear la cancha
+- Validar campos requeridos
+
+#### 5. Eliminar Jornada No Funciona
+**Ubicación:** `src/screens/admin/RondasListScreen.tsx` o `RondaDetailScreen.tsx`
+**Problema:** El botón de eliminar no funciona
+**Solución sugerida:**
+- Buscar el método `handleDelete` o similar
+- Implementar `api.rondas.delete(id_ronda)` en `src/api/services/rondas.service.ts`
+- Agregar confirmación antes de eliminar
+- Actualizar la lista después de eliminar exitosamente
+
+#### 6. Crear Múltiples Grupos No Funciona
+**Ubicación:** `src/screens/admin/CreateGroupsFlowScreen.tsx`
+**Problema:** Solo crea un grupo o falla al crear varios
+**Solución sugerida:**
+- Revisar el loop de creación de grupos
+- Verificar que cada llamada a `api.grupos.create()` se esté esperando correctamente (await en loop)
+- Considerar usar `Promise.all()` para crear grupos en paralelo
+- Agregar manejo de errores individual para cada grupo
+
+#### 7. Mover Equipo de Grupo No Funciona
+**Ubicación:** `src/screens/admin/components/MoveTeamToGroupModal.tsx`
+**Problema:** No se puede reasignar un equipo a otro grupo
+**Solución sugerida:**
+- Revisar el método de submit del modal
+- Implementar `api.grupos.moverEquipo()` o actualizar la asignación
+- Verificar que se esté enviando el `id_equipo` y el nuevo `id_grupo`
+- Refrescar la lista de grupos después del cambio
+
+#### 8. Entrar a Información de Jugador No Carga
+**Ubicación:** `src/screens/home/PlayerDetailScreen.tsx`
+**Problema:** La pantalla se queda en loading o no muestra datos
+**Solución sugerida:**
+- Revisar el `useEffect` que carga los datos del jugador (línea ~50-80)
+- Verificar que `api.jugadores.get(id_jugador)` en `src/api/services/jugadores.service.ts` esté implementado
+- Asegurar que el `id_jugador` se pase correctamente desde la navegación
+- Revisar el manejo de errores y estados de loading
+
+#### 9. Ver Resultado de Partido No Funciona
+**Ubicación:** `src/screens/admin/ResultPage.tsx` o `src/screens/home/MatchDetailScreen.tsx`
+**Problema:** No carga la información del resultado
+**Solución sugerida:**
+- En ResultPage: Revisar el método `loadData` (línea ~69-164)
+- Verificar que `api.partidos.getResultado(id_partido)` devuelva la estructura correcta
+- En MatchDetailScreen: Implementar la carga de eventos del partido
+- Validar que el partido tenga resultados registrados
+
+#### 10. Sponsors No Funciona (Aspecto Completo)
+**Ubicación:**
+- `src/screens/admin/CreateSponsorScreen.tsx`
+- `src/screens/admin/EditSponsorScreen.tsx`
+- `src/screens/admin/components/SponsorTab.tsx`
+
+**Problema:** Crear, editar y visualizar sponsors está roto
+**Solución sugerida:**
+- **CreateSponsorScreen**: Revisar método `handleSubmit`, verificar `api.sponsors.create()`
+- **EditSponsorScreen**: Revisar carga inicial de datos y método `handleSave`
+- **SponsorTab**: Verificar que `api.sponsors.list()` devuelva datos
+- Implementar todos los métodos en `src/api/services/sponsors.service.ts` si no existen
+- Validar upload de imágenes de logos
+
+#### 11. Editar Perfil No Funciona Bien
+**Ubicación:** `src/screens/profile/ProfileScreen.tsx`
+**Problema:** Los cambios no se guardan o la UI no responde bien
+**Solución sugerida:**
+- Buscar el método de guardar cambios (probablemente `handleSaveProfile`)
+- Verificar `api.usuarios.update()` en `src/api/services/usuarios.service.ts`
+- Asegurar que los campos editables estén vinculados al estado
+- Actualizar el contexto de autenticación después de guardar cambios
+- Revisar validaciones de formulario
+
+---
+
+### 🟡 Importantes (UX/UI)
+
+#### 12. Teclado Tapa Campos en Configurar Categorías
+**Ubicación:** `src/screens/admin/CategoryManagementScreen.tsx`
+**Problema:** El teclado cubre los campos inferiores del formulario
+**Solución sugerida:**
+- Envolver el formulario en `<KeyboardAvoidingView>` de React Native
+- Usar `behavior="padding"` en iOS y `behavior="height"` en Android
+- Alternativamente, usar `react-native-keyboard-aware-scroll-view`
+- Ejemplo:
+```tsx
+<KeyboardAvoidingView
+  behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+  style={{flex: 1}}
+>
+  <ScrollView>
+    {/* Formulario aquí */}
+  </ScrollView>
+</KeyboardAvoidingView>
+```
+
+#### 13. Primera Fila de Estadísticas Detalladas Repite Datos
+**Ubicación:** `src/screens/home/TheBestScreen.tsx` o componente de estadísticas
+**Problema:** Los datos se duplican en la primera fila
+**Solución sugerida:**
+- Revisar el método `renderItem` o el componente que muestra las estadísticas
+- Verificar que no haya un header row duplicado
+- Revisar la lógica de mapeo de datos (probablemente línea ~100-150)
+- Asegurar que `data.slice()` o `data.map()` no esté incluyendo elementos duplicados
+
+#### 14. Logos de Equipos No Cargan
+**Ubicación:** Múltiples pantallas (principalmente `TeamDetailScreen.tsx`, `GroupStageScreen.tsx`)
+**Problema:** Las imágenes de logos no se muestran
+**Solución sugerida:**
+- Verificar que las URLs de logos sean válidas y accesibles
+- Revisar componente `<Image source={{ uri: equipo.logo }}>`
+- Agregar placeholder cuando logo sea null/undefined
+- Verificar CORS si las imágenes están en servidor externo
+- Usar `onError` para detectar errores de carga
+- Ejemplo:
+```tsx
+<Image
+  source={equipo.logo ? { uri: equipo.logo } : require('../../assets/default-team.png')}
+  onError={(error) => console.log('Logo failed to load:', error)}
+/>
+```
+
+#### 15. Debería Decir "Grupo C" en vez de Solo "C"
+**Ubicación:** `src/screens/home/GroupStageScreen.tsx` o componente de tabs de grupos
+**Problema:** Solo muestra "C" en lugar de "Grupo C"
+**Solución sugerida:**
+- Buscar el render de tabs o el título del grupo (probablemente línea ~200-250)
+- Cambiar de `{grupo.nombre}` a `Grupo ${grupo.nombre}`
+- Si está en tabs, actualizar el label:
+```tsx
+<Tab label={`Grupo ${grupo.nombre}`} />
+```
+
+#### 16. Necesidad de Salir y Entrar para Ver Nuevo Grupo
+**Ubicación:** `src/screens/admin/CreateGroupScreen.tsx` y pantalla padre
+**Problema:** La lista no se refresca automáticamente
+**Solución sugerida:**
+- Después de crear grupo exitosamente, llamar al callback de refresh
+- Usar `navigation.goBack()` con parámetro de refresh:
+```tsx
+navigation.navigate('GruposList', { refresh: true });
+```
+- En la pantalla de lista, escuchar cambios con `useFocusEffect`:
+```tsx
+import { useFocusEffect } from '@react-navigation/native';
+
+useFocusEffect(
+  useCallback(() => {
+    loadGrupos();
+  }, [])
+);
+```
+
+#### 17. Circulitos de Clasificación Deberían Ser Oro/Plata/Bronce
+**Ubicación:** `src/screens/home/GroupStageScreen.tsx` o componente de tabla de posiciones
+**Problema:** Todos los indicadores son del mismo color (oro)
+**Solución sugerida:**
+- Buscar el componente que renderiza los círculos de posición (probablemente línea ~300-400)
+- Implementar lógica basada en la posición y configuración del grupo:
+```tsx
+const getPositionColor = (posicion: number, grupo: Grupo) => {
+  if (posicion <= grupo.equipos_pasan_oro) return '#FFD700'; // Oro
+  if (posicion <= grupo.equipos_pasan_oro + grupo.equipos_pasan_plata) return '#C0C0C0'; // Plata
+  if (posicion <= grupo.equipos_pasan_oro + grupo.equipos_pasan_plata + 1) return '#CD7F32'; // Bronce
+  return '#E0E0E0'; // Gris claro (no clasifica)
+};
+```
+
+#### 18. En Jornada 5 Se Importa Dos Veces el Mismo Partido
+**Ubicación:** `src/screens/admin/RondaDetailScreen.tsx` o `FixtureEmbedImproved.tsx`
+**Problema:** Los partidos aparecen duplicados en el listado
+**Solución sugerida:**
+- Revisar el componente que renderiza la lista de partidos
+- Verificar que no haya múltiples llamadas a la API
+- Usar `Set` o filtrar duplicados por `id_partido`:
+```tsx
+const partidosUnicos = partidos.filter((partido, index, self) =>
+  index === self.findIndex((p) => p.id_partido === partido.id_partido)
+);
+```
+- Revisar si el componente se está montando dos veces
+
+---
+
+### 🟢 Mejoras Opcionales
+
+#### 19. Borrar Campo "Posición del Jugador"
+**Ubicación:** `src/screens/home/PlayerFormScreen.tsx` o `PlayerDetailScreen.tsx`
+**Problema:** Campo innecesario o no usado
+**Solución sugerida:**
+- Eliminar el input de posición del formulario
+- Comentar o eliminar la validación relacionada
+- Actualizar la interfaz `Jugador` en `src/types/index.ts` si ya no es necesario
+
+#### 20. Eliminar Peso y Altura
+**Ubicación:** `src/screens/home/PlayerFormScreen.tsx`
+**Problema:** Campos que no se usan en la aplicación
+**Solución sugerida:**
+- Remover inputs de peso y altura del formulario
+- Limpiar la lógica de submit que incluye estos campos
+- Mantener en el backend por si se necesitan después
+
+#### 21. Información de Delegado Solo para Admins
+**Ubicación:** `src/screens/home/TeamDetailScreen.tsx`
+**Problema:** Los fans pueden ver información privada del delegado
+**Solución sugerida:**
+- Usar el contexto de autenticación para verificar el rol:
+```tsx
+const { isAdmin, isSuperAdmin } = useAuth();
+
+{(isAdmin || isSuperAdmin) && (
+  <View>
+    <Text>Delegado: {equipo.delegado_nombre}</Text>
+    <Text>Teléfono: {equipo.delegado_telefono}</Text>
+  </View>
+)}
+```
+
+#### 22. ¿Son Necesarios los Colores del Equipo?
+**Ubicación:** `src/screens/admin/CreateTeamScreen.tsx` y `EditTeamScreen.tsx`
+**Problema:** Funcionalidad que quizás no se use
+**Solución sugerida:**
+- Si no se usan, hacer los campos opcionales o eliminarlos
+- Si se deciden usar, implementar selector de color con:
+  - `react-native-color-picker` o similar
+  - Mostrar preview del color seleccionado
+  - Usar en las tarjetas de equipo para personalización
+
+---
+
+## 📋 Checklist de Corrección de Bugs
+
+Para cada bug, seguir estos pasos:
+
+1. **Localizar el archivo** indicado arriba
+2. **Reproducir el bug** en ambiente de desarrollo
+3. **Agregar logs** de debugging:
+```tsx
+console.log('📊 [ComponentName] Estado actual:', state);
+console.log('✅ [ComponentName] Datos enviados:', payload);
+console.log('❌ [ComponentName] Error:', error);
+```
+4. **Verificar el servicio de API** correspondiente en `src/api/services/`
+5. **Probar la solución** en dispositivo real o emulador
+6. **Actualizar tests** si existen
+7. **Documentar el cambio** en el commit
+
+---
+
+## 🛠️ Herramientas de Debugging Recomendadas
+
+### Para React Native
+```bash
+# Ver logs en tiempo real
+npx react-native log-android
+npx react-native log-ios
+
+# Debugger con Flipper
+npx react-native doctor
+# Instalar Flipper: https://fbflipper.com/
+```
+
+### Para API
+```bash
+# Instalar axios interceptors para logging
+# Ver src/api/apiClient.ts y agregar:
+apiClient.interceptors.request.use(request => {
+  console.log('🚀 Request:', request.method?.toUpperCase(), request.url);
+  return request;
+});
+
+apiClient.interceptors.response.use(
+  response => {
+    console.log('✅ Response:', response.config.url, response.status);
+    return response;
+  },
+  error => {
+    console.log('❌ Error:', error.config?.url, error.response?.status);
+    return Promise.reject(error);
+  }
+);
+```
+
+### Chrome DevTools
+- Abrir en navegador: `chrome://inspect`
+- Remote devices → Inspect
+- Console para ver todos los logs
