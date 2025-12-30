@@ -27,6 +27,7 @@ import KnockoutEmbed from './components/KnockoutEmbed';
 import { useAuth } from '../../contexts/AuthContext';
 import { SponsorSlider } from '../../components/common';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useFocusEffect } from '@react-navigation/native';
 
 
 // ===============================
@@ -36,18 +37,27 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
   const pagerRef = useRef<PagerView>(null);
   const tabScrollRef = useRef<ScrollView>(null);
   const tabRefs = useRef<{ [key: string]: View | null }>({});
-  const { torneo, pais, categoria } = route.params;
+  const { torneo, pais, categoria, edicionCategoria } = route.params;
+
+  console.log('🎯 [CategoryManagement] Route params:', { torneo, pais, categoria, edicionCategoria });
+  console.log('🎯 [CategoryManagement] idEdicionCategoria from params:', edicionCategoria?.id_edicion_categoria);
+
   const { isAdmin, isGuest } = useAuth();
   const { setColorPreset, colorPreset, logo, gradient } = useTheme();
   const currentPreset = colorPresets[colorPreset];
   const logoScale = currentPreset.logoScale || 1;
-  const [activeTab, setActiveTab] = useState('grupos');
+  const [activeTab, setActiveTab] = useState('equipos');
   const [categorias, setCategorias] = useState<any[]>([]);
   const [selectedCategoria, setSelectedCategoria] = useState(categoria);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [showThemeModal, setShowThemeModal] = useState(false);
   const [tabLayouts, setTabLayouts] = useState<{ [key: string]: { x: number; width: number } }>({});
-  const [idEdicionCategoria, setIdEdicionCategoria] = useState<number | undefined>(undefined);
+  const [refreshLocalTab, setRefreshLocalTab] = useState(0);
+
+  // Usar idEdicionCategoria desde los params directamente
+  const [idEdicionCategoria, setIdEdicionCategoria] = useState<number | undefined>(
+    edicionCategoria?.id_edicion_categoria
+  );
   const [idFase, setIdFase] = useState<number | undefined>(undefined);
 
   // Tabs diferentes para admin y fan (invitados ven lo mismo que fans)
@@ -133,43 +143,42 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
     }
   };
 
+  // Refresh LocalTab when screen gains focus (after creating/editing local or cancha)
+  useFocusEffect(
+    React.useCallback(() => {
+      setRefreshLocalTab(prev => prev + 1);
+    }, [])
+  );
+
   useEffect(() => {
-    loadCategorias();
-  }, []);
+    loadFaseGrupos();
+  }, [idEdicionCategoria]);
 
-  const loadCategorias = async () => {
+  const loadFaseGrupos = async () => {
+    if (!idEdicionCategoria) {
+      console.warn('⚠️ [CategoryManagement] No idEdicionCategoria disponible para cargar fases');
+      return;
+    }
+
     try {
-      const response = await api.ediciones.list({ id_torneo: torneo.id_torneo });
-      const ediciones = response.data || [];
-      const edicionActiva = ediciones.find(e => e.estado === 'en juego') || ediciones[0];
-      if (edicionActiva) {
-        const cats = await api.categorias.getByEdition(edicionActiva.id_edicion);
-        setCategorias(cats);
+      console.log('🔄 [CategoryManagement] Cargando fase de grupos para idEdicionCategoria:', idEdicionCategoria);
 
-        // Set idEdicionCategoria from selectedCategoria
-        const edicionCat = cats.find((c: any) => c.categoria.id_categoria === selectedCategoria.id_categoria);
-        if (edicionCat) {
-          setIdEdicionCategoria(edicionCat.id_edicion_categoria);
-
-          // Load fase de grupos for this edicionCategoria
-          try {
-            const fasesResponse = await api.fases.list(edicionCat.id_edicion_categoria);
-            if (fasesResponse.success && fasesResponse.data && fasesResponse.data.length > 0) {
-              // Find the first "grupo" type fase
-              const faseGrupos = fasesResponse.data.find(f => f.tipo === 'grupo');
-              if (faseGrupos) {
-                setIdFase(faseGrupos.id_fase);
-              }
-            }
-          } catch (error) {
-            console.error('Error loading fases:', error);
-          }
+      const fasesResponse = await api.fases.list(idEdicionCategoria);
+      if (fasesResponse.success && fasesResponse.data && fasesResponse.data.length > 0) {
+        // Find the first "grupo" type fase
+        const faseGrupos = fasesResponse.data.find(f => f.tipo === 'grupo');
+        if (faseGrupos) {
+          console.log('✅ [CategoryManagement] Fase de grupos encontrada:', faseGrupos.id_fase);
+          setIdFase(faseGrupos.id_fase);
+        } else {
+          console.log('ℹ️ [CategoryManagement] No se encontró fase de grupos');
         }
       }
     } catch (error) {
-      console.error('Error cargando categorías:', error);
+      console.error('Error loading fase de grupos:', error);
     }
   };
+
 
   const handleTabPress = (tabId: string) => {
     const index = tabs.findIndex((t) => t.id === tabId);
@@ -346,15 +355,9 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
                     idEdicionCategoria={idEdicionCategoria || 1}
                     onCreateTeam={() => navigation.navigate('CreateTeam', {
                       idEdicionCategoria: idEdicionCategoria || 1,
-                      onTeamCreated: () => {
-                        // Refresh will be handled by navigation back
-                      }
                     })}
                     onBulkCreateTeams={() => navigation.navigate('BulkCreateTeams', {
                       idEdicionCategoria: idEdicionCategoria || 1,
-                      onTeamsCreated: () => {
-                        // Refresh will be handled by navigation back
-                      }
                     })}
                     onTeamPress={(equipo) => navigation.navigate('TeamDetail', { equipoId: equipo.id_equipo })}
                   />
@@ -365,6 +368,8 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
                 <View key={tab.id} style={styles.pageWrapper}>
                   <LocalTab
                     idEdicionCategoria={idEdicionCategoria || 1}
+                    refreshTrigger={refreshLocalTab}
+                    navigation={navigation}
                     onCreateLocal={() => navigation.navigate('CreateLocal', { idEdicionCategoria: idEdicionCategoria || 1 })}
                     onCreateCancha={(idLocal, nombreLocal) =>
                       navigation.navigate('CreateCancha', { idLocal, nombreLocal })
@@ -438,6 +443,8 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
                 <View key={tab.id} style={styles.pageWrapper}>
                   <LocalTab
                     idEdicionCategoria={idEdicionCategoria || 1}
+                    refreshTrigger={refreshLocalTab}
+                    navigation={navigation}
                     onCreateLocal={undefined}
                     onCreateCancha={undefined}
                     onEditLocal={undefined}

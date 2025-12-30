@@ -10,9 +10,9 @@ import {
   TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as DocumentPicker from 'expo-document-picker';
 import { colors } from '../../theme/colors';
 import { useToast } from '../../contexts/ToastContext';
-import { Button } from '../../components/common/Button';
 import { Equipo } from '../../api/types';
 import { safeAsync } from '../../utils/errorHandling';
 import api from '../../api';
@@ -125,8 +125,115 @@ export const ManageTeamsScreen = ({ navigation, route }: any) => {
     );
   };
 
-  const handleImportCSV = () => {
-    Alert.alert('Importar CSV', 'Selecciona un archivo CSV con equipos y jugadores');
+  const handleImportCSV = (equipo: Equipo) => {
+    Alert.alert(
+      'Formato del Archivo CSV',
+      'El archivo CSV debe tener las siguientes columnas en este orden:\n\n' +
+      '1. Nombre completo\n' +
+      '2. DNI\n' +
+      '3. Fecha de nacimiento (YYYY-MM-DD)\n' +
+      '4. Número de camiseta (opcional)\n' +
+      '5. Posición\n' +
+      '6. Pie dominante\n' +
+      '7. Altura en cm (opcional)\n' +
+      '8. Peso en kg (opcional)\n' +
+      '9. Nacionalidad\n' +
+      '10. Es refuerzo (0 o 1)\n' +
+      '11. Es capitán (0 o 1)\n\n' +
+      'Ejemplo:\n' +
+      'Juan Pérez,12345678,2000-05-15,10,Delantero,derecho,175,70,Argentina,0,0\n\n' +
+      '¿Deseas continuar?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Seleccionar CSV',
+          onPress: async () => {
+            try {
+              // Pick CSV file from device
+              const result = await DocumentPicker.getDocumentAsync({
+                type: ['text/csv', 'text/comma-separated-values', 'application/csv', '*/*'],
+                copyToCacheDirectory: true,
+              });
+
+              if (result.canceled) {
+                return;
+              }
+
+              const file = result.assets[0];
+
+              // Show confirmation with filename
+              Alert.alert(
+                'Confirmar Importación',
+                `Archivo seleccionado:\n${file.name}\n\n¿Deseas importar los jugadores de este archivo?`,
+                [
+                  { text: 'Cancelar', style: 'cancel' },
+                  {
+                    text: 'Importar',
+                    onPress: async () => {
+                      try {
+                        // Create file object in React Native format
+                        const csvFile = {
+                          uri: file.uri,
+                          type: 'text/csv',
+                          name: file.name,
+                        } as any;
+
+                        // Upload CSV
+                        const uploadResult = await safeAsync(
+                          async () => {
+                            const apiResponse = await api.jugadores.createBulk(equipo.id_equipo, csvFile);
+                            return apiResponse;
+                          },
+                          'importCSV',
+                          {
+                            severity: 'high',
+                            fallbackValue: null,
+                            onError: () => {
+                              showError('Error al importar el archivo CSV', 'Error');
+                            }
+                          }
+                        );
+
+                        if (uploadResult && uploadResult.success) {
+                          const { total_processed, successful, failed, errors } = uploadResult.data;
+
+                          if (failed > 0) {
+                            // Show errors
+                            const errorMessages = errors.map((e: any) =>
+                              `Fila ${e.row}: ${e.error}`
+                            ).join('\n');
+
+                            Alert.alert(
+                              'Importación completada con errores',
+                              `Total procesados: ${total_processed}\nExitosos: ${successful}\nFallidos: ${failed}\n\nErrores:\n${errorMessages}`,
+                              [{ text: 'OK' }]
+                            );
+                          } else {
+                            showSuccess(
+                              `${successful} jugadores importados correctamente para ${equipo.nombre}`,
+                              '¡Éxito!'
+                            );
+                          }
+
+                          // Reload equipos to update the list
+                          // (Optional: you might want to navigate to team details to see the new players)
+                        }
+                      } catch (error) {
+                        console.error('Error uploading CSV:', error);
+                        showError('Error al importar el archivo', 'Error');
+                      }
+                    }
+                  }
+                ]
+              );
+            } catch (error) {
+              console.error('Error picking CSV:', error);
+              showError('Error al seleccionar el archivo', 'Error');
+            }
+          }
+        }
+      ]
+    );
   };
 
   return (
@@ -153,16 +260,6 @@ export const ManageTeamsScreen = ({ navigation, route }: any) => {
             <Text style={styles.actionIcon}>➕</Text>
             <Text style={styles.actionText}>Nuevo Equipo</Text>
           </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.actionButton, styles.secondaryAction]}
-            onPress={handleImportCSV}
-          >
-            <Text style={styles.actionIcon}>📥</Text>
-            <Text style={[styles.actionText, styles.secondaryText]}>
-              Importar CSV
-            </Text>
-          </TouchableOpacity>
         </View>
 
         {/* Teams List */}
@@ -181,6 +278,12 @@ export const ManageTeamsScreen = ({ navigation, route }: any) => {
                 <Text style={styles.teamSubtitle}>Ver jugadores →</Text>
               </View>
               <View style={styles.teamActions}>
+                <TouchableOpacity
+                  style={styles.actionIconButton}
+                  onPress={() => handleImportCSV(equipo)}
+                >
+                  <Text style={styles.actionIconText}>📥</Text>
+                </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.actionIconButton}
                   onPress={() => handleEditTeam(equipo)}

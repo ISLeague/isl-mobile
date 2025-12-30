@@ -16,8 +16,21 @@ export interface Ronda {
 }
 
 export interface CreateRondaRequest {
-  numero: number;
-  fase_id: number;
+  nombre: string;
+  id_fase: number;
+  tipo: 'fase_grupos' | 'eliminatorias' | 'amistosa';
+  subtipo_eliminatoria?: 'oro' | 'plata' | 'bronce';
+  es_amistosa?: boolean;
+  fecha_inicio?: string;
+  fecha_fin?: string;
+  orden: number;
+}
+
+export interface FixtureGenerateRequest {
+  id_ronda: number;
+  tipo_generacion: 'round_robin' | 'amistoso_aleatorio';
+  ida_vuelta?: boolean;
+  cantidad_partidos?: number; // Solo para amistosos
 }
 
 export interface UpdateRondaRequest {

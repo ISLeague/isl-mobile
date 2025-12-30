@@ -10,25 +10,21 @@ import {
   TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Usuario, Equipo } from '../../types';
+import { Equipo } from '../../api/types/equipos.types';
 import { Linking } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
-import { mockUsuarios } from '../../data/mockData';
 import { useNavigation } from '@react-navigation/native';
 
 
 export const ProfileScreen = ({ navigation: navProp }: any) => {
   const navigation = useNavigation<any>();
-  const { usuario, isAdmin, isGuest, isTournamentAdmin, logout, suplantarIdentidad } = useAuth();
+  const { usuario, isAdmin, isGuest, isTournamentAdmin, logout } = useAuth();
   const { colors, mode, toggle: toggleTheme } = useTheme();
   const [myTeam, setMyTeam] = useState<Equipo | null>(null);
-  const [showSuplantModal, setShowSuplantModal] = useState(false);
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
   const [showConfigModal, setShowConfigModal] = useState(false);
-  const [searchEmail, setSearchEmail] = useState('');
-  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [editTab, setEditTab] = useState<'profile' | 'password'>('profile');
 
   // Estados para editar perfil
@@ -48,11 +44,15 @@ export const ProfileScreen = ({ navigation: navProp }: any) => {
     // Aquí cargarías el equipo favorito del usuario
     // const team = await api.profile.getMyTeam(usuario.id_usuario);
     // setMyTeam(team);
-    
-    // Cargar usuarios para suplantación (solo admins)
-    if (isAdmin) {
-      setUsuarios(mockUsuarios.filter(u => u.id_usuario !== usuario?.id_usuario));
-    }
+
+    // TODO: Cargar usuarios desde la API para suplantación (solo admins)
+    // if (isAdmin) {
+    //   const loadUsuarios = async () => {
+    //     const users = await api.usuarios.list();
+    //     setUsuarios(users.filter(u => u.id_usuario !== usuario?.id_usuario));
+    //   };
+    //   loadUsuarios();
+    // }
 
     // Inicializar datos de edición
     if (usuario) {
@@ -124,43 +124,10 @@ export const ProfileScreen = ({ navigation: navProp }: any) => {
     setConfirmPassword('');
   };
 
-  const handleSuplantarUsuario = (usuarioSeleccionado: Usuario) => {
-    Alert.alert(
-      'Confirmar Suplantación',
-      `¿Deseas suplantar la identidad de ${usuarioSeleccionado.email}?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Confirmar',
-          onPress: () => {
-            suplantarIdentidad(usuarioSeleccionado.id_usuario);
-            setShowSuplantModal(false);
-            Alert.alert('Éxito', `Ahora estás viendo como: ${usuarioSeleccionado.email}`);
-          },
-        },
-      ]
-    );
-  };
-
   // Ver Mis Torneos (para admin de torneo)
   const handleMisTorneos = () => {
     navigation.navigate('TournamentAdminDashboard');
   };
-
-  // Ver como fan preestablecido (solo para superadmin)
-  const handleVerComoFan = () => {
-    const fanPreestablecido = mockUsuarios.find(u => u.id_usuario === 3);
-    if (fanPreestablecido) {
-      suplantarIdentidad(fanPreestablecido.id_usuario);
-      Alert.alert('Vista de Fan', `Ahora estás viendo como: ${fanPreestablecido.email}`);
-    } else {
-      Alert.alert('Error', 'No se encontró el usuario fan preestablecido');
-    }
-  };
-
-  const filteredUsuarios = searchEmail
-    ? usuarios.filter(u => u.email.toLowerCase().includes(searchEmail.toLowerCase()))
-    : usuarios;
 
   if (!usuario) {
     return null;
@@ -171,7 +138,6 @@ export const ProfileScreen = ({ navigation: navProp }: any) => {
 
 // Lista de opciones del perfil
 const menuItems = [
-
   ...(isTournamentAdmin ? [
     {
       id: 0,
@@ -179,15 +145,6 @@ const menuItems = [
       title: 'Mis Torneos',
       subtitle: 'Gestionar mis torneos asignados',
       onPress: handleMisTorneos,
-      highlight: true,
-    }
-  ] : isAdmin ? [
-    {
-      id: 0,
-      icon: 'eye-outline',
-      title: 'Ver como Fan',
-      subtitle: 'Vista preestablecida de fan',
-      onPress: handleVerComoFan,
       highlight: true,
     }
   ] : []),
@@ -394,60 +351,6 @@ const menuItems = [
         </>
         )}
       </ScrollView>
-
-      {/* Modal de Suplantación */}
-      <Modal
-        visible={showSuplantModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowSuplantModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Suplantar Usuario</Text>
-              <TouchableOpacity onPress={() => setShowSuplantModal(false)}>
-                <MaterialCommunityIcons name="close" size={24} color={colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.searchContainer}>
-              <MaterialCommunityIcons name="magnify" size={20} color={colors.textLight} />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Buscar por email..."
-                value={searchEmail}
-                onChangeText={setSearchEmail}
-                placeholderTextColor={colors.textLight}
-                autoCapitalize="none"
-              />
-            </View>
-
-            <ScrollView style={styles.usuariosList}>
-              {filteredUsuarios.length === 0 ? (
-                <Text style={styles.emptyText}>No se encontraron usuarios</Text>
-              ) : (
-                filteredUsuarios.map((u) => (
-                  <TouchableOpacity
-                    key={u.id_usuario}
-                    style={styles.usuarioItem}
-                    onPress={() => handleSuplantarUsuario(u)}
-                  >
-                    <View style={styles.usuarioAvatar}>
-                      <Text style={styles.usuarioAvatarText}>{u.email.charAt(0).toUpperCase()}</Text>
-                    </View>
-                    <View style={styles.usuarioInfo}>
-                      <Text style={styles.usuarioEmail}>{u.email}</Text>
-                      <Text style={styles.usuarioRol}>{u.rol.toUpperCase()}</Text>
-                    </View>
-                    <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textLight} />
-                  </TouchableOpacity>
-                ))
-              )}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
 
       {/* Modal de Editar Perfil (con tabs para perfil y contraseña) */}
       <Modal

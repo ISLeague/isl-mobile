@@ -490,54 +490,6 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
     navigation.navigate('CreateRonda', { idEdicionCategoria });
   };
 
-  const handleCreateRondaAmistosa = () => {
-    Alert.alert(
-      'Crear Ronda Amistosa',
-      '¿Deseas crear una ronda amistosa automáticamente?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Crear',
-          onPress: async () => {
-            try {
-              // TODO: Llamar API para crear ronda amistosa automática
-              // await api.rounds.createFriendlyRound(idEdicionCategoria);
-              console.log('Crear ronda amistosa automática');
-              showInfo('Ronda amistosa creada automáticamente');
-              loadData();
-            } catch (error) {
-              showError('Error al crear la ronda amistosa');
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  const handleGenerateGroupStageFixture = () => {
-    Alert.alert(
-      'Generar Rondas de Fase de Grupos',
-      '¿Deseas generar automáticamente todas las rondas necesarias para que cada equipo del grupo se enfrente una vez?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Generar',
-          onPress: async () => {
-            try {
-              // TODO: Llamar API para generar todas las rondas de fase de grupos (todos vs todos)
-              // await api.rounds.generateAllGroupStageRounds(idEdicionCategoria);
-              console.log('Generar todas las rondas de fase de grupos automáticamente');
-              showInfo('Rondas de fase de grupos generadas exitosamente');
-              loadData();
-            } catch (error) {
-              showError('Error al generar las rondas');
-            }
-          },
-        },
-      ]
-    );
-  };
-
   const handleDeleteRonda = (ronda: Ronda) => {
     Alert.alert(
       'Eliminar Ronda',
@@ -656,32 +608,11 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
       />
 
       {isAdmin && (
-        <>
-          {/* FAB Principal: Crear Ronda */}
-          <FAB
-            icon="add-circle"
-            onPress={handleCreateRonda}
-            color={colors.primary}
-          />
-          
-          {/* FAB Secundario: Crear Ronda Amistosa */}
-          <TouchableOpacity
-            style={styles.fabSecondary}
-            onPress={handleCreateRondaAmistosa}
-            activeOpacity={0.8}
-          >
-            <MaterialCommunityIcons name="hand-heart" size={24} color={colors.white} />
-          </TouchableOpacity>
-
-          {/* FAB Terciario: Generar Todos vs Todos */}
-          <TouchableOpacity
-            style={styles.fabTertiary}
-            onPress={handleGenerateGroupStageFixture}
-            activeOpacity={0.8}
-          >
-            <MaterialCommunityIcons name="group" size={24} color={colors.white} />
-          </TouchableOpacity>
-        </>
+        <FAB
+          icon="add-circle"
+          onPress={handleCreateRonda}
+          color={colors.primary}
+        />
       )}
     </GestureHandlerRootView>
   );
@@ -955,38 +886,6 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
     padding: 24,
-  },
-  fabSecondary: {
-    position: 'absolute',
-    right: 24,
-    bottom: 90,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.success,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-  },
-  fabTertiary: {
-    position: 'absolute',
-    right: 24,
-    bottom: 160,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.info,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
   },
   gradientHeader: {
     flexDirection: 'row',

@@ -9,22 +9,20 @@ import {
   Alert,
   Animated,
   Linking,
-  Modal,
-  TextInput,
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import PagerView from 'react-native-pager-view';
+import * as DocumentPicker from 'expo-document-picker';
 import { GradientHeader, FAB, Card, InfoCard, Skeleton } from '../../components/common';
 import { colors } from '../../theme/colors';
 import { useAuth } from '../../contexts/AuthContext';
-import { useTeamFollow } from '../../hooks';
 import { useToast } from '../../contexts/ToastContext';
 import { safeAsync } from '../../utils/errorHandling';
 import { calculateAge } from '../../utils';
 import api from '../../api';
-import type { Equipo, EstadisticasDetalleEquipo } from '../../api/types/equipos.types';
+import type { Equipo, EstadisticasDetalleEquipo, ImagenEquipo } from '../../api/types/equipos.types';
 import type { Jugador } from '../../api/types/jugadores.types';
 import type { Grupo } from '../../api/types/grupos.types';
 import type { Partido } from '../../api/types/partidos.types';
@@ -36,8 +34,7 @@ interface TeamDetailScreenProps {
 
 export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, route }) => {
   const { equipoId } = route.params as { equipoId: number };
-  const { isAdmin, usuario, isGuest } = useAuth();
-  const { followedTeam } = useTeamFollow(usuario?.id_usuario || 0);
+  const { isAdmin } = useAuth();
   const pagerRef = useRef<PagerView>(null);
   const scrollX = useRef(new Animated.Value(0)).current;
   const { showSuccess, showError, showWarning } = useToast();
@@ -45,18 +42,11 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
   // Estado de carga
   const [loading, setLoading] = useState(true);
 
-  // Estado para el modal de importar CSV
-  const [showImportModal, setShowImportModal] = useState(false);
-  const [importText, setImportText] = useState('');
-
-  // Verificar si este equipo es el favorito del usuario
-  const isFollowedTeam = followedTeam?.id_equipo === equipoId && !isGuest;
-
-  // Tabs - Solo mostrar "Fotos" si es el equipo favorito Y no es invitado
+  // Tabs - Fotos se muestra para todos
   const tabs = [
     { id: 'estadisticas', label: 'Estadísticas' },
     { id: 'jugadores', label: 'Jugadores' },
-    ...(isFollowedTeam ? [{ id: 'fotos', label: 'Fotos' }] : []),
+    { id: 'fotos', label: 'Fotos' },
   ];
 
   const [activeTab, setActiveTab] = useState('estadisticas');
@@ -66,6 +56,8 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
   const [jugadores, setJugadores] = useState<Jugador[]>([]);
   const [estadisticasEquipo, setEstadisticasEquipo] = useState<EstadisticasDetalleEquipo | null>(null);
   const [grupoEquipo, setGrupoEquipo] = useState<Grupo | null>(null);
+  const [imagenesEquipo, setImagenesEquipo] = useState<ImagenEquipo[]>([]);
+  const [loadingImages, setLoadingImages] = useState(false);
 
   // Cargar datos del equipo, jugadores y estadísticas desde la API
   useEffect(() => {
@@ -79,14 +71,10 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
           setEquipo(equipoResponse.data);
         }
 
-        // Load all players and filter by team
-        // TODO: Backend should support filtering by id_equipo in /jugadores-list endpoint
-        const jugadoresResponse = await api.jugadores.list();
-        if (jugadoresResponse.success && jugadoresResponse.data) {
-          const jugadoresEquipo = jugadoresResponse.data.filter(
-            (j: Jugador) => j.equipo_id === equipoId || j.id_equipo === equipoId
-          );
-          setJugadores(jugadoresEquipo);
+        // Load players by team ID
+        const jugadoresResponse = await api.jugadores.list(equipoId);
+        if (jugadoresResponse.success && jugadoresResponse.data.jugadores) {
+          setJugadores(jugadoresResponse.data.jugadores);
         }
 
         // TODO: Load team statistics from API
@@ -120,182 +108,154 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
     fetchData();
   }, [equipoId]);
 
+  // Cargar imágenes del equipo cuando se navega al tab de fotos
+  useEffect(() => {
+    if (activeTab === 'fotos' && imagenesEquipo.length === 0 && !loadingImages) {
+      const loadImagenes = async () => {
+        setLoadingImages(true);
+        const result = await safeAsync(
+          async () => {
+            const response = await api.equipos.getImagenes(equipoId);
+            return response;
+          },
+          'TeamDetailScreen - loadImagenes',
+          {
+            fallbackValue: null,
+            onError: (error) => {
+              showError('No se pudieron cargar las imágenes del equipo', 'Error');
+            }
+          }
+        );
+
+        if (result && result.success) {
+          setImagenesEquipo(result.data);
+        }
+        setLoadingImages(false);
+      };
+
+      loadImagenes();
+    }
+  }, [activeTab, equipoId]);
+
   const handleTabPress = (tabId: string, index: number) => {
     pagerRef.current?.setPage(index);
     setActiveTab(tabId);
   };
-
-  // Defensive: if the tabs array changes (e.g. Fotos tab is removed because the
-  // user unfollowed the team), ensure the activeTab is valid and the PagerView
-  // isn't left pointing to a non-existent page. This prevents runtime errors
-  // where a child becomes null and a library tries to access `.props` on it.
-  useEffect(() => {
-    const stillExists = tabs.some((t) => t.id === activeTab);
-    if (!stillExists) {
-      setActiveTab('estadisticas');
-      // Reset pager to the first page safely
-      try {
-        pagerRef.current?.setPage(0);
-      } catch (err) {
-        // swallow any errors from native module if pager isn't mounted yet
-        // actual crash was caused by accessing removed child; this ensures
-        // we don't propagate that exception.
-        // console.warn('PagerView reset failed', err);
-      }
-    }
-  }, [isFollowedTeam]);
 
   const handleAddPlayer = () => {
     navigation.navigate('PlayerForm', { equipoId, mode: 'create' });
   };
 
   const handleImportCSV = () => {
-    setImportText('');
-    setShowImportModal(true);
-  };
-
-  const parseImportText = (text: string) => {
-    const lines = text.trim().split('\n');
-    const jugadores: Array<{
-      nombre: string;
-      dni: string;
-      fechaNacimiento: string;
-      dorsal?: number;
-      esRefuerzo: boolean;
-    }> = [];
-    const errores: string[] = [];
-
-    lines.forEach((line, index) => {
-      const trimmedLine = line.trim();
-      if (!trimmedLine) return;
-
-      // Verificar que empiece con "JUGADOR:"
-      if (!trimmedLine.toUpperCase().startsWith('JUGADOR:')) {
-        errores.push(`Línea ${index + 1}: Debe empezar con "JUGADOR:"`);
-        return;
-      }
-
-      // Remover el prefijo "JUGADOR:" y parsear los datos
-      const datos = trimmedLine.substring(8).trim();
-      const partes = datos.split(',').map(p => p.trim());
-
-      if (partes.length < 4) {
-        errores.push(`Línea ${index + 1}: Faltan datos (mínimo: nombre, dni, fecha de nacimiento, refuerzo)`);
-        return;
-      }
-
-      const nombre = partes[0];
-      const dni = partes[1];
-      const fechaNacimiento = partes[2];
-      const dorsalStr = partes.length > 4 ? partes[3] : undefined;
-      const refuerzoStr = partes.length > 4 ? partes[4] : partes[3];
-
-      // Validar nombre
-      if (!nombre || nombre.length < 2) {
-        errores.push(`Línea ${index + 1}: Nombre inválido`);
-        return;
-      }
-
-      // Validar DNI
-      if (!dni || dni.length < 7) {
-        errores.push(`Línea ${index + 1}: DNI inválido`);
-        return;
-      }
-
-      // Validar formato de fecha DD/MM/YYYY
-      const dateRegex = /^\d{2}\/\d{2}\/\d{4}$/;
-      if (!dateRegex.test(fechaNacimiento)) {
-        errores.push(`Línea ${index + 1}: Fecha debe estar en formato DD/MM/YYYY`);
-        return;
-      }
-
-      // Validar que la fecha sea válida
-      const [dia, mes, anio] = fechaNacimiento.split('/').map(Number);
-      const fecha = new Date(anio, mes - 1, dia);
-      if (fecha.getDate() !== dia || fecha.getMonth() !== mes - 1 || fecha.getFullYear() !== anio) {
-        errores.push(`Línea ${index + 1}: Fecha inválida`);
-        return;
-      }
-
-      // Validar dorsal si existe
-      let dorsal: number | undefined;
-      if (dorsalStr) {
-        const dorsalNum = parseInt(dorsalStr);
-        if (isNaN(dorsalNum) || dorsalNum < 1 || dorsalNum > 99) {
-          errores.push(`Línea ${index + 1}: Dorsal debe ser un número entre 1 y 99`);
-          return;
-        }
-        dorsal = dorsalNum;
-      }
-
-      // Validar refuerzo (0 o 1)
-      if (!refuerzoStr || (refuerzoStr !== '0' && refuerzoStr !== '1')) {
-        errores.push(`Línea ${index + 1}: Refuerzo debe ser 0 (no refuerzo) o 1 (refuerzo)`);
-        return;
-      }
-      const esRefuerzo = refuerzoStr === '1';
-
-      jugadores.push({ nombre, dni, fechaNacimiento, dorsal, esRefuerzo });
-    });
-
-    return { jugadores, errores };
-  };
-
-  const handleConfirmImport = async () => {
-    if (!importText.trim()) {
-      showError('Debes pegar el texto con los datos de los jugadores', 'Campo Vacío');
-      return;
-    }
-
-    const { jugadores, errores } = parseImportText(importText);
-
-    if (errores.length > 0) {
-      Alert.alert(
-        'Errores en el Formato',
-        `Se encontraron ${errores.length} error(es):\n\n${errores.slice(0, 5).join('\n')}${
-          errores.length > 5 ? `\n\n...y ${errores.length - 5} más` : ''
-        }`,
-        [{ text: 'OK' }]
-      );
-      return;
-    }
-
-    if (jugadores.length === 0) {
-      showError('No se encontraron jugadores válidos en el texto', 'Sin Datos');
-      return;
-    }
-
     Alert.alert(
-      'Confirmar Importación',
-      `Se importarán ${jugadores.length} jugador(es) al equipo "${equipo?.nombre ?? 'Equipo'}".\n\n¿Deseas continuar?`,
+      'Formato del Archivo CSV',
+      'El archivo CSV debe tener las siguientes columnas en este orden:\n\n' +
+      '1. Nombre completo\n' +
+      '2. DNI\n' +
+      '3. Fecha de nacimiento (YYYY-MM-DD)\n' +
+      '4. Número de camiseta (opcional)\n' +
+      '5. Posición\n' +
+      '6. Pie dominante\n' +
+      '7. Altura en cm (opcional)\n' +
+      '8. Peso en kg (opcional)\n' +
+      '9. Nacionalidad\n' +
+      '10. Es refuerzo (0 o 1)\n' +
+      '11. Es capitán (0 o 1)\n\n' +
+      'Ejemplo:\n' +
+      'Juan Pérez,12345678,2000-05-15,10,Delantero,derecho,175,70,Argentina,0,0\n\n' +
+      '¿Deseas continuar?',
       [
         { text: 'Cancelar', style: 'cancel' },
         {
-          text: 'Importar',
+          text: 'Seleccionar CSV',
           onPress: async () => {
-            await safeAsync(
-              async () => {
-                // TODO: Llamar a la API para crear los jugadores
-                console.log('Importando jugadores:', jugadores);
-                
-                setShowImportModal(false);
-                setImportText('');
-                showSuccess(
-                  `${jugadores.length} jugador(es) importado(s) exitosamente`,
-                  'Importación Exitosa'
-                );
-                
-                // Opcional: Recargar datos
-              },
-              'TeamDetailScreen - handleConfirmImport',
-              {
-                onError: (error) => {
-                  showError(error.message, 'Error al Importar');
-                },
+            try {
+              // Pick CSV file from device
+              const result = await DocumentPicker.getDocumentAsync({
+                type: ['text/csv', 'text/comma-separated-values', 'application/csv', '*/*'],
+                copyToCacheDirectory: true,
+              });
+
+              if (result.canceled) {
+                return;
               }
-            );
-          },
-        },
+
+              const file = result.assets[0];
+
+              // Show confirmation with filename
+              Alert.alert(
+                'Confirmar Importación',
+                `Archivo seleccionado:\n${file.name}\n\n¿Deseas importar los jugadores de este archivo?`,
+                [
+                  { text: 'Cancelar', style: 'cancel' },
+                  {
+                    text: 'Importar',
+                    onPress: async () => {
+                      try {
+                        // Create file object in React Native format
+                        const csvFile = {
+                          uri: file.uri,
+                          type: 'text/csv',
+                          name: file.name,
+                        } as any;
+
+                        // Upload CSV
+                        const uploadResult = await safeAsync(
+                          async () => {
+                            const apiResponse = await api.jugadores.createBulk(equipoId, csvFile);
+                            return apiResponse;
+                          },
+                          'importCSV',
+                          {
+                            severity: 'high',
+                            fallbackValue: null,
+                            onError: (error) => {
+                              showError('Error al importar el archivo CSV', 'Error');
+                            }
+                          }
+                        );
+
+                        if (uploadResult && uploadResult.success) {
+                          const { total_processed, successful, failed, errors } = uploadResult.data;
+
+                          if (failed > 0) {
+                            // Show errors
+                            const errorMessages = errors.map((e: any) =>
+                              `Fila ${e.row}: ${e.error}`
+                            ).join('\n');
+
+                            Alert.alert(
+                              'Importación completada con errores',
+                              `Total procesados: ${total_processed}\nExitosos: ${successful}\nFallidos: ${failed}\n\nErrores:\n${errorMessages}`,
+                              [{ text: 'OK' }]
+                            );
+                          } else {
+                            showSuccess(
+                              `${successful} jugadores importados correctamente para ${equipo?.nombre}`,
+                              '¡Éxito!'
+                            );
+                          }
+
+                          // Reload players list
+                          const jugadoresResponse = await api.jugadores.list(equipoId);
+                          if (jugadoresResponse.success && jugadoresResponse.data.jugadores) {
+                            setJugadores(jugadoresResponse.data.jugadores);
+                          }
+                        }
+                      } catch (error) {
+                        console.error('Error uploading CSV:', error);
+                        showError('Error al importar el archivo', 'Error');
+                      }
+                    }
+                  }
+                ]
+              );
+            } catch (error) {
+              console.error('Error picking CSV:', error);
+              showError('Error al seleccionar el archivo', 'Error');
+            }
+          }
+        }
       ]
     );
   };
@@ -331,30 +291,6 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
 
   const handleViewPhotos = () => {
     navigation.navigate('TeamPhotos', { equipoId });
-  };
-
-  const handlePreviewPhotos = async () => {
-    // TODO: Obtener link de preview desde la API
-    const previewUrl = 'https://www.youtube.com';
-    const supported = await Linking.canOpenURL(previewUrl);
-    
-    if (supported) {
-      await Linking.openURL(previewUrl);
-    } else {
-      showError('No se puede abrir el navegador', 'Error');
-    }
-  };
-
-  const handleBuyPhotos = async () => {
-    // TODO: Obtener link de compra desde la API
-    const url = 'https://www.google.com';
-    const supported = await Linking.canOpenURL(url);
-    
-    if (supported) {
-      await Linking.openURL(url);
-    } else {
-      showError('No se puede abrir el navegador', 'Error');
-    }
   };
 
   const handleClearRoster = () => {
@@ -893,107 +829,69 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
             );
           }
 
-          // TAB: Fotos (solo si isFollowedTeam)
+          // TAB: Fotos
           if (tab.id === 'fotos') {
             return (
               <View key={tab.id} style={styles.page}>
                 <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                  {isAdmin ? (
-                    // Vista Admin: Gestionar links de fotos
-                    <View style={styles.photosContainer}>
-                      <View style={styles.adminPhotoHeader}>
-                        <MaterialCommunityIcons name="link-variant" size={32} color={colors.primary} />
-                        <Text style={styles.adminPhotoTitle}>Gestión de Enlaces de Fotos</Text>
-                      </View>
-
-                      <Card style={styles.photoLinkCard}>
-                        <View style={styles.photoLinkSection}>
-                          <View style={styles.photoLinkHeader}>
-                            <MaterialCommunityIcons name="eye-outline" size={24} color={colors.info} />
-                            <Text style={styles.photoLinkTitle}>Link de Preview</Text>
-                          </View>
-                          <Text style={styles.photoLinkSubtitle}>
-                            Enlace para ver vista previa de las fotos (ej: YouTube, Vimeo)
-                          </Text>
-                          <TouchableOpacity 
-                            style={styles.editLinkButton}
-                            onPress={() => {
-                              // TODO: Abrir modal para editar link de preview
-                              showSuccess('Editar link de preview');
-                            }}
-                          >
-                            <MaterialCommunityIcons name="pencil" size={20} color={colors.white} />
-                            <Text style={styles.editLinkButtonText}>Actualizar Link de Preview</Text>
-                          </TouchableOpacity>
-                        </View>
-                      </Card>
-
-                      <Card style={styles.photoLinkCard}>
-                        <View style={styles.photoLinkSection}>
-                          <View style={styles.photoLinkHeader}>
-                            <MaterialCommunityIcons name="cart-outline" size={24} color={colors.success} />
-                            <Text style={styles.photoLinkTitle}>Link de Compra</Text>
-                          </View>
-                          <Text style={styles.photoLinkSubtitle}>
-                            Enlace para comprar fotos en alta resolución
-                          </Text>
-                          <TouchableOpacity 
-                            style={[styles.editLinkButton, { backgroundColor: colors.success }]}
-                            onPress={() => {
-                              // TODO: Abrir modal para editar link de compra
-                              showSuccess('Editar link de compra');
-                            }}
-                          >
-                            <MaterialCommunityIcons name="pencil" size={20} color={colors.white} />
-                            <Text style={styles.editLinkButtonText}>Actualizar Link de Compra</Text>
-                          </TouchableOpacity>
-                        </View>
-                      </Card>
-                    </View>
-                  ) : (
-                    // Vista Fan: Preview y compra con botones separados
-                    <View style={styles.photosContainer}>
-                      <Text style={styles.photosSectionTitle}>Galería del Equipo</Text>
-                      <Text style={styles.photosSectionSubtitle}>
-                        Accede a las fotos del equipo
-                      </Text>
-
-                      {/* Botón de Preview */}
-                      <TouchableOpacity 
-                        style={styles.previewPhotosButton} 
-                        onPress={handlePreviewPhotos}
-                        activeOpacity={0.8}
-                      >
-                        <MaterialCommunityIcons name="play-circle" size={28} color={colors.white} />
-                        <View style={styles.photoButtonTextContainer}>
-                          <Text style={styles.photoButtonTitle}>Ver Preview</Text>
-                          <Text style={styles.photoButtonSubtitle}>Vista previa de las fotos</Text>
-                        </View>
-                        <MaterialCommunityIcons name="arrow-right" size={24} color={colors.white} />
-                      </TouchableOpacity>
-
-                      {/* Botón de Compra */}
-                      <TouchableOpacity 
-                        style={styles.buyPhotosButton} 
-                        onPress={handleBuyPhotos}
-                        activeOpacity={0.8}
-                      >
-                        <MaterialCommunityIcons name="cart" size={28} color={colors.white} />
-                        <View style={styles.photoButtonTextContainer}>
-                          <Text style={styles.photoButtonTitle}>Comprar Fotos</Text>
-                          <Text style={styles.photoButtonSubtitle}>Fotos en alta resolución</Text>
-                        </View>
-                        <MaterialCommunityIcons name="arrow-right" size={24} color={colors.white} />
-                      </TouchableOpacity>
-
-                      <View style={styles.photoInfoCard}>
-                        <MaterialCommunityIcons name="information" size={24} color={colors.primary} />
-                        <Text style={styles.photoInfoText}>
-                          Visualiza el preview para ver las fotos disponibles antes de comprar
+                  <View style={styles.photosContainer}>
+                    <View style={styles.photosHeader}>
+                      <MaterialCommunityIcons name="image-multiple" size={28} color={colors.primary} />
+                      <View style={styles.photosHeaderText}>
+                        <Text style={styles.photosSectionTitle}>Galería del Equipo</Text>
+                        <Text style={styles.photosSectionSubtitle}>
+                          {imagenesEquipo.length} {imagenesEquipo.length === 1 ? 'imagen' : 'imágenes'}
                         </Text>
                       </View>
                     </View>
-                  )}
+
+                    {loadingImages ? (
+                      <View style={styles.loadingContainer}>
+                        <ActivityIndicator size="large" color={colors.primary} />
+                        <Text style={styles.loadingText}>Cargando imágenes...</Text>
+                      </View>
+                    ) : imagenesEquipo.length === 0 ? (
+                      <Card style={styles.emptyPhotosCard}>
+                        <MaterialCommunityIcons
+                          name="image-off-outline"
+                          size={64}
+                          color={colors.textLight}
+                          style={styles.emptyIcon}
+                        />
+                        <Text style={styles.emptyPhotosText}>No hay imágenes disponibles</Text>
+                        <Text style={styles.emptyPhotosSubtext}>
+                          Este equipo aún no ha subido fotos
+                        </Text>
+                      </Card>
+                    ) : (
+                      <View style={styles.photosGrid}>
+                        {imagenesEquipo.map((imagen) => (
+                          <TouchableOpacity
+                            key={imagen.id_imagen}
+                            style={styles.photoCard}
+                            activeOpacity={0.7}
+                            onPress={() => {
+                              // TODO: Abrir modal para ver imagen en tamaño completo
+                              Linking.openURL(imagen.url);
+                            }}
+                          >
+                            <Image
+                              source={{ uri: imagen.url_thumbnail || imagen.url }}
+                              style={styles.photoImage}
+                              resizeMode="cover"
+                            />
+                            {imagen.descripcion && (
+                              <View style={styles.photoDescriptionOverlay}>
+                                <Text style={styles.photoDescription} numberOfLines={2}>
+                                  {imagen.descripcion}
+                                </Text>
+                              </View>
+                            )}
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    )}
+                  </View>
 
                   <View style={styles.bottomSpacing} />
                 </ScrollView>
@@ -1005,97 +903,6 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
           return null;
         })}
       </PagerView>
-
-      {/* Modal de Importar Jugadores */}
-      <Modal
-        visible={showImportModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowImportModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Importar Jugadores</Text>
-              <TouchableOpacity
-                onPress={() => setShowImportModal(false)}
-                style={styles.modalCloseButton}
-              >
-                <MaterialCommunityIcons name="close" size={24} color={colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
-              <View style={styles.instructionsCard}>
-                <MaterialCommunityIcons name="information" size={24} color={colors.info} />
-                <View style={styles.instructionsTextContainer}>
-                  <Text style={styles.instructionsTitle}>Formato de Importación</Text>
-                  <Text style={styles.instructionsText}>
-                    Pega el texto con los datos de los jugadores. Cada línea representa un jugador con el mismo formato que usarías al agregarlo individualmente:
-                  </Text>
-                  <View style={styles.exampleBox}>
-                    <Text style={styles.exampleTitle}>Con número de camiseta:</Text>
-                    <Text style={styles.exampleText}>
-                      JUGADOR: Juan Pérez, 12345678, 15/05/2000, 10, 0
-                    </Text>
-                    <Text style={styles.exampleSubtext}>
-                      (nombre, dni, fecha, dorsal, refuerzo)
-                    </Text>
-                    
-                    <Text style={[styles.exampleTitle, { marginTop: 12 }]}>Sin número de camiseta:</Text>
-                    <Text style={styles.exampleText}>
-                      JUGADOR: María García, 87654321, 23/08/1998, 1
-                    </Text>
-                    <Text style={styles.exampleSubtext}>
-                      (nombre, dni, fecha, refuerzo)
-                    </Text>
-                  </View>
-                  <Text style={styles.instructionsNote}>
-                    📋 Campos obligatorios:{'\n'}
-                    • Nombre completo{'\n'}
-                    • DNI (7-10 dígitos){'\n'}
-                    • Fecha de nacimiento (DD/MM/YYYY){'\n'}
-                    • Refuerzo (0 = jugador normal, 1 = refuerzo){'\n'}
-                    {'\n'}
-                    ⚽ Campos opcionales:{'\n'}
-                    • Número de camiseta (1-99){'\n'}
-                    {'\n'}
-                    ✅ Cada jugador debe estar en una línea nueva
-                  </Text>
-                </View>
-              </View>
-
-              <Text style={styles.inputLabel}>Pega aquí los datos:</Text>
-              <TextInput
-                style={styles.textArea}
-                value={importText}
-                onChangeText={setImportText}
-                placeholder="JUGADOR: nombre, dni, DD/MM/YYYY, dorsal, refuerzo"
-                placeholderTextColor={colors.textLight}
-                multiline
-                numberOfLines={10}
-                textAlignVertical="top"
-              />
-
-              <View style={styles.modalButtons}>
-                <TouchableOpacity
-                  style={styles.cancelButton}
-                  onPress={() => setShowImportModal(false)}
-                >
-                  <Text style={styles.cancelButtonText}>Cancelar</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.confirmButton}
-                  onPress={handleConfirmImport}
-                >
-                  <MaterialCommunityIcons name="check" size={20} color={colors.white} />
-                  <Text style={styles.confirmButtonText}>Importar</Text>
-                </TouchableOpacity>
-              </View>
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
 
       {isAdmin && activeTab === 'jugadores' && (
         <FAB onPress={handleAddPlayer} icon="person-add" color={colors.success} />
@@ -1789,5 +1596,61 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.textSecondary,
     textAlign: 'center',
+  },
+  // Estilos para galería de fotos
+  photosHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 20,
+  },
+  photosHeaderText: {
+    flex: 1,
+  },
+  emptyPhotosCard: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  emptyPhotosText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginTop: 16,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptyPhotosSubtext: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  photosGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  photoCard: {
+    width: '48%',
+    aspectRatio: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: colors.backgroundGray,
+  },
+  photoImage: {
+    width: '100%',
+    height: '100%',
+  },
+  photoDescriptionOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    padding: 8,
+  },
+  photoDescription: {
+    color: colors.white,
+    fontSize: 12,
+    lineHeight: 16,
   },
 });

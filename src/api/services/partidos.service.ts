@@ -7,6 +7,8 @@ import {
   RegistrarResultadoResponse,
   CreatePartidoAmistosoRequest,
   CreatePartidoAmistosoResponse,
+  GetPartidosPorJornadaRequest,
+  PartidosPorJornadaResponse,
 } from '../types/partidos.types';
 
 /**
@@ -82,6 +84,18 @@ export const partidosService = {
     data: CreatePartidoAmistosoRequest
   ): Promise<CreatePartidoAmistosoResponse> => {
     const response = await apiClient.post('/partidos-create-amistoso', data);
+    return response.data;
+  },
+
+  /**
+   * Obtener partidos agrupados por jornada (para página principal)
+   * @param params - Filtros opcionales para obtener partidos
+   * @returns Partidos agrupados por jornada con información completa
+   */
+  getPartidosPorJornada: async (
+    params?: GetPartidosPorJornadaRequest
+  ): Promise<PartidosPorJornadaResponse> => {
+    const response = await apiClient.get('/partidos-por-jornada', { params });
     return response.data;
   },
 };

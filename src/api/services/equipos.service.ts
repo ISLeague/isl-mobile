@@ -4,7 +4,8 @@ import {
   EquiposListResponse,
   CreateEquipoResponse,
   BulkCreateResponse,
-  Equipo
+  Equipo,
+  ImagenesEquipoResponse
 } from '../types/equipos.types';
 
 /**
@@ -23,11 +24,14 @@ export const equiposService = {
 
   /**
    * Listar equipos por edición categoría (sin autorización)
+   * @param grupos - Si es true, filtra equipos disponibles para asignar a grupos
    */
-  list: async (idEdicionCategoria: number): Promise<EquiposListResponse> => {
-    const response = await apiClient.get('/equipos-list', {
-      params: { id_edicion_categoria: idEdicionCategoria },
-    });
+  list: async (idEdicionCategoria: number, grupos?: boolean): Promise<EquiposListResponse> => {
+    const params: any = { id_edicion_categoria: idEdicionCategoria };
+    if (grupos === true) {
+      params.grupos = 'true';
+    }
+    const response = await apiClient.get('/equipos-list', { params });
     return response.data;
   },
 
@@ -50,6 +54,16 @@ export const equiposService = {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
+    });
+    return response.data;
+  },
+
+  /**
+   * Obtener imágenes de un equipo (sin autorización)
+   */
+  getImagenes: async (idEquipo: number): Promise<ImagenesEquipoResponse> => {
+    const response = await apiClient.get('/equipos-imagenes', {
+      params: { id_equipo: idEquipo },
     });
     return response.data;
   },

@@ -89,3 +89,87 @@ export interface CreatePartidoAmistosoResponse {
   data: Partido;
   timestamp: string;
 }
+
+// ============================================
+// 📅 PARTIDOS POR JORNADA (MAIN PAGE)
+// ============================================
+
+/**
+ * Partido con información completa para visualización
+ */
+export interface PartidoDetallado {
+  id_partido: number;
+  fecha_hora: string;
+  estado: EstadoPartido;
+
+  // Equipo Local
+  id_equipo_local: number;
+  nombre_equipo_local: string;
+  escudo_equipo_local?: string;
+  goles_local?: number;
+
+  // Equipo Visitante
+  id_equipo_visitante: number;
+  nombre_equipo_visitante: string;
+  escudo_equipo_visitante?: string;
+  goles_visitante?: number;
+
+  // Penales (para eliminatorias)
+  penales_local?: number;
+  penales_visitante?: number;
+
+  // Cancha y Local
+  id_cancha?: number;
+  nombre_cancha?: string;
+  id_local?: number;
+  nombre_local?: string;
+
+  // Metadata
+  created_at?: string;
+  updated_at?: string;
+}
+
+/**
+ * Jornada (Ronda) con sus partidos
+ */
+export interface JornadaConPartidos {
+  id_ronda: number;
+  nombre: string;
+  tipo: 'fase_grupos' | 'eliminatorias' | 'amistosa';
+  subtipo_eliminatoria?: 'oro' | 'plata' | 'bronce';
+  fecha_inicio?: string;
+  fecha_fin?: string;
+  orden: number;
+
+  // Partidos de esta jornada
+  partidos: PartidoDetallado[];
+
+  // Estadísticas
+  total_partidos: number;
+  partidos_finalizados: number;
+  partidos_pendientes: number;
+}
+
+/**
+ * Request para obtener partidos por jornada
+ */
+export interface GetPartidosPorJornadaRequest {
+  id_edicion_categoria?: number; // Para obtener todas las jornadas de una edición
+  id_fase?: number; // Para obtener jornadas de una fase específica
+  id_ronda?: number; // Para obtener partidos de una ronda específica
+  incluir_finalizados?: boolean; // Default: true
+  incluir_pendientes?: boolean; // Default: true
+}
+
+/**
+ * Response de partidos agrupados por jornada
+ */
+export interface PartidosPorJornadaResponse {
+  success: boolean;
+  data: {
+    jornadas: JornadaConPartidos[];
+    total_jornadas: number;
+    total_partidos: number;
+  };
+  timestamp: string;
+}

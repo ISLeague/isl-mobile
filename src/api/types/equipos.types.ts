@@ -79,3 +79,19 @@ export interface EstadisticasDetalleEquipo {
   tarjetas_amarillas: number;
   tarjetas_rojas: number;
 }
+
+export interface ImagenEquipo {
+  id_imagen: number;
+  id_equipo: number;
+  url: string;
+  url_thumbnail?: string;
+  descripcion?: string;
+  fecha_subida: string;
+  created_at?: string;
+}
+
+export interface ImagenesEquipoResponse {
+  success: boolean;
+  data: ImagenEquipo[];
+  timestamp: string;
+}

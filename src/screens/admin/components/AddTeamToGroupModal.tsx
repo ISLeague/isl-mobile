@@ -52,7 +52,7 @@ export const AddTeamToGroupModal: React.FC<AddTeamToGroupModalProps> = ({
 
       const result = await safeAsync(
         async () => {
-          const response = await api.equipos.list(idEdicionCategoria);
+          const response = await api.equipos.list(idEdicionCategoria, true);
           return response.success && response.data ? response.data : [];
         },
         'AddTeamToGroupModal - loadEquipos',

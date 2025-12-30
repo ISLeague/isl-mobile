@@ -19,6 +19,8 @@ import api from '../../../api';
 
 interface LocalTabProps {
   idEdicionCategoria: number;
+  refreshTrigger?: number;
+  navigation?: any;
   onCreateLocal?: () => void;
   onCreateCancha?: (idLocal: number, nombreLocal: string) => void;
   onEditLocal?: (local: LocalType) => void;
@@ -29,6 +31,8 @@ interface LocalTabProps {
 
 export const LocalTab: React.FC<LocalTabProps> = ({
   idEdicionCategoria,
+  refreshTrigger,
+  navigation,
   onCreateLocal,
   onCreateCancha,
   onEditLocal,
@@ -42,7 +46,7 @@ export const LocalTab: React.FC<LocalTabProps> = ({
 
   useEffect(() => {
     loadLocales();
-  }, [idEdicionCategoria]);
+  }, [idEdicionCategoria, refreshTrigger]);
 
   const loadLocales = async () => {
     setLoading(true);
@@ -121,7 +125,12 @@ export const LocalTab: React.FC<LocalTabProps> = ({
       )}
 
       {locales.map((local) => (
-        <View key={local.id_local} style={styles.localCard}>
+        <TouchableOpacity
+          key={local.id_local}
+          style={styles.localCard}
+          onPress={() => navigation?.navigate('LocalDetail', { local })}
+          activeOpacity={0.7}
+        >
           <View style={styles.localHeader}>
             <View style={styles.localIconContainer}>
               <MaterialCommunityIcons name="stadium" size={28} color="#BE0127" />
@@ -242,7 +251,7 @@ export const LocalTab: React.FC<LocalTabProps> = ({
               <Text style={styles.createCanchaText}>Agregar Cancha</Text>
             </TouchableOpacity>
           )}
-        </View>
+        </TouchableOpacity>
       ))}
     </ScrollView>
   );

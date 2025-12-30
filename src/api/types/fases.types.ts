@@ -27,6 +27,7 @@ export interface CreateFaseRequest {
   tipo: TipoFase;
   copa: TipoCopa;
   orden: number;
+  id_edicion_categoria: number,
   partidos_ida_vuelta: boolean;
   permite_empate: boolean;
   permite_penales: boolean;

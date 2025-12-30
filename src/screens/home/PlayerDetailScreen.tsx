@@ -1,81 +1,70 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   Image,
-  TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { GradientHeader, Card } from '../../components/common';
 import { colors } from '../../theme/colors';
 import { calculateAge, formatDate } from '../../utils';
-import { Jugador, ProximoPartido } from '../../types';
+import { JugadorDetalleData } from '../../api/types/jugadores.types';
 import { useAuth } from '../../contexts/AuthContext';
-import { mockEquipos, mockPlantillas } from '../../data/mockData';
+import { useToast } from '../../contexts/ToastContext';
+import { safeAsync } from '../../utils/errorHandling';
+import api from '../../api';
 
 type Props = NativeStackScreenProps<any, 'PlayerDetail'>;
 
 export const PlayerDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const { isAdmin } = useAuth();
-  
-  // TODO: Obtener jugador de la API con route.params.jugadorId
-  const jugador: Jugador = {
-    id_jugador: 1,
-    nombre_completo: 'Lionel Andrés Messi',
-    dni: '12345678',
-    numero_camiseta: 10,
-    fecha_nacimiento: '1987-06-24',
-    estado: 'activo',
-    foto: 'https://via.placeholder.com/150',
-    estadisticas: {
-      goles: 15,
-      asistencias: 8,
-      amarillas: 2,
-      rojas: 0,
-      partidos_jugados: 10,
-    },
-  };
+  const { showError } = useToast();
+  const { playerId } = route.params as { playerId: number };
 
-  // Usar equipos reales de mockEquipos
-  const equipo = mockEquipos[0]; // FC Barcelona Lima
-  const equipoRival = mockEquipos[1]; // Real Madrid FC
+  const [loading, setLoading] = useState(true);
+  const [detalleData, setDetalleData] = useState<JugadorDetalleData | null>(null);
 
-  const proximoPartido: ProximoPartido = {
-    id_partido: 1,
-    fecha: '2024-02-15',
-    hora: '20:00',
-    rival: {
-      nombre: equipoRival.nombre,
-      logo: equipoRival.logo || '⚽',
-    },
-    cancha: {
-      nombre: 'Estadio Camp Nou',
-      direccion: 'Barcelona, España',
-    },
-    local: true,
-  };
+  useEffect(() => {
+    const loadJugadorDetalle = async () => {
+      const result = await safeAsync(
+        async () => {
+          const response = await api.jugadores.detalle(playerId);
+          return response;
+        },
+        'PlayerDetailScreen - loadJugadorDetalle',
+        {
+          fallbackValue: null,
+          onError: (error) => {
+            showError('No se pudo cargar la información del jugador', 'Error');
+          }
+        }
+      );
 
-  const edad = calculateAge(jugador.fecha_nacimiento);
+      if (result && result.success) {
+        setDetalleData(result.data);
+      }
+      setLoading(false);
+    };
 
-  // Verificar si el jugador es refuerzo
-  const plantillaEntry = mockPlantillas.find(p => p.id_jugador === jugador.id_jugador);
-  const esRefuerzo = plantillaEntry?.es_refuerzo || false;
+    loadJugadorDetalle();
+  }, [playerId]);
 
   // Formatear nombre según el rol del usuario
   const formatPlayerName = (nombreCompleto: string) => {
     if (isAdmin) {
       return nombreCompleto; // Admin ve nombre completo
     }
-    
+
     // Fan: mostrar "Nombre A." (primera letra del apellido)
     const partes = nombreCompleto.trim().split(' ');
     if (partes.length === 1) {
       return partes[0]; // Si solo hay una palabra, mostrarla completa
     }
-    
+
     const nombre = partes[0];
     const apellidoInicial = partes[partes.length - 1].charAt(0).toUpperCase();
     return `${nombre} ${apellidoInicial}.`;
@@ -96,16 +85,32 @@ export const PlayerDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     </View>
   );
 
+  if (loading || !detalleData) {
+    return (
+      <View style={styles.container}>
+        <GradientHeader title="Detalle del Jugador" onBackPress={() => navigation.goBack()} />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Cargando información del jugador...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  const { jugador, equipo, proximo_partido } = detalleData;
+  const edad = calculateAge(jugador.fecha_nacimiento);
+  const esRefuerzo = jugador.es_refuerzo || false;
+
   return (
     <View style={styles.container}>
       <GradientHeader title="Detalle del Jugador" onBackPress={() => navigation.goBack()} />
-      
+
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {/* Datos básicos */}
         <Card style={styles.profileCard}>
           <View style={styles.profileHeader}>
             <View style={styles.numberBadge}>
-              <Text style={styles.numberText}>#{jugador.numero_camiseta}</Text>
+              <Text style={styles.numberText}>#{jugador.numero_camiseta || '-'}</Text>
             </View>
             <View style={styles.profileInfo}>
               <View style={styles.nameRow}>
@@ -116,17 +121,17 @@ export const PlayerDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   </View>
                 )}
               </View>
-              
+
               {/* Mostrar edad solo para admin */}
               {isAdmin && (
                 <Text style={styles.playerAge}>{edad} años</Text>
               )}
-              
+
               {/* Mostrar DNI solo para admin */}
               {isAdmin && (
                 <Text style={styles.playerDNI}>DNI: {jugador.dni}</Text>
               )}
-              
+
               <View style={styles.teamContainer}>
                 <Image
                   source={equipo.logo ? { uri: equipo.logo } : require('../../assets/InterLOGO.png')}
@@ -170,46 +175,48 @@ export const PlayerDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         </Card>
 
         {/* Próximo partido */}
-        <Card style={styles.nextMatchCard}>
-          <View style={styles.nextMatchHeader}>
-            <MaterialCommunityIcons
-              name="soccer-field"
-              size={24}
-              color={colors.primary}
-            />
-            <Text style={styles.sectionTitle}>Próximo Partido</Text>
-          </View>
-
-          <View style={styles.matchRow}>
-            <View style={styles.matchTeam}>
-              <Image
-                source={equipo.logo ? { uri: equipo.logo } : require('../../assets/InterLOGO.png')}
-                style={styles.matchTeamLogo}
+        {proximo_partido && (
+          <Card style={styles.nextMatchCard}>
+            <View style={styles.nextMatchHeader}>
+              <MaterialCommunityIcons
+                name="soccer-field"
+                size={24}
+                color={colors.primary}
               />
-              <Text style={styles.matchTeamName} numberOfLines={2}>
-                {equipo.nombre}
-              </Text>
+              <Text style={styles.sectionTitle}>Próximo Partido</Text>
             </View>
 
-            <View style={styles.matchDetailsCenter}>
-              <Text style={styles.matchDate}>{formatDate(proximoPartido.fecha)}</Text>
-              <Text style={styles.matchTime}>{proximoPartido.hora}</Text>
-              <Text style={styles.matchVenue} numberOfLines={1}>
-                {proximoPartido.cancha.nombre}
-              </Text>
-            </View>
+            <View style={styles.matchRow}>
+              <View style={styles.matchTeam}>
+                <Image
+                  source={equipo.logo ? { uri: equipo.logo } : require('../../assets/InterLOGO.png')}
+                  style={styles.matchTeamLogo}
+                />
+                <Text style={styles.matchTeamName} numberOfLines={2}>
+                  {equipo.nombre}
+                </Text>
+              </View>
 
-            <View style={styles.matchTeam}>
-              <Image
-                source={proximoPartido.rival.logo ? { uri: proximoPartido.rival.logo } : require('../../assets/InterLOGO.png')}
-                style={styles.matchTeamLogo}
-              />
-              <Text style={styles.matchTeamName} numberOfLines={2}>
-                {proximoPartido.rival.nombre}
-              </Text>
+              <View style={styles.matchDetailsCenter}>
+                <Text style={styles.matchDate}>{formatDate(proximo_partido.fecha)}</Text>
+                <Text style={styles.matchTime}>{proximo_partido.hora}</Text>
+                <Text style={styles.matchVenue} numberOfLines={1}>
+                  {proximo_partido.cancha.nombre}
+                </Text>
+              </View>
+
+              <View style={styles.matchTeam}>
+                <Image
+                  source={proximo_partido.rival.logo ? { uri: proximo_partido.rival.logo } : require('../../assets/InterLOGO.png')}
+                  style={styles.matchTeamLogo}
+                />
+                <Text style={styles.matchTeamName} numberOfLines={2}>
+                  {proximo_partido.rival.nombre}
+                </Text>
+              </View>
             </View>
-          </View>
-        </Card>
+          </Card>
+        )}
       </ScrollView>
     </View>
   );
@@ -219,6 +226,18 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.backgroundGray,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: colors.textSecondary,
+    textAlign: 'center',
   },
   scrollContent: {
     paddingTop: 16,

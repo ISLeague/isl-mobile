@@ -9,16 +9,19 @@ import {
   Alert,
   Animated,
   ActivityIndicator,
+  Modal,
+  TextInput,
+  ScrollView,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Card, SearchBar, FAB } from '../../../components/common';
 import { colors } from '../../../theme/colors';
-import { Grupo, Clasificacion, Equipo } from '../../../api/types';
+import { Grupo, Clasificacion, Equipo, ConfiguracionClasificacion, GrupoDetallado } from '../../../api/types';
 import { AddTeamToGroupModal } from './AddTeamToGroupModal';
+import { AsignarEquiposModal } from './AsignarEquiposModal';
 import { MoveTeamToGroupModal } from './MoveTeamToGroupModal';
-import ImportTeamsModal from './ImportTeamsModal';
 import { useToast } from '../../../contexts/ToastContext';
 import api from '../../../api';
 
@@ -54,16 +57,32 @@ const getClasificacionColor = (posicion: number, grupo: Grupo) => {
 };
 
 export const GroupStageEmbed: React.FC<GroupStageEmbedProps> = ({ navigation, isAdmin = false, idFase, idEdicionCategoria }) => {
+  console.log('🎨 [GroupStageEmbed] Renderizado - Props recibidas:', { idFase, idEdicionCategoria, isAdmin });
+
   const [grupos, setGrupos] = useState<Grupo[]>([]);
   const [clasificaciones, setClasificaciones] = useState<{ [grupoId: number]: (Clasificacion & { equipo: Equipo })[] }>({});
+  const [configuracionClasificacion, setConfiguracionClasificacion] = useState<ConfiguracionClasificacion | null>(null);
   const [loading, setLoading] = useState(true);
   const [expandedRules, setExpandedRules] = useState<{ [key: number]: boolean }>({});
   const [addTeamModalVisible, setAddTeamModalVisible] = useState(false);
+  const [asignarEquiposModalVisible, setAsignarEquiposModalVisible] = useState(false);
   const [moveTeamModalVisible, setMoveTeamModalVisible] = useState(false);
-  const [importTeamsModalVisible, setImportTeamsModalVisible] = useState(false);
+  const [editReglasModalVisible, setEditReglasModalVisible] = useState(false);
   const [selectedGrupoId, setSelectedGrupoId] = useState<number | null>(null);
+  const [selectedGrupoNombre, setSelectedGrupoNombre] = useState<string>('');
   const [selectedClasificacion, setSelectedClasificacion] = useState<(Clasificacion & { equipo: Equipo }) | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Estados para editar reglas
+  const [equiposOro, setEquiposOro] = useState('');
+  const [equiposPlata, setEquiposPlata] = useState('');
+  const [equiposBronce, setEquiposBronce] = useState('');
+  const [posicionesOro, setPosicionesOro] = useState('');
+  const [posicionesPlata, setPosicionesPlata] = useState('');
+  const [posicionesBronce, setPosicionesBronce] = useState('');
+  const [descripcionReglas, setDescripcionReglas] = useState('');
+  const [savingReglas, setSavingReglas] = useState(false);
+
   const { showSuccess, showError, showWarning } = useToast();
 
   const loadGruposAndClasificacion = useCallback(async () => {
@@ -75,33 +94,76 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps> = ({ navigation, is
 
     try {
       setLoading(true);
-      const gruposResponse = await api.grupos.list(idFase);
+      console.log('📥 [GroupStageEmbed] Cargando información completa de grupos para fase:', idFase);
 
-      if (gruposResponse.success && gruposResponse.data) {
-        setGrupos(gruposResponse.data);
+      // Usar el nuevo endpoint que trae toda la información de una vez
+      const response = await api.grupos.get(idFase);
+      console.log('📥 [GroupStageEmbed] Respuesta recibida del API:', response);
 
-        // Fetch classification for each group
+      if (response.success && response.data) {
+        console.log('✅ [GroupStageEmbed] Datos recibidos:', response.data);
+
+        // Guardar configuración de clasificación
+        setConfiguracionClasificacion(response.data.configuracion_clasificacion);
+
+        // Convertir GrupoDetallado[] a Grupo[] para compatibilidad
+        const gruposSimplificados: Grupo[] = response.data.grupos.map((grupoDetallado: GrupoDetallado) => ({
+          id_grupo: grupoDetallado.id_grupo,
+          nombre: grupoDetallado.nombre,
+          id_fase: response.data.fase.id_fase,
+          cantidad_equipos: grupoDetallado.cantidad_equipos,
+          equipos_pasan_oro: response.data.configuracion_clasificacion.equipos_oro,
+          equipos_pasan_plata: response.data.configuracion_clasificacion.equipos_plata,
+          equipos_pasan_bronce: response.data.configuracion_clasificacion.equipos_bronce,
+        }));
+
+        setGrupos(gruposSimplificados);
+
+        // Construir mapa de clasificaciones desde los equipos asignados
         const clasificacionesMap: { [grupoId: number]: (Clasificacion & { equipo: Equipo })[] } = {};
 
-        for (const grupo of gruposResponse.data) {
-          try {
-            const clasificacionResponse = await api.grupos.clasificacion(grupo.id_grupo);
-            if (clasificacionResponse.success && clasificacionResponse.data) {
-              clasificacionesMap[grupo.id_grupo] = clasificacionResponse.data.map(item => ({
-                ...item.clasificacion,
-                equipo: item.equipo,
-              }));
-            }
-          } catch (error) {
-            console.error(`Error loading classification for group ${grupo.id_grupo}:`, error);
-            clasificacionesMap[grupo.id_grupo] = [];
-          }
-        }
+        response.data.grupos.forEach((grupoDetallado: GrupoDetallado) => {
+          // Mapear equipos asignados a clasificaciones
+          const clasificacionesGrupo = grupoDetallado.equipos.map(equipoGrupo => {
+            const clasificacion = equipoGrupo.clasificacion[0] || {
+              // Valores por defecto si no hay clasificación
+              id_clasificacion: 0,
+              id_equipo: equipoGrupo.equipo.id_equipo,
+              id_grupo: grupoDetallado.id_grupo,
+              posicion: null,
+              pj: 0, pg: 0, pe: 0, pp: 0,
+              gf: 0, gc: 0, dif: 0, puntos: 0,
+              tarjetas_amarillas: 0,
+              tarjetas_rojas: 0,
+            };
+
+            return {
+              ...clasificacion,
+              equipo: equipoGrupo.equipo,
+            };
+          });
+
+          // Ordenar por posición (nulls al final) y luego por puntos
+          clasificacionesGrupo.sort((a, b) => {
+            if (a.posicion === null && b.posicion === null) return b.puntos - a.puntos;
+            if (a.posicion === null) return 1;
+            if (b.posicion === null) return -1;
+            return a.posicion - b.posicion;
+          });
+
+          clasificacionesMap[grupoDetallado.id_grupo] = clasificacionesGrupo;
+        });
 
         setClasificaciones(clasificacionesMap);
+
+        console.log('✅ [GroupStageEmbed] Grupos y clasificaciones cargados:', {
+          totalGrupos: gruposSimplificados.length,
+          totalEquipos: response.data.resumen.total_equipos,
+          configuracion: response.data.configuracion_clasificacion,
+        });
       }
     } catch (error) {
-      console.error('Error loading groups:', error);
+      console.error('❌ [GroupStageEmbed] Error loading groups:', error);
       showError('Error al cargar los grupos');
     } finally {
       setLoading(false);
@@ -113,19 +175,107 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps> = ({ navigation, is
   }, [loadGruposAndClasificacion]);
 
   const handleCreateGroup = () => {
-    console.log('Crear nuevo grupo');
-    navigation.navigate('CreateGroup', { idEdicionCategoria: 1 }); // TODO: Pasar el ID real
+    console.log('🔍 [GroupStageEmbed] handleCreateGroup - idEdicionCategoria:', idEdicionCategoria);
+
+    if (!idEdicionCategoria) {
+      Alert.alert('Error', 'No se pudo obtener el ID de la edición categoría');
+      return;
+    }
+
+    navigation.navigate('CreateGroupsFlow', { idEdicionCategoria });
   };
 
-  const handleEditGroup = (grupo: Grupo) => {
-    console.log('Editar grupo:', grupo);
-    navigation.navigate('EditGroup', { grupo });
+  const handleDeleteGroup = async (grupo: Grupo) => {
+    const equiposEnGrupo = clasificaciones[grupo.id_grupo]?.length || 0;
+
+    Alert.alert(
+      'Eliminar Grupo',
+      equiposEnGrupo > 0
+        ? `¿Deseas eliminar el grupo "${grupo.nombre}"? Tiene ${equiposEnGrupo} equipos asignados que también serán removidos.`
+        : `¿Deseas eliminar el grupo "${grupo.nombre}"?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const response = await api.grupos.delete(grupo.id_grupo, equiposEnGrupo > 0);
+
+              if (response.success) {
+                showSuccess(`Grupo "${grupo.nombre}" eliminado exitosamente`);
+                loadGruposAndClasificacion(); // Recargar datos
+              }
+            } catch (error) {
+              console.error('Error eliminando grupo:', error);
+              showError('Error al eliminar el grupo');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleEditReglas = () => {
+    if (!configuracionClasificacion || !idFase) {
+      showError('No hay configuración de clasificación disponible');
+      return;
+    }
+
+    // Cargar valores actuales en el formulario
+    setEquiposOro(String(configuracionClasificacion.equipos_oro));
+    setEquiposPlata(String(configuracionClasificacion.equipos_plata));
+    setEquiposBronce(String(configuracionClasificacion.equipos_bronce));
+    setPosicionesOro(configuracionClasificacion.posiciones_oro);
+    setPosicionesPlata(configuracionClasificacion.posiciones_plata);
+    setPosicionesBronce(configuracionClasificacion.posiciones_bronce);
+    setDescripcionReglas(configuracionClasificacion.descripcion);
+
+    // Abrir modal
+    setEditReglasModalVisible(true);
+  };
+
+  const handleSaveReglas = async () => {
+    if (!idFase) {
+      showError('No se puede actualizar las reglas sin ID de fase');
+      return;
+    }
+
+    setSavingReglas(true);
+
+    try {
+      const updateData = {
+        equipos_oro: parseInt(equiposOro) || undefined,
+        equipos_plata: parseInt(equiposPlata) || undefined,
+        equipos_bronce: parseInt(equiposBronce) || undefined,
+        posiciones_oro: posicionesOro.trim() || undefined,
+        posiciones_plata: posicionesPlata.trim() || undefined,
+        posiciones_bronce: posicionesBronce.trim() || undefined,
+        descripcion: descripcionReglas.trim() || undefined,
+      };
+
+      console.log('🔧 Actualizando reglas:', updateData);
+
+      const response = await api.grupos.updateReglas(idFase, updateData);
+
+      if (response.success) {
+        showSuccess('Reglas de clasificación actualizadas exitosamente');
+        setEditReglasModalVisible(false);
+        loadGruposAndClasificacion(); // Recargar datos
+      }
+    } catch (error) {
+      console.error('Error actualizando reglas:', error);
+      showError('Error al actualizar las reglas de clasificación');
+    } finally {
+      setSavingReglas(false);
+    }
   };
 
   const handleAddTeamToGroup = (grupoId: number) => {
-    console.log('Agregar equipo al grupo:', grupoId);
+    const grupo = grupos.find(g => g.id_grupo === grupoId);
     setSelectedGrupoId(grupoId);
-    setAddTeamModalVisible(true);
+    setSelectedGrupoNombre(grupo?.nombre || '');
+    setAsignarEquiposModalVisible(true);
   };
 
   const handleRemoveTeamFromGroup = (clasificacionId: number, equipoNombre: string) => {
@@ -186,26 +336,6 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps> = ({ navigation, is
     // await api.groups.addTeamToGroup(selectedGrupoId, equipoId);
   };
 
-  const handleImportTeams = () => {
-    // Mostrar modal con selector de grupos
-    if (grupos.length === 0) {
-      showError('No hay grupos disponibles');
-      return;
-    }
-    
-    setImportTeamsModalVisible(true);
-  };
-
-  const handleConfirmImport = (teams: Array<Partial<Equipo> & { jugadores?: any[] }>, grupoId: number) => {
-    const grupo = grupos.find(g => g.id_grupo === grupoId);
-    console.log('Importar equipos:', teams, 'al grupo', grupo?.nombre);
-    // TODO: Llamar a la API para crear equipos e importarlos al grupo
-    // await api.teams.bulkCreate(teams);
-    // await api.groups.addMultipleTeamsToGroup(grupoId, teamIds);
-    showSuccess(`${teams.length} equipos importados correctamente al grupo ${grupo?.nombre}`);
-    setImportTeamsModalVisible(false);
-  };
-
   const getEquiposByGrupo = (id_grupo: number): (Clasificacion & { equipo: Equipo })[] => {
     const grupoClasificacion = clasificaciones[id_grupo] || [];
 
@@ -216,7 +346,12 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps> = ({ navigation, is
         const equipoNombre = c.equipo?.nombre?.toLowerCase() || '';
         return equipoNombre.includes(searchQuery.toLowerCase());
       })
-      .sort((a, b) => a.posicion - b.posicion);
+      .sort((a, b) => {
+        if (a.posicion === null && b.posicion === null) return 0;
+        if (a.posicion === null) return 1;
+        if (b.posicion === null) return -1;
+        return a.posicion - b.posicion;
+      });
   };
 
   const handleTeamPress = (equipoId: number) => {
@@ -296,6 +431,9 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps> = ({ navigation, is
   };
 
   const renderEquipoRow = (clasificacion: Clasificacion & { equipo: Equipo }, grupo: Grupo) => {
+    // Usar una key única basada en id_equipo y id_grupo en lugar de id_clasificacion
+    const uniqueKey = `${grupo.id_grupo}-${clasificacion.id_equipo}`;
+
     const content = (
       <TouchableOpacity
         style={styles.tableRow}
@@ -303,11 +441,11 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps> = ({ navigation, is
         activeOpacity={0.7}
         accessible={true}
       >
-        {renderClasificacionIndicator(clasificacion.posicion, grupo)}
-        <Image 
-          source={clasificacion.equipo.logo ? { uri: clasificacion.equipo.logo } : require('../../../assets/InterLOGO.png')} 
-          style={styles.equipoLogo} 
-          resizeMode="cover" 
+        {renderClasificacionIndicator(clasificacion.posicion ?? 0, grupo)}
+        <Image
+          source={clasificacion.equipo.logo ? { uri: clasificacion.equipo.logo } : require('../../../assets/InterLOGO.png')}
+          style={styles.equipoLogo}
+          resizeMode="cover"
         />
         <View style={[styles.equipoCell, styles.equipoCol]}>
           <Text style={styles.equipoNombre}>
@@ -331,7 +469,7 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps> = ({ navigation, is
     if (isAdmin) {
       return (
         <Swipeable
-          key={clasificacion.id_clasificacion}
+          key={uniqueKey}
           renderRightActions={renderRightActions(clasificacion)}
           rightThreshold={40}
           overshootRight={false}
@@ -344,7 +482,18 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps> = ({ navigation, is
       );
     }
 
-    return <View key={clasificacion.id_clasificacion}>{content}</View>;
+    return <View key={uniqueKey}>{content}</View>;
+  };
+
+  const handleGrupoPress = (grupo: Grupo) => {
+    // Obtener las clasificaciones de este grupo
+    const clasificacionesGrupo = clasificaciones[grupo.id_grupo] || [];
+
+    navigation.navigate('GrupoDetail', {
+      grupo: grupo,
+      clasificaciones: clasificacionesGrupo,
+      nombreGrupo: grupo.nombre,
+    });
   };
 
   const renderGrupo = (grupo: Grupo) => {
@@ -354,7 +503,18 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps> = ({ navigation, is
       <Card key={grupo.id_grupo} style={styles.grupoCard}>
         {/* Header del grupo */}
         <View style={styles.grupoHeader}>
-          <Text style={styles.grupoNombre}>{grupo.nombre}</Text>
+          <TouchableOpacity
+            style={styles.grupoNombreContainer}
+            onPress={() => handleGrupoPress(grupo)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.grupoNombre}>{grupo.nombre}</Text>
+            <MaterialCommunityIcons
+              name="chevron-right"
+              size={20}
+              color={colors.textSecondary}
+            />
+          </TouchableOpacity>
           {isAdmin && (
             <View style={styles.grupoActions}>
               <TouchableOpacity
@@ -365,9 +525,9 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps> = ({ navigation, is
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.iconButton}
-                onPress={() => handleEditGroup(grupo)}
+                onPress={() => handleDeleteGroup(grupo)}
               >
-                <MaterialCommunityIcons name="pencil" size={20} color={colors.primary} />
+                <MaterialCommunityIcons name="delete" size={20} color={colors.error} />
               </TouchableOpacity>
             </View>
           )}
@@ -407,7 +567,7 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps> = ({ navigation, is
           />
         </TouchableOpacity>
 
-        {expandedRules[grupo.id_grupo] && (
+        {expandedRules[grupo.id_grupo] && configuracionClasificacion && (
           <View style={styles.rulesContent}>
             <Text style={styles.rulesTitle}>Sistema de Clasificación</Text>
             <Text style={styles.rulesText}>
@@ -416,43 +576,43 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps> = ({ navigation, is
 
             <View style={styles.rulesSection}>
               {/* Reglas para Copa de Oro */}
-              {(grupo.equipos_pasan_oro || 0) > 0 && (
-                <>
-                  {Array.from({ length: grupo.equipos_pasan_oro || 0 }).map((_, index) => {
-                    const posicion = index + 1;
-                    const posicionTexto = posicion === 1 ? '1º' : posicion === 2 ? '2º' : posicion === 3 ? '3º' : `${posicion}º`;
-                    return (
-                      <View key={`oro-${posicion}`} style={styles.ruleItem}>
-                        <View style={[styles.ruleDot, { backgroundColor: '#FFD700', borderColor: '#DAA520' }]} />
-                        <Text style={styles.ruleText}>
-                          <Text style={styles.ruleBold}>{posicionTexto} Posición:</Text> Clasifica a Copa de Oro
-                        </Text>
-                      </View>
-                    );
-                  })}
-                </>
+              {configuracionClasificacion.equipos_oro > 0 && (
+                <View style={styles.ruleItem}>
+                  <View style={[styles.ruleDot, { backgroundColor: '#FFD700', borderColor: '#DAA520' }]} />
+                  <Text style={styles.ruleText}>
+                    <Text style={styles.ruleBold}>Posiciones {configuracionClasificacion.posiciones_oro}:</Text>{' '}
+                    Clasifican a Copa de Oro ({configuracionClasificacion.equipos_oro}{' '}
+                    {configuracionClasificacion.equipos_oro === 1 ? 'equipo' : 'equipos'})
+                  </Text>
+                </View>
               )}
 
               {/* Reglas para Copa de Plata */}
-              {(grupo.equipos_pasan_plata || 0) > 0 && (
-                <>
-                  {Array.from({ length: grupo.equipos_pasan_plata || 0 }).map((_, index) => {
-                    const posicion = (grupo.equipos_pasan_oro || 0) + index + 1;
-                    const posicionTexto = posicion === 1 ? '1º' : posicion === 2 ? '2º' : posicion === 3 ? '3º' : `${posicion}º`;
-                    return (
-                      <View key={`plata-${posicion}`} style={styles.ruleItem}>
-                        <View style={[styles.ruleDot, { backgroundColor: '#C0C0C0', borderColor: '#A0A0A0' }]} />
-                        <Text style={styles.ruleText}>
-                          <Text style={styles.ruleBold}>{posicionTexto} Posición:</Text> Clasifica a Copa de Plata
-                        </Text>
-                      </View>
-                    );
-                  })}
-                </>
+              {configuracionClasificacion.equipos_plata > 0 && (
+                <View style={styles.ruleItem}>
+                  <View style={[styles.ruleDot, { backgroundColor: '#C0C0C0', borderColor: '#A0A0A0' }]} />
+                  <Text style={styles.ruleText}>
+                    <Text style={styles.ruleBold}>Posiciones {configuracionClasificacion.posiciones_plata}:</Text>{' '}
+                    Clasifican a Copa de Plata ({configuracionClasificacion.equipos_plata}{' '}
+                    {configuracionClasificacion.equipos_plata === 1 ? 'equipo' : 'equipos'})
+                  </Text>
+                </View>
+              )}
+
+              {/* Reglas para Copa de Bronce */}
+              {configuracionClasificacion.equipos_bronce > 0 && (
+                <View style={styles.ruleItem}>
+                  <View style={[styles.ruleDot, { backgroundColor: '#CD7F32', borderColor: '#8B4513' }]} />
+                  <Text style={styles.ruleText}>
+                    <Text style={styles.ruleBold}>Posiciones {configuracionClasificacion.posiciones_bronce}:</Text>{' '}
+                    Clasifican a Copa de Bronce ({configuracionClasificacion.equipos_bronce}{' '}
+                    {configuracionClasificacion.equipos_bronce === 1 ? 'equipo' : 'equipos'})
+                  </Text>
+                </View>
               )}
 
               {/* Equipos eliminados */}
-              {((grupo.equipos_pasan_oro || 0) + (grupo.equipos_pasan_plata || 0)) < (grupo.cantidad_equipos || 0) && (
+              {(configuracionClasificacion.equipos_oro + configuracionClasificacion.equipos_plata + configuracionClasificacion.equipos_bronce) < (grupo.cantidad_equipos || 0) && (
                 <View style={styles.ruleItem}>
                   <View style={[styles.ruleDot, { backgroundColor: '#F5F5F5', borderColor: colors.border }]} />
                   <Text style={styles.ruleText}>
@@ -462,14 +622,13 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps> = ({ navigation, is
               )}
             </View>
 
-            <View style={[styles.rulesSection, { marginTop: 12 }]}>
-              <Text style={styles.rulesSubtitle}>Criterios de Desempate:</Text>
-              <Text style={styles.ruleText}>1. Puntos totales</Text>
-              <Text style={styles.ruleText}>2. Diferencia de goles</Text>
-              <Text style={styles.ruleText}>3. Goles a favor</Text>
-              <Text style={styles.ruleText}>4. Partidos ganados</Text>
-              <Text style={styles.ruleText}>5. Enfrentamiento directo</Text>
-            </View>
+            {/* Descripción desde la base de datos */}
+            {configuracionClasificacion.descripcion && (
+              <View style={[styles.rulesSection, { marginTop: 12 }]}>
+                <Text style={styles.rulesSubtitle}>Criterios:</Text>
+                <Text style={styles.ruleText}>{configuracionClasificacion.descripcion}</Text>
+              </View>
+            )}
           </View>
         )}
       </Card>
@@ -505,20 +664,25 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps> = ({ navigation, is
         showsVerticalScrollIndicator={false}
       />
 
-      {/* FAB para crear nuevo grupo (solo admin) */}
+      {/* FAB para crear nuevo grupo y editar reglas (solo admin) */}
       {isAdmin && (
         <>
+          {/* Botón para editar reglas de clasificación */}
+          {configuracionClasificacion && (
+            <FAB
+              onPress={handleEditReglas}
+              icon="cog"
+              color={colors.warning}
+              style={{ bottom: 90 }}
+            />
+          )}
+
+          {/* Botón para crear nuevo grupo */}
           <FAB
             onPress={handleCreateGroup}
             icon="add-circle"
             color={colors.success}
             style={{ bottom: 20 }}
-          />
-          <FAB
-            onPress={handleImportTeams}
-            icon="cloud-upload"
-            color={colors.info}
-            style={{ bottom: 90 }}
           />
         </>
       )}
@@ -539,6 +703,24 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps> = ({ navigation, is
         />
       )}
 
+      {/* Modal para asignar múltiples equipos al grupo */}
+      {selectedGrupoId && (
+        <AsignarEquiposModal
+          visible={asignarEquiposModalVisible}
+          onClose={() => {
+            setAsignarEquiposModalVisible(false);
+            setSelectedGrupoId(null);
+            setSelectedGrupoNombre('');
+          }}
+          grupoId={selectedGrupoId}
+          grupoNombre={selectedGrupoNombre}
+          idEdicionCategoria={idEdicionCategoria || 1}
+          onSuccess={() => {
+            loadGruposAndClasificacion();
+          }}
+        />
+      )}
+
       {/* Modal para mover equipo a otro grupo */}
       {selectedClasificacion && (
         <MoveTeamToGroupModal
@@ -554,16 +736,129 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps> = ({ navigation, is
         />
       )}
 
-      {/* Modal para importar mÃºltiples equipos CSV */}
-      <ImportTeamsModal
-        visible={importTeamsModalVisible}
-        onClose={() => {
-          setImportTeamsModalVisible(false);
-        }}
-        onImport={handleConfirmImport}
-        grupos={grupos}
-        initialGrupoId={selectedGrupoId || grupos[0]?.id_grupo}
-      />
+      {/* Modal para editar reglas de clasificación */}
+      <Modal
+        visible={editReglasModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setEditReglasModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Editar Reglas de Clasificación</Text>
+              <TouchableOpacity onPress={() => setEditReglasModalVisible(false)}>
+                <MaterialCommunityIcons name="close" size={24} color={colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalContent}>
+              {/* Equipos a Oro */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Equipos que pasan a Oro</Text>
+                <TextInput
+                  style={styles.input}
+                  value={equiposOro}
+                  onChangeText={setEquiposOro}
+                  keyboardType="number-pad"
+                  placeholder="Ej: 2"
+                />
+              </View>
+
+              {/* Posiciones Oro */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Posiciones Oro (separadas por coma)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={posicionesOro}
+                  onChangeText={setPosicionesOro}
+                  placeholder="Ej: 1,2 o 1-2"
+                />
+              </View>
+
+              {/* Equipos a Plata */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Equipos que pasan a Plata</Text>
+                <TextInput
+                  style={styles.input}
+                  value={equiposPlata}
+                  onChangeText={setEquiposPlata}
+                  keyboardType="number-pad"
+                  placeholder="Ej: 2"
+                />
+              </View>
+
+              {/* Posiciones Plata */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Posiciones Plata (separadas por coma)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={posicionesPlata}
+                  onChangeText={setPosicionesPlata}
+                  placeholder="Ej: 3,4 o 3-4"
+                />
+              </View>
+
+              {/* Equipos a Bronce */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Equipos que pasan a Bronce</Text>
+                <TextInput
+                  style={styles.input}
+                  value={equiposBronce}
+                  onChangeText={setEquiposBronce}
+                  keyboardType="number-pad"
+                  placeholder="Ej: 2"
+                />
+              </View>
+
+              {/* Posiciones Bronce */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Posiciones Bronce (separadas por coma)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={posicionesBronce}
+                  onChangeText={setPosicionesBronce}
+                  placeholder="Ej: 5,6 o 5-6"
+                />
+              </View>
+
+              {/* Descripción */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Descripción de las Reglas</Text>
+                <TextInput
+                  style={[styles.input, styles.textArea]}
+                  value={descripcionReglas}
+                  onChangeText={setDescripcionReglas}
+                  placeholder="Describe las reglas de clasificación..."
+                  multiline
+                  numberOfLines={4}
+                  textAlignVertical="top"
+                />
+              </View>
+            </ScrollView>
+
+            <View style={styles.modalFooter}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => setEditReglasModalVisible(false)}
+              >
+                <Text style={styles.cancelButtonText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.saveButton]}
+                onPress={handleSaveReglas}
+                disabled={savingReglas}
+              >
+                {savingReglas ? (
+                  <ActivityIndicator size="small" color={colors.white} />
+                ) : (
+                  <Text style={styles.saveButtonText}>Guardar</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </GestureHandlerRootView>
   );
 };
@@ -620,6 +915,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.backgroundGray,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  grupoNombreContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    flex: 1,
   },
   grupoNombre: {
     fontSize: 18,
@@ -814,6 +1115,88 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     marginTop: 4,
+  },
+  // Estilos del modal de edición de reglas
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContainer: {
+    backgroundColor: colors.white,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '85%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+  },
+  modalContent: {
+    padding: 20,
+  },
+  inputGroup: {
+    marginBottom: 20,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: 8,
+  },
+  input: {
+    backgroundColor: colors.backgroundGray,
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    color: colors.textPrimary,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  textArea: {
+    minHeight: 100,
+    paddingTop: 12,
+  },
+  modalFooter: {
+    flexDirection: 'row',
+    gap: 12,
+    padding: 20,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelButton: {
+    backgroundColor: colors.backgroundGray,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  saveButton: {
+    backgroundColor: colors.primary,
+  },
+  saveButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.white,
   },
 });
   

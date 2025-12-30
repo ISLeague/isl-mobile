@@ -8,10 +8,14 @@ export const jugadoresService = {
   /**
    * Listar todos los jugadores
    */
-  list: async () => {
-    const response = await apiClient.get('/jugadores-list');
+  list: async (idEquipo: number) => {
+    const response = await apiClient.get('/jugadores-list', {
+      params: { id_equipo: idEquipo },
+    });
     return response.data;
   },
+
+  
 
   /**
    * Obtener un jugador por ID
@@ -48,6 +52,21 @@ export const jugadoresService = {
    */
   create: async (data: CreateJugadorRequest) => {
     const response = await apiClient.post('/jugadores-create', data);
+    return response.data;
+  },
+
+  /**
+   * Crear jugadores en masa desde CSV
+   */
+  createBulk: async (idEquipo: number, csvFile: any) => {
+    const formData = new FormData();
+    formData.append('csv', csvFile);
+
+    const response = await apiClient.post(`/jugadores-create-bulk/${idEquipo}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
     return response.data;
   },
 };

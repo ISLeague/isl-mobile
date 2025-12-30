@@ -5,20 +5,34 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
+  Switch,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import { Input } from '../../components/common/Input';
 import { Button } from '../../components/common/Button';
+import { useToast } from '../../contexts/ToastContext';
+import api from '../../api';
 
 export const CreateCanchaScreen = ({ navigation, route }: any) => {
-  const { idLocal, nombreLocal } = route.params || {};
-  
+  const { idLocal, nombreLocal, idEdicionCategoria } = route.params || {};
+  const { showSuccess, showError } = useToast();
+
+  // Form states
   const [nombre, setNombre] = useState('');
+  const [tipoSuperficie, setTipoSuperficie] = useState('');
+  const [dimensiones, setDimensiones] = useState('');
+  const [capacidadEspectadores, setCapacidadEspectadores] = useState('');
+
+  // Boolean switches
+  const [tieneIluminacion, setTieneIluminacion] = useState(false);
+  const [tieneGradas, setTieneGradas] = useState(false);
+
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<{ nombre?: string }>({});
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [errors, setErrors] = useState<any>({});
 
   const validateForm = () => {
     const newErrors: any = {};
@@ -27,6 +41,14 @@ export const CreateCanchaScreen = ({ navigation, route }: any) => {
       newErrors.nombre = 'El nombre de la cancha es requerido';
     } else if (nombre.trim().length < 3) {
       newErrors.nombre = 'El nombre debe tener al menos 3 caracteres';
+    }
+
+    // Validar capacidad si se proporciona
+    if (capacidadEspectadores.trim()) {
+      const cap = parseInt(capacidadEspectadores);
+      if (isNaN(cap) || cap < 0) {
+        newErrors.capacidadEspectadores = 'Capacidad inválida';
+      }
     }
 
     setErrors(newErrors);
@@ -41,43 +63,51 @@ export const CreateCanchaScreen = ({ navigation, route }: any) => {
     setLoading(true);
 
     try {
-      // TODO: Integrar con la API real
-      // const response = await api.canchas.createCancha({
-      //   nombre: nombre.trim(),
-      //   id_local: idLocal,
-      // });
+      const response = await api.canchas.create({
+        nombre: nombre.trim(),
+        id_local: idLocal,
+        tipo_superficie: tipoSuperficie.trim() || undefined,
+        dimensiones: dimensiones.trim() || undefined,
+        capacidad_espectadores: capacidadEspectadores ? parseInt(capacidadEspectadores) : undefined,
+        tiene_iluminacion: tieneIluminacion,
+        tiene_gradas: tieneGradas,
+      });
 
-      // Simulación de creación
-      setTimeout(() => {
-        setLoading(false);
-        Alert.alert(
-          '¡Éxito!',
-          `Cancha "${nombre}" creada correctamente`,
-          [
-            {
-              text: 'Crear Otra',
-              onPress: () => {
-                setNombre('');
-                setErrors({});
-              },
-            },
-            {
-              text: 'Finalizar',
-              onPress: () => navigation.goBack(),
-              style: 'cancel',
-            },
-          ]
-        );
-      }, 1000);
-    } catch (error) {
+      if (response.success && response.data) {
+        setShowSuccessModal(true);
+        showSuccess(`Cancha "${nombre}" creada exitosamente`);
+      } else {
+        showError('No se pudo crear la cancha');
+      }
+    } catch (error: any) {
+      console.error('Error creating cancha:', error);
+      showError(error.message || 'Error al crear la cancha');
+    } finally {
       setLoading(false);
-      Alert.alert('Error', 'No se pudo crear la cancha. Intenta nuevamente.');
     }
+  };
+
+  const handleFinalizar = () => {
+    setShowSuccessModal(false);
+    // Volver a la pantalla anterior (debería volver a la lista de locales actualizada)
+    navigation.goBack();
+  };
+
+  const handleCrearOtra = () => {
+    setShowSuccessModal(false);
+    // Limpiar el formulario para crear otra cancha
+    setNombre('');
+    setTipoSuperficie('');
+    setDimensiones('');
+    setCapacidadEspectadores('');
+    setTieneIluminacion(false);
+    setTieneGradas(false);
+    setErrors({});
   };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={true}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
@@ -89,7 +119,7 @@ export const CreateCanchaScreen = ({ navigation, route }: any) => {
           </TouchableOpacity>
 
           <Text style={styles.title}>Crear Nueva Cancha</Text>
-          
+
           {/* Local Info */}
           <View style={styles.localInfoCard}>
             <MaterialCommunityIcons name="stadium" size={24} color={colors.primary} />
@@ -110,14 +140,78 @@ export const CreateCanchaScreen = ({ navigation, route }: any) => {
             </Text>
           </View>
 
-          <Input
-            label="Nombre de la Cancha"
-            placeholder="Ej: Cancha Principal A"
-            value={nombre}
-            onChangeText={setNombre}
-            error={errors.nombre}
-            leftIcon={<MaterialCommunityIcons name="soccer-field" size={20} color={colors.textLight} />}
-          />
+          {/* Información Básica */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Información Básica</Text>
+
+            <Input
+              label="Nombre de la Cancha *"
+              placeholder="Ej: Cancha Principal A"
+              value={nombre}
+              onChangeText={setNombre}
+              error={errors.nombre}
+              leftIcon={<MaterialCommunityIcons name="soccer-field" size={20} color={colors.textLight} />}
+            />
+
+            <Input
+              label="Tipo de Superficie"
+              placeholder="Ej: césped, tierra, sintético"
+              value={tipoSuperficie}
+              onChangeText={setTipoSuperficie}
+              error={errors.tipoSuperficie}
+              leftIcon={<MaterialCommunityIcons name="texture-box" size={20} color={colors.textLight} />}
+            />
+
+            <Input
+              label="Dimensiones"
+              placeholder="Ej: 50x30 metros"
+              value={dimensiones}
+              onChangeText={setDimensiones}
+              error={errors.dimensiones}
+              leftIcon={<MaterialCommunityIcons name="ruler" size={20} color={colors.textLight} />}
+            />
+
+            <Input
+              label="Capacidad de Espectadores"
+              placeholder="Ej: 200"
+              value={capacidadEspectadores}
+              onChangeText={setCapacidadEspectadores}
+              error={errors.capacidadEspectadores}
+              keyboardType="numeric"
+              leftIcon={<MaterialCommunityIcons name="account-group" size={20} color={colors.textLight} />}
+            />
+          </View>
+
+          {/* Servicios */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Servicios Disponibles</Text>
+
+            <View style={styles.switchRow}>
+              <View style={styles.switchLabel}>
+                <MaterialCommunityIcons name="lightbulb-on" size={24} color={colors.textPrimary} />
+                <Text style={styles.switchText}>Tiene Iluminación</Text>
+              </View>
+              <Switch
+                value={tieneIluminacion}
+                onValueChange={setTieneIluminacion}
+                trackColor={{ false: colors.borderLight, true: colors.success }}
+                thumbColor={tieneIluminacion ? colors.white : colors.backgroundGray}
+              />
+            </View>
+
+            <View style={styles.switchRow}>
+              <View style={styles.switchLabel}>
+                <MaterialCommunityIcons name="stairs" size={24} color={colors.textPrimary} />
+                <Text style={styles.switchText}>Tiene Gradas</Text>
+              </View>
+              <Switch
+                value={tieneGradas}
+                onValueChange={setTieneGradas}
+                trackColor={{ false: colors.borderLight, true: colors.success }}
+                thumbColor={tieneGradas ? colors.white : colors.backgroundGray}
+              />
+            </View>
+          </View>
 
           <Button
             title="Crear Cancha"
@@ -128,6 +222,45 @@ export const CreateCanchaScreen = ({ navigation, route }: any) => {
           />
         </View>
       </ScrollView>
+
+      {/* Success Modal */}
+      <Modal
+        visible={showSuccessModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowSuccessModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalIcon}>
+              <MaterialCommunityIcons name="check-circle" size={64} color={colors.success} />
+            </View>
+
+            <Text style={styles.modalTitle}>¡Cancha Creada!</Text>
+            <Text style={styles.modalMessage}>
+              La cancha "{nombre}" se creó exitosamente.{'\n'}
+              ¿Deseas crear otra cancha?
+            </Text>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalButtonSecondary]}
+                onPress={handleFinalizar}
+              >
+                <Text style={styles.modalButtonTextSecondary}>Finalizar</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalButtonPrimary]}
+                onPress={handleCrearOtra}
+              >
+                <MaterialCommunityIcons name="plus-circle" size={20} color={colors.white} />
+                <Text style={styles.modalButtonTextPrimary}>Crear Otra</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -154,8 +287,8 @@ const styles = StyleSheet.create({
   backButtonText: {
     fontSize: 16,
     color: colors.primary,
-    fontWeight: '600',
     marginLeft: 8,
+    fontWeight: '600',
   },
   title: {
     fontSize: 28,
@@ -166,48 +299,138 @@ const styles = StyleSheet.create({
   localInfoCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.backgroundGray,
-    padding: 16,
+    backgroundColor: '#E8F4FD',
+    padding: 14,
     borderRadius: 12,
-    borderLeftWidth: 4,
-    borderLeftColor: colors.primary,
+    gap: 12,
   },
   localInfoText: {
-    marginLeft: 12,
     flex: 1,
   },
   localLabel: {
     fontSize: 12,
     color: colors.textSecondary,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   localName: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.textPrimary,
+    color: colors.primary,
   },
   form: {
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 40,
   },
   infoBox: {
     flexDirection: 'row',
-    backgroundColor: colors.white,
-    padding: 16,
+    backgroundColor: '#E8F4FD',
+    padding: 14,
     borderRadius: 12,
     marginBottom: 24,
-    borderLeftWidth: 4,
-    borderLeftColor: colors.info,
+    gap: 12,
   },
   infoText: {
     flex: 1,
-    fontSize: 14,
-    color: colors.textSecondary,
-    lineHeight: 20,
-    marginLeft: 12,
+    fontSize: 13,
+    color: colors.primary,
+    lineHeight: 18,
+  },
+  section: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 16,
+  },
+  switchRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  switchLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  switchText: {
+    fontSize: 15,
+    color: colors.textPrimary,
+    fontWeight: '500',
   },
   createButton: {
     marginTop: 8,
   },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContainer: {
+    backgroundColor: colors.white,
+    borderRadius: 20,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+    alignItems: 'center',
+  },
+  modalIcon: {
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  modalMessage: {
+    fontSize: 15,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 24,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  modalButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    gap: 8,
+  },
+  modalButtonSecondary: {
+    backgroundColor: colors.backgroundGray,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  modalButtonPrimary: {
+    backgroundColor: colors.primary,
+  },
+  modalButtonTextSecondary: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  modalButtonTextPrimary: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.white,
+  },
 });
-
-export default CreateCanchaScreen;

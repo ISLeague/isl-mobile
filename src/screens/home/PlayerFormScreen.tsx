@@ -1,9 +1,13 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
 import { GradientHeader, Input, Button } from '../../components/common';
 import { colors } from '../../theme/colors';
-import { Jugador } from '../../types';
+import { Jugador } from '../../api/types/jugadores.types';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import api from '../../api';
+import { safeAsync } from '../../utils/errorHandling';
+import { useToast } from '../../contexts/ToastContext';
 
 interface PlayerFormScreenProps {
   navigation: any;
@@ -17,10 +21,19 @@ export const PlayerFormScreen: React.FC<PlayerFormScreenProps> = ({ navigation, 
     mode: 'create' | 'edit';
   };
 
+  const { showSuccess, showError } = useToast();
+
   const [nombreCompleto, setNombreCompleto] = useState(jugador?.nombre_completo || '');
   const [dni, setDni] = useState(jugador?.dni || '');
   const [numeroCamiseta, setNumeroCamiseta] = useState(jugador?.numero_camiseta?.toString() || '');
-  const [esRefuerzo, setEsRefuerzo] = useState(false);
+  const [posicion, setPosicion] = useState(jugador?.posicion || 'Delantero');
+  const [pieDominante, setPieDominante] = useState(jugador?.pie_dominante || 'derecho');
+  const [altura, setAltura] = useState(jugador?.altura_cm?.toString() || '');
+  const [peso, setPeso] = useState(jugador?.peso_kg?.toString() || '');
+  const [nacionalidad, setNacionalidad] = useState(jugador?.nacionalidad || 'Argentina');
+  const [esRefuerzo, setEsRefuerzo] = useState(jugador?.es_refuerzo || false);
+  const [esCapitan, setEsCapitan] = useState(jugador?.es_capitan || false);
+  const [loading, setLoading] = useState(false);
   const [fechaNacimiento, setFechaNacimiento] = useState(
     jugador?.fecha_nacimiento ? (() => {
       const fecha = new Date(jugador.fecha_nacimiento);
@@ -86,31 +99,60 @@ export const PlayerFormScreen: React.FC<PlayerFormScreenProps> = ({ navigation, 
     return true;
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!validateForm()) return;
 
+    setLoading(true);
+
+    // Convert DD/MM/YYYY to YYYY-MM-DD for API
+    const [dia, mes, anio] = fechaNacimiento.split('/').map(Number);
+    const fechaISO = `${anio}-${mes.toString().padStart(2, '0')}-${dia.toString().padStart(2, '0')}`;
+
     const jugadorData = {
-      id_jugador: mode === 'edit' ? jugador!.id_jugador : Date.now(),
+      id_equipo: equipoId,
       nombre_completo: nombreCompleto.trim(),
       dni: dni.trim(),
+      fecha_nacimiento: fechaISO,
       numero_camiseta: numeroCamiseta ? parseInt(numeroCamiseta) : undefined,
-      fecha_nacimiento: fechaNacimiento,
-      estado: 'activo' as const,
+      posicion,
+      pie_dominante: pieDominante,
+      altura_cm: altura ? parseInt(altura) : undefined,
+      peso_kg: peso ? parseInt(peso) : undefined,
+      nacionalidad,
+      es_refuerzo: esRefuerzo,
+      es_capitan: esCapitan,
+      foto: null, // TODO: Implementar upload de foto
     };
 
-    // TODO: Llamar a la API para crear/editar jugador
-    console.log(mode === 'edit' ? 'Editando jugador:' : 'Creando jugador:', jugadorData);
-
-    Alert.alert(
-      'Éxito',
-      `Jugador ${mode === 'edit' ? 'actualizado' : 'creado'} correctamente`,
-      [
-        {
-          text: 'OK',
-          onPress: () => navigation.goBack(),
-        },
-      ]
+    const success = await safeAsync(
+      async () => {
+        if (mode === 'create') {
+          const response = await api.jugadores.create(jugadorData);
+          return response;
+        } else {
+          // TODO: Implementar edición de jugador
+          console.log('Editando jugador:', jugadorData);
+          return { success: true };
+        }
+      },
+      'PlayerFormScreen - handleSave',
+      {
+        fallbackValue: null,
+        onError: (error) => {
+          showError(error.message || 'No se pudo guardar el jugador', 'Error');
+        }
+      }
     );
+
+    setLoading(false);
+
+    if (success) {
+      showSuccess(
+        `Jugador ${mode === 'edit' ? 'actualizado' : 'creado'} correctamente`,
+        '¡Éxito!'
+      );
+      navigation.goBack();
+    }
   };
 
   return (
@@ -157,7 +199,62 @@ export const PlayerFormScreen: React.FC<PlayerFormScreenProps> = ({ navigation, 
           style={styles.input}
         />
 
-        <TouchableOpacity 
+        <Text style={styles.label}>Posición *</Text>
+        <View style={styles.pickerContainer}>
+          <Picker
+            selectedValue={posicion}
+            onValueChange={(value: string) => setPosicion(value)}
+            style={styles.picker}
+          >
+            <Picker.Item label="Portero" value="Portero" />
+            <Picker.Item label="Defensa" value="Defensa" />
+            <Picker.Item label="Mediocampo" value="Mediocampo" />
+            <Picker.Item label="Delantero" value="Delantero" />
+          </Picker>
+        </View>
+
+        <Text style={styles.label}>Pie Dominante *</Text>
+        <View style={styles.pickerContainer}>
+          <Picker
+            selectedValue={pieDominante}
+            onValueChange={(value: string) => setPieDominante(value)}
+            style={styles.picker}
+          >
+            <Picker.Item label="Derecho" value="derecho" />
+            <Picker.Item label="Izquierdo" value="izquierdo" />
+            <Picker.Item label="Ambidiestro" value="ambidiestro" />
+          </Picker>
+        </View>
+
+        <Text style={styles.label}>Altura (cm)</Text>
+        <Input
+          value={altura}
+          onChangeText={setAltura}
+          placeholder="Ej: 175"
+          keyboardType="numeric"
+          maxLength={3}
+          style={styles.input}
+        />
+
+        <Text style={styles.label}>Peso (kg)</Text>
+        <Input
+          value={peso}
+          onChangeText={setPeso}
+          placeholder="Ej: 70"
+          keyboardType="numeric"
+          maxLength={3}
+          style={styles.input}
+        />
+
+        <Text style={styles.label}>Nacionalidad *</Text>
+        <Input
+          value={nacionalidad}
+          onChangeText={setNacionalidad}
+          placeholder="Ej: Argentina"
+          style={styles.input}
+        />
+
+        <TouchableOpacity
           style={styles.checkboxContainer}
           onPress={() => setEsRefuerzo(!esRefuerzo)}
           activeOpacity={0.7}
@@ -171,6 +268,24 @@ export const PlayerFormScreen: React.FC<PlayerFormScreenProps> = ({ navigation, 
             <Text style={styles.checkboxLabel}>Este jugador es un refuerzo</Text>
             <Text style={styles.checkboxSubtext}>
               Los refuerzos pueden superar la edad máxima de la categoría
+            </Text>
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.checkboxContainer}
+          onPress={() => setEsCapitan(!esCapitan)}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.checkbox, esCapitan && styles.checkboxChecked]}>
+            {esCapitan && (
+              <MaterialCommunityIcons name="check" size={18} color={colors.white} />
+            )}
+          </View>
+          <View style={styles.checkboxLabelContainer}>
+            <Text style={styles.checkboxLabel}>Este jugador es capitán del equipo</Text>
+            <Text style={styles.checkboxSubtext}>
+              El capitán es el líder del equipo en el campo
             </Text>
           </View>
         </TouchableOpacity>
@@ -195,6 +310,8 @@ export const PlayerFormScreen: React.FC<PlayerFormScreenProps> = ({ navigation, 
           onPress={handleSave}
           variant="primary"
           style={styles.button}
+          disabled={loading}
+          loading={loading}
         />
       </ScrollView>
     </View>
@@ -274,5 +391,15 @@ const styles = StyleSheet.create({
   },
   button: {
     marginBottom: 32,
+  },
+  pickerContainer: {
+    backgroundColor: colors.backgroundGray,
+    borderRadius: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  picker: {
+    height: 50,
   },
 });

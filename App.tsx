@@ -27,6 +27,7 @@ import { CreateLocalScreen } from './src/screens/admin/CreateLocalScreen';
 import { CreateCanchaScreen } from './src/screens/admin/CreateCanchaScreen';
 import { EditLocalScreen } from './src/screens/admin/EditLocalScreen';
 import { EditCanchaScreen } from './src/screens/admin/EditCanchaScreen';
+import { LocalDetailScreen } from './src/screens/admin/LocalDetailScreen';
 import { ManageCountriesScreen } from './src/screens/admin/ManageCountriesScreen';
 import { EditCountryScreen } from './src/screens/admin/EditCountryScreen';
 import { GroupStageScreen } from './src/screens/home/GroupStageScreen';
@@ -38,9 +39,11 @@ import { MyTeamScreen } from './src/screens/home/MyTeamScreen';
 import { MatchDetailScreen } from './src/screens/home/MatchDetailScreen';
 import { PrivacySettingsScreen } from './src/screens/profile/PrivacySettingsScreen';
 import { CreateGroupScreen } from './src/screens/admin/CreateGroupScreen';
+import { CreateGroupsFlowScreen } from './src/screens/admin/CreateGroupsFlowScreen';
 import { EditGroupScreen } from './src/screens/admin/EditGroupScreen';
 import { FixtureManagementScreen } from './src/screens/admin/FixtureManagementScreen';
 import { CreateRondaScreen } from './src/screens/admin/CreateRondaScreen';
+import { CreateRondaFlowScreen } from './src/screens/admin/CreateRondaFlowScreen';
 import { CreateRondaAmistosaScreen } from './src/screens/admin/CreateRondaAmistosaScreen';
 import { EditPartidoScreen } from './src/screens/admin/EditPartidoScreen';
 import { EditTeamScreen } from './src/screens/admin/EditTeamScreen';
@@ -53,6 +56,7 @@ import { CreateTournamentAdminScreen } from './src/screens/admin/CreateTournamen
 import ResultPage from './src/screens/admin/ResultPage';
 import { CreateTeamScreen } from './src/screens/admin/CreateTeamScreen';
 import { BulkCreateTeamsScreen } from './src/screens/admin/BulkCreateTeamsScreen';
+import { GrupoDetailScreen } from './src/screens/admin/GrupoDetailScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -105,11 +109,13 @@ export default function App() {
           
           {/* Group Management */}
           <Stack.Screen name="CreateGroup" component={CreateGroupScreen} />
+          <Stack.Screen name="CreateGroupsFlow" component={CreateGroupsFlowScreen} />
           <Stack.Screen name="EditGroup" component={EditGroupScreen} />
+          <Stack.Screen name="GrupoDetail" component={GrupoDetailScreen} />
           
           {/* Fixture Management */}
           <Stack.Screen name="FixtureManagement" component={FixtureManagementScreen} />
-          <Stack.Screen name="CreateRonda" component={CreateRondaScreen} />
+          <Stack.Screen name="CreateRonda" component={CreateRondaFlowScreen} />
           <Stack.Screen name="EditRonda" component={EditRondaScreen} />
           <Stack.Screen name="CreateRondaAmistosa" component={CreateRondaAmistosaScreen} />
           <Stack.Screen name="CreatePartido" component={CreatePartidoScreen} />
@@ -125,6 +131,7 @@ export default function App() {
           <Stack.Screen name="CreateCancha" component={CreateCanchaScreen} />
           <Stack.Screen name="EditLocal" component={EditLocalScreen} />
           <Stack.Screen name="EditCancha" component={EditCanchaScreen} />
+          <Stack.Screen name="LocalDetail" component={LocalDetailScreen} />
           
           {/* Sponsor Management */}
           <Stack.Screen name="CreateSponsor" component={CreateSponsorScreen} />

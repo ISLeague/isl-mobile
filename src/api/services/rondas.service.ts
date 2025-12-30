@@ -1,5 +1,5 @@
 import { apiClient } from '../client/axiosClient';
-import { CreateRondaRequest, UpdateRondaRequest } from '../types/rondas.types';
+import { CreateRondaRequest, UpdateRondaRequest, FixtureGenerateRequest } from '../types/rondas.types';
 
 export const rondasService = {
   list: async () => {
@@ -14,6 +14,11 @@ export const rondasService = {
 
   create: async (data: CreateRondaRequest) => {
     const response = await apiClient.post('/rondas-create', data);
+    return response.data;
+  },
+
+  generarFixture: async (data: FixtureGenerateRequest) => {
+    const response = await apiClient.post('/rondas-generar-fixture', data);
     return response.data;
   },
 
