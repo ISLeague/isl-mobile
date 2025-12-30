@@ -466,30 +466,31 @@ export const ManageCategoriesScreen = ({ navigation, route }: any) => {
                   />
                 </View>
               )}
-
-              <View style={styles.modalActions}>
-                <TouchableOpacity
-                  style={styles.cancelButton}
-                  onPress={() => setShowModal(false)}
-                >
-                  <Text style={styles.cancelButtonText}>Cancelar</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.saveButton}
-                  onPress={handleSaveCategory}
-                  disabled={isSaving}
-                >
-                  {isSaving ? (
-                    <ActivityIndicator size="small" color={colors.white} />
-                  ) : (
-                    <Text style={styles.saveButtonText}>
-                      {modalMode === 'create' ? 'Crear' : 'Guardar'}
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              </View>
             </ScrollView>
+
+            {/* Footer con botones - Siempre visible */}
+            <View style={styles.modalFooter}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => setShowModal(false)}
+              >
+                <Text style={styles.cancelButtonText}>Cancelar</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.saveButton}
+                onPress={handleSaveCategory}
+                disabled={isSaving}
+              >
+                {isSaving ? (
+                  <ActivityIndicator size="small" color={colors.white} />
+                ) : (
+                  <Text style={styles.saveButtonText}>
+                    {modalMode === 'create' ? 'Crear' : 'Guardar'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -702,7 +703,9 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   modalBody: {
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 8,
   },
   formGroup: {
     marginBottom: 20,
@@ -727,9 +730,15 @@ const styles = StyleSheet.create({
     minHeight: 80,
     paddingTop: 12,
   },
-  modalActions: {
+  modalFooter: {
     flexDirection: 'row',
     gap: 12,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 20,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    backgroundColor: colors.white,
   },
   cancelButton: {
     flex: 1,
