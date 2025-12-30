@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,8 @@ import {
   ActivityIndicator,
   FlatList,
   TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -18,6 +20,7 @@ import api from '../../api';
 import { Categoria } from '../../api/types/categorias.types';
 import { EdicionCategoria } from '../../api/types/edicion-categorias.types';
 import { useAuth } from '../../contexts/AuthContext';
+import { useFocusEffect } from '@react-navigation/native';
 
 export const TournamentCategoriesScreen = ({ navigation, route }: any) => {
   const { torneo, edicion, pais } = route.params;
@@ -40,9 +43,11 @@ export const TournamentCategoriesScreen = ({ navigation, route }: any) => {
   const [minJugadores, setMinJugadores] = useState('11');
   const [isSaving, setIsSaving] = useState(false);
 
-  useEffect(() => {
-    loadCategorias();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      loadCategorias();
+    }, [])
+  );
 
   const loadCategorias = async () => {
     try {
@@ -51,8 +56,10 @@ export const TournamentCategoriesScreen = ({ navigation, route }: any) => {
       // Load all global categories - handle errors gracefully
       try {
         const allResponse = await api.categorias.list();
-        console.log('📋 All categorias loaded:', allResponse.data);
-        setAllCategorias(allResponse.data || []);
+        // Handle both { data: [...] } and { data: { data: [...] } }
+        const categoriasArray = allResponse.data?.data || allResponse.data || [];
+        console.log('📋 All categorias loaded:', categoriasArray.length);
+        setAllCategorias(categoriasArray);
       } catch (error: any) {
         console.log('⚠️ Error loading all categorias:', error);
         setAllCategorias([]);
@@ -63,8 +70,10 @@ export const TournamentCategoriesScreen = ({ navigation, route }: any) => {
         const assignedResponse = await api.edicionCategorias.list({
           id_edicion: edicion.id_edicion,
         });
-        console.log('✅ Assigned categorias loaded:', assignedResponse.data.data);
-        setAssignedCategorias(assignedResponse.data.data || []);
+        // Handle both { data: [...] } and { data: { data: [...] } }
+        const assignedArray = assignedResponse.data?.data || assignedResponse.data || [];
+        console.log('✅ Assigned categorias loaded:', assignedArray.length);
+        setAssignedCategorias(assignedArray);
       } catch (error: any) {
         console.log('⚠️ Error loading assigned categorias:', error);
         setAssignedCategorias([]);
@@ -466,64 +475,73 @@ export const TournamentCategoriesScreen = ({ navigation, route }: any) => {
               </TouchableOpacity>
             </View>
 
-            <View style={styles.formModalBody}>
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Máximo de Equipos</Text>
-                <TextInput
-                  style={styles.input}
-                  value={maxEquipos}
-                  onChangeText={setMaxEquipos}
-                  placeholder="16"
-                  keyboardType="numeric"
-                  placeholderTextColor={colors.textSecondary}
-                />
-              </View>
+            <KeyboardAvoidingView
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
+            >
+              <ScrollView
+                style={styles.formModalBody}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+              >
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>Máximo de Equipos</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={maxEquipos}
+                    onChangeText={setMaxEquipos}
+                    placeholder="16"
+                    keyboardType="numeric"
+                    placeholderTextColor={colors.textSecondary}
+                  />
+                </View>
 
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Máximo de Jugadores por Equipo</Text>
-                <TextInput
-                  style={styles.input}
-                  value={maxJugadores}
-                  onChangeText={setMaxJugadores}
-                  placeholder="18"
-                  keyboardType="numeric"
-                  placeholderTextColor={colors.textSecondary}
-                />
-              </View>
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>Máximo de Jugadores por Equipo</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={maxJugadores}
+                    onChangeText={setMaxJugadores}
+                    placeholder="18"
+                    keyboardType="numeric"
+                    placeholderTextColor={colors.textSecondary}
+                  />
+                </View>
 
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Mínimo de Jugadores por Equipo</Text>
-                <TextInput
-                  style={styles.input}
-                  value={minJugadores}
-                  onChangeText={setMinJugadores}
-                  placeholder="11"
-                  keyboardType="numeric"
-                  placeholderTextColor={colors.textSecondary}
-                />
-              </View>
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>Mínimo de Jugadores por Equipo</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={minJugadores}
+                    onChangeText={setMinJugadores}
+                    placeholder="11"
+                    keyboardType="numeric"
+                    placeholderTextColor={colors.textSecondary}
+                  />
+                </View>
 
-              <View style={styles.formActions}>
-                <TouchableOpacity
-                  style={styles.cancelButton}
-                  onPress={() => setShowFormModal(false)}
-                >
-                  <Text style={styles.cancelButtonText}>Cancelar</Text>
-                </TouchableOpacity>
+                <View style={styles.formActions}>
+                  <TouchableOpacity
+                    style={styles.cancelButton}
+                    onPress={() => setShowFormModal(false)}
+                  >
+                    <Text style={styles.cancelButtonText}>Cancelar</Text>
+                  </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={styles.saveButton}
-                  onPress={handleAssignCategory}
-                  disabled={isSaving}
-                >
-                  {isSaving ? (
-                    <ActivityIndicator size="small" color={colors.white} />
-                  ) : (
-                    <Text style={styles.saveButtonText}>Asignar</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </View>
+                  <TouchableOpacity
+                    style={styles.saveButton}
+                    onPress={handleAssignCategory}
+                    disabled={isSaving}
+                  >
+                    {isSaving ? (
+                      <ActivityIndicator size="small" color={colors.white} />
+                    ) : (
+                      <Text style={styles.saveButtonText}>Asignar</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
+            </KeyboardAvoidingView>
           </View>
         </View>
       </Modal>
@@ -739,14 +757,16 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
   },
   modalContent: {
     backgroundColor: colors.white,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderRadius: 20,
+    width: '100%',
     maxHeight: '80%',
-    paddingBottom: 40,
+    paddingBottom: 20,
   },
   modalHeader: {
     flexDirection: 'row',

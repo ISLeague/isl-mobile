@@ -64,8 +64,9 @@ export const ManageCategoriesScreen = ({ navigation, route }: any) => {
         setLoading(true);
       }
 
-      const response = await api.categorias.list();
-      const categoriasArray = Array.isArray(response.data) ? response.data : [];
+      const body = await api.categorias.list();
+      // Handle both { data: [...] } and { data: { data: [...] } }
+      const categoriasArray = body.data?.data || body.data || (Array.isArray(body) ? body : []);
       setCategorias(categoriasArray);
     } catch (error: any) {
       // Handle 404 gracefully - no categories created yet

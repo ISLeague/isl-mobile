@@ -34,6 +34,7 @@ export const PlayerFormScreen: React.FC<PlayerFormScreenProps> = ({ navigation, 
   const [esRefuerzo, setEsRefuerzo] = useState(jugador?.es_refuerzo || false);
   const [esCapitan, setEsCapitan] = useState(jugador?.es_capitan || false);
   const [loading, setLoading] = useState(false);
+  const [showPieDominante, setShowPieDominante] = useState(false);
   const [fechaNacimiento, setFechaNacimiento] = useState(
     jugador?.fecha_nacimiento ? (() => {
       const fecha = new Date(jugador.fecha_nacimiento);
@@ -199,6 +200,7 @@ export const PlayerFormScreen: React.FC<PlayerFormScreenProps> = ({ navigation, 
           style={styles.input}
         />
 
+        {/* Removed Position Field
         <Text style={styles.label}>Posición *</Text>
         <View style={styles.pickerContainer}>
           <Picker
@@ -212,20 +214,47 @@ export const PlayerFormScreen: React.FC<PlayerFormScreenProps> = ({ navigation, 
             <Picker.Item label="Delantero" value="Delantero" />
           </Picker>
         </View>
+        */}
 
-        <Text style={styles.label}>Pie Dominante *</Text>
-        <View style={styles.pickerContainer}>
-          <Picker
-            selectedValue={pieDominante}
-            onValueChange={(value: string) => setPieDominante(value)}
-            style={styles.picker}
-          >
-            <Picker.Item label="Derecho" value="derecho" />
-            <Picker.Item label="Izquierdo" value="izquierdo" />
-            <Picker.Item label="Ambidiestro" value="ambidiestro" />
-          </Picker>
-        </View>
+        <Text style={styles.label}>Pie Dominante</Text>
+        <TouchableOpacity
+          style={styles.collapsibleHeader}
+          onPress={() => setShowPieDominante(!showPieDominante)}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.collapsibleText}>
+            {pieDominante ? pieDominante.charAt(0).toUpperCase() + pieDominante.slice(1) : 'Seleccionar (Opcional)'}
+          </Text>
+          <MaterialCommunityIcons
+            name={showPieDominante ? 'chevron-up' : 'chevron-down'}
+            size={24}
+            color={colors.textSecondary}
+          />
+        </TouchableOpacity>
+        {showPieDominante && (
+          <View style={styles.collapsibleContent}>
+            {[{ label: 'Ninguno', value: '' }, { label: 'Derecho', value: 'derecho' }, { label: 'Izquierdo', value: 'izquierdo' }, { label: 'Ambidiestro', value: 'ambidiestro' }].map((option) => (
+              <TouchableOpacity
+                key={option.value}
+                style={[styles.collapsibleOption, pieDominante === option.value && styles.collapsibleOptionSelected]}
+                onPress={() => {
+                  setPieDominante(option.value);
+                  setShowPieDominante(false);
+                }}
+              >
+                <Text style={[styles.collapsibleOptionText, pieDominante === option.value && styles.collapsibleOptionTextSelected]}>
+                  {option.label}
+                </Text>
+                {pieDominante === option.value && (
+                  <MaterialCommunityIcons name="check" size={20} color={colors.primary} />
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
 
+        {/* Removed Fields: Altura, Peso, Nacionalidad */}
+        {/* 
         <Text style={styles.label}>Altura (cm)</Text>
         <Input
           value={altura}
@@ -253,6 +282,7 @@ export const PlayerFormScreen: React.FC<PlayerFormScreenProps> = ({ navigation, 
           placeholder="Ej: Argentina"
           style={styles.input}
         />
+        */}
 
         <TouchableOpacity
           style={styles.checkboxContainer}
@@ -401,5 +431,49 @@ const styles = StyleSheet.create({
   },
   picker: {
     height: 50,
+  },
+  collapsibleHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.backgroundGray,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 8,
+  },
+  collapsibleText: {
+    fontSize: 16,
+    color: colors.textPrimary,
+  },
+  collapsibleContent: {
+    backgroundColor: colors.backgroundGray,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 12,
+    overflow: 'hidden',
+  },
+  collapsibleOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  collapsibleOptionSelected: {
+    backgroundColor: colors.primary + '15',
+  },
+  collapsibleOptionText: {
+    fontSize: 16,
+    color: colors.textPrimary,
+  },
+  collapsibleOptionTextSelected: {
+    color: colors.primary,
+    fontWeight: '600',
   },
 });
