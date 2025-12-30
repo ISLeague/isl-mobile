@@ -69,60 +69,54 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
     try {
       setLoading(true);
 
-      // Load teams
-      if (equipoLocalId) {
-        const equipoLocalResponse = await api.equipos.getById(equipoLocalId);
-        if (equipoLocalResponse.data) {
-          setEquipoLocal(equipoLocalResponse.data);
-        }
-      }
+      // Load full partido details including nested equipo_local and equipo_visitante
+      const partidoResponse = await api.partidos.get(partido.id_partido);
+      if (partidoResponse.success && partidoResponse.data) {
+        const partidoData = partidoResponse.data;
 
-      if (equipoVisitanteId) {
-        const equipoVisitanteResponse = await api.equipos.getById(equipoVisitanteId);
-        if (equipoVisitanteResponse.data) {
-          setEquipoVisitante(equipoVisitanteResponse.data);
+        // Set teams from nested objects
+        if (partidoData.equipo_local) {
+          setEquipoLocal(partidoData.equipo_local);
         }
-      }
+        if (partidoData.equipo_visitante) {
+          setEquipoVisitante(partidoData.equipo_visitante);
+        }
 
-      // Load players for each team
-      // TODO: Backend needs to support filtering by id_equipo in /jugadores-list endpoint
-      // For now, we load all players and filter locally
-      const allJugadoresResponse = await api.jugadores.list();
-      if (allJugadoresResponse.success && allJugadoresResponse.data) {
-        // Filter players for local team
+        // Load players for each team using the correct endpoint with id_equipo parameter
         if (equipoLocalId) {
-          const jugadoresLocalData = allJugadoresResponse.data.filter(
-            (j: any) => j.equipo_id === equipoLocalId || j.id_equipo === equipoLocalId
-          );
-          setJugadoresLocal(jugadoresLocalData);
-          setEventosLocal(
-            jugadoresLocalData.map((j: any) => ({
-              id_jugador: j.id_jugador,
-              goles: 0,
-              asistencias: 0,
-              amarillas: 0,
-              rojas: 0,
-              isMVP: false
-            }))
-          );
+          const jugadoresLocalResponse = await api.jugadores.list(equipoLocalId);
+          if (jugadoresLocalResponse.success && jugadoresLocalResponse.data) {
+            const jugadoresLocalData = jugadoresLocalResponse.data;
+            setJugadoresLocal(jugadoresLocalData);
+            setEventosLocal(
+              jugadoresLocalData.map((j: any) => ({
+                id_jugador: j.id_jugador,
+                goles: 0,
+                asistencias: 0,
+                amarillas: 0,
+                rojas: 0,
+                isMVP: false
+              }))
+            );
+          }
         }
 
-        // Filter players for visiting team
         if (equipoVisitanteId) {
-          const jugadoresVisitanteData = allJugadoresResponse.data.filter(
-            (j: any) => j.equipo_id === equipoVisitanteId || j.id_equipo === equipoVisitanteId
-          );
-          setJugadoresVisitante(jugadoresVisitanteData);
-          setEventosVisitante(
-            jugadoresVisitanteData.map((j: any) => ({
-              id_jugador: j.id_jugador,
-              goles: 0,
-              asistencias: 0,
-              amarillas: 0,
-              rojas: 0,
-              isMVP: false
-            }))
-          );
+          const jugadoresVisitanteResponse = await api.jugadores.list(equipoVisitanteId);
+          if (jugadoresVisitanteResponse.success && jugadoresVisitanteResponse.data) {
+            const jugadoresVisitanteData = jugadoresVisitanteResponse.data;
+            setJugadoresVisitante(jugadoresVisitanteData);
+            setEventosVisitante(
+              jugadoresVisitanteData.map((j: any) => ({
+                id_jugador: j.id_jugador,
+                goles: 0,
+                asistencias: 0,
+                amarillas: 0,
+                rojas: 0,
+                isMVP: false
+              }))
+            );
+          }
         }
       }
     } catch (error) {
@@ -131,7 +125,7 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
     } finally {
       setLoading(false);
     }
-  }, [equipoLocalId, equipoVisitanteId, showError]);
+  }, [equipoLocalId, equipoVisitanteId, showError, partido.id_partido]);
 
   useEffect(() => {
     loadData();
