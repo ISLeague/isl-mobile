@@ -45,7 +45,7 @@ const getBadgeColor = (posicion?: string) => {
 
 export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, route }) => {
   const { equipoId } = route.params as { equipoId: number };
-  const { isAdmin } = useAuth();
+  const { isAdmin, isSuperAdmin } = useAuth();
   const pagerRef = useRef<PagerView>(null);
   const scrollX = useRef(new Animated.Value(0)).current;
   const { showSuccess, showError, showWarning } = useToast();
@@ -625,13 +625,13 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
                 )}
               </View>
               {/* Mostrar edad solo para admin */}
-              {isAdmin && (
+              {isAdmin ||isSuperAdmin && (
                 <Text style={styles.playerDetails}>
                   {edad} años
                 </Text>
               )}
-              {/* Mostrar DNI solo para admin */}
-              {isAdmin && (
+              {/* Mostrar DNI solo para superadmin */}
+              {isAdmin || isSuperAdmin && (
                 <Text style={styles.playerDetails}>
                   DNI: {jugador.dni}
                 </Text>

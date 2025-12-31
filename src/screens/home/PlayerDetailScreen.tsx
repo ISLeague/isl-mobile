@@ -22,7 +22,7 @@ import { getLogoUri } from '../../utils/imageUtils';
 type Props = NativeStackScreenProps<any, 'PlayerDetail'>;
 
 export const PlayerDetailScreen: React.FC<Props> = ({ route, navigation }) => {
-  const { isAdmin } = useAuth();
+  const { isAdmin, isSuperAdmin } = useAuth();
   const { showError } = useToast();
   const { playerId } = route.params as { playerId: number };
 
@@ -128,8 +128,8 @@ export const PlayerDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 <Text style={styles.playerAge}>{edad} años</Text>
               )}
 
-              {/* Mostrar DNI solo para admin */}
-              {isAdmin && (
+              {/* Mostrar DNI solo para superadmin */}
+              {isSuperAdmin && (
                 <Text style={styles.playerDNI}>DNI: {jugador.dni}</Text>
               )}
 

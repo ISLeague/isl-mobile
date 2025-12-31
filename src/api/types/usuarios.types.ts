@@ -2,6 +2,18 @@
 // 👥 USUARIOS TYPES
 // ============================================
 
+export interface Usuario {
+  id_usuario: number;
+  email: string;
+  rol: 'invitado' | 'superadmin' | 'admin' | 'fan';
+  id_pais: number;
+  id_torneos?: number[];
+  id_admin_suplantando?: number;
+  nombre_completo?: string;
+  activo?: boolean;
+  created_at?: string;
+}
+
 export interface CreateUsuarioRequest {
   email: string;
   password: string;
