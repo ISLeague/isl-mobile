@@ -37,11 +37,7 @@ export interface CreateJugadorRequest {
   dni: string;
   fecha_nacimiento: string;
   numero_camiseta?: number;
-  posicion: string;
   pie_dominante: string;
-  altura_cm?: number;
-  peso_kg?: number;
-  nacionalidad: string;
   es_refuerzo: boolean;
   es_capitan: boolean;
   foto?: string | null;

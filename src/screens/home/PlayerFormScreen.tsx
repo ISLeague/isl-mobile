@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { GradientHeader, Input, Button } from '../../components/common';
 import { colors } from '../../theme/colors';
@@ -26,7 +26,6 @@ export const PlayerFormScreen: React.FC<PlayerFormScreenProps> = ({ navigation, 
   const [nombreCompleto, setNombreCompleto] = useState(jugador?.nombre_completo || '');
   const [dni, setDni] = useState(jugador?.dni || '');
   const [numeroCamiseta, setNumeroCamiseta] = useState(jugador?.numero_camiseta?.toString() || '');
-  const [posicion, setPosicion] = useState(jugador?.posicion || 'Delantero');
   const [pieDominante, setPieDominante] = useState(jugador?.pie_dominante || 'derecho');
   const [altura, setAltura] = useState(jugador?.altura_cm?.toString() || '');
   const [peso, setPeso] = useState(jugador?.peso_kg?.toString() || '');
@@ -34,6 +33,7 @@ export const PlayerFormScreen: React.FC<PlayerFormScreenProps> = ({ navigation, 
   const [esRefuerzo, setEsRefuerzo] = useState(jugador?.es_refuerzo || false);
   const [esCapitan, setEsCapitan] = useState(jugador?.es_capitan || false);
   const [loading, setLoading] = useState(false);
+  const [savingStatus, setSavingStatus] = useState<string>('');
   const [showPieDominante, setShowPieDominante] = useState(false);
   const [fechaNacimiento, setFechaNacimiento] = useState(
     jugador?.fecha_nacimiento ? (() => {
@@ -104,6 +104,13 @@ export const PlayerFormScreen: React.FC<PlayerFormScreenProps> = ({ navigation, 
     if (!validateForm()) return;
 
     setLoading(true);
+    setSavingStatus(mode === 'edit' ? 'Actualizando jugador...' : 'Guardando jugador...');
+
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log(`📝 [PlayerForm] ${mode === 'edit' ? 'ACTUALIZANDO' : 'CREANDO'} JUGADOR`);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('👤 [PlayerForm] Nombre:', nombreCompleto);
+    console.log('🏆 [PlayerForm] Equipo ID:', equipoId);
 
     // Convert DD/MM/YYYY to YYYY-MM-DD for API
     const [dia, mes, anio] = fechaNacimiento.split('/').map(Number);
@@ -115,7 +122,6 @@ export const PlayerFormScreen: React.FC<PlayerFormScreenProps> = ({ navigation, 
       dni: dni.trim(),
       fecha_nacimiento: fechaISO,
       numero_camiseta: numeroCamiseta ? parseInt(numeroCamiseta) : undefined,
-      posicion,
       pie_dominante: pieDominante,
       altura_cm: altura ? parseInt(altura) : undefined,
       peso_kg: peso ? parseInt(peso) : undefined,
@@ -125,14 +131,17 @@ export const PlayerFormScreen: React.FC<PlayerFormScreenProps> = ({ navigation, 
       foto: null, // TODO: Implementar upload de foto
     };
 
+    setSavingStatus('Enviando datos al servidor...');
+
     const success = await safeAsync(
       async () => {
         if (mode === 'create') {
           const response = await api.jugadores.create(jugadorData);
+          console.log('✅ [PlayerForm] Jugador creado exitosamente');
           return response;
         } else {
           // TODO: Implementar edición de jugador
-          console.log('Editando jugador:', jugadorData);
+          console.log('✅ [PlayerForm] Jugador actualizado exitosamente');
           return { success: true };
         }
       },
@@ -140,14 +149,20 @@ export const PlayerFormScreen: React.FC<PlayerFormScreenProps> = ({ navigation, 
       {
         fallbackValue: null,
         onError: (error) => {
+          console.error('❌ [PlayerForm] Error al guardar:', error);
+          setLoading(false);
+          setSavingStatus('');
           showError(error.message || 'No se pudo guardar el jugador', 'Error');
         }
       }
     );
 
     setLoading(false);
+    setSavingStatus('');
 
     if (success) {
+      console.log('🎉 [PlayerForm] Proceso completado - Regresando');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       showSuccess(
         `Jugador ${mode === 'edit' ? 'actualizado' : 'creado'} correctamente`,
         '¡Éxito!'
@@ -344,6 +359,19 @@ export const PlayerFormScreen: React.FC<PlayerFormScreenProps> = ({ navigation, 
           loading={loading}
         />
       </ScrollView>
+
+      {/* Loading Overlay - Feedback visual del estado del sistema */}
+      {loading && (
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loadingContent}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.loadingText}>{savingStatus}</Text>
+            <Text style={styles.loadingSubtext}>
+              Por favor espera mientras se procesa la información
+            </Text>
+          </View>
+        </View>
+      )}
     </View>
   );
 };
@@ -475,5 +503,43 @@ const styles = StyleSheet.create({
   collapsibleOptionTextSelected: {
     color: colors.primary,
     fontWeight: '600',
+  },
+  // Estilos para loading overlay
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 9999,
+  },
+  loadingContent: {
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    padding: 32,
+    alignItems: 'center',
+    minWidth: 280,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 10,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: colors.textPrimary,
+    textAlign: 'center',
+    fontWeight: '600',
+  },
+  loadingSubtext: {
+    marginTop: 8,
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });

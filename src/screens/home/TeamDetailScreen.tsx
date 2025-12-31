@@ -10,12 +10,13 @@ import {
   Animated,
   Linking,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import PagerView from 'react-native-pager-view';
 import * as DocumentPicker from 'expo-document-picker';
-import { GradientHeader, FAB, Card, InfoCard, Skeleton } from '../../components/common';
+import { GradientHeader, Card, InfoCard, Skeleton } from '../../components/common';
 import { colors } from '../../theme/colors';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
@@ -51,6 +52,22 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
 
   // Estado de carga
   const [loading, setLoading] = useState(true);
+
+  // Estados de feedback para operaciones
+  const [importingCSV, setImportingCSV] = useState(false);
+  const [importStatus, setImportStatus] = useState<string>('');
+
+  // Estados para modales de registro de jugadores
+  const [showCSVFormatModal, setShowCSVFormatModal] = useState(false);
+  const [showResultsModal, setShowResultsModal] = useState(false);
+  const [registrationResults, setRegistrationResults] = useState<{
+    type: 'csv' | 'individual';
+    successful: number;
+    failed: number;
+    total: number;
+    errors: Array<{ row: number; error: string }>;
+    newPlayers: Jugador[];
+  } | null>(null);
 
   // Tabs - Fotos se muestra para todos
   const tabs = [
@@ -147,6 +164,76 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
     }
   }, [activeTab, equipoId]);
 
+  // Recargar jugadores cuando se regresa de PlayerForm
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', async () => {
+      // Solo recargar si ya tenemos datos cargados (no es la carga inicial)
+      if (!loading && equipo) {
+        console.log('🔄 [TeamDetail] Screen focused - Recargando jugadores...');
+
+        const previousCount = jugadores.length;
+        const previousJugadores = [...jugadores];
+
+        const jugadoresResponse = await safeAsync(
+          async () => {
+            const response = await api.jugadores.list(equipoId);
+            return response;
+          },
+          'TeamDetailScreen - reloadPlayers',
+          {
+            fallbackValue: null,
+            onError: () => {
+              // Silent error - no mostrar toast en recarga automática
+            }
+          }
+        );
+
+        if (jugadoresResponse && jugadoresResponse.success && jugadoresResponse.data.jugadores) {
+          const newJugadores = jugadoresResponse.data.jugadores;
+          setJugadores(newJugadores);
+
+          // Mostrar modal de resultados si se agregó un nuevo jugador
+          if (newJugadores.length > previousCount) {
+            const playersAdded = newJugadores.length - previousCount;
+            console.log('✅ [TeamDetail] Jugadores agregados:', playersAdded);
+
+            // Find the newly added players
+            const addedPlayers = newJugadores.filter(
+              (newPlayer: Jugador) => !previousJugadores.some(
+                (oldPlayer: Jugador) => oldPlayer.id_jugador === newPlayer.id_jugador
+              )
+            );
+
+            // Show results modal for individual player addition
+            setRegistrationResults({
+              type: 'individual',
+              successful: playersAdded,
+              failed: 0,
+              total: playersAdded,
+              errors: [],
+              newPlayers: addedPlayers,
+            });
+            setShowResultsModal(true);
+          }
+        }
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation, loading, equipo, equipoId, jugadores.length]);
+
+  const handleViewPlayers = () => {
+    // Close results modal
+    setShowResultsModal(false);
+    setRegistrationResults(null);
+
+    // Switch to jugadores tab
+    const jugadoresTabIndex = tabs.findIndex(tab => tab.id === 'jugadores');
+    if (jugadoresTabIndex !== -1) {
+      handleTabPress('jugadores', jugadoresTabIndex);
+    }
+  };
+
   const handleTabPress = (tabId: string, index: number) => {
     pagerRef.current?.setPage(index);
     setActiveTab(tabId);
@@ -157,117 +244,191 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
   };
 
   const handleImportCSV = () => {
-    Alert.alert(
-      'Formato del Archivo CSV',
-      'El archivo CSV debe tener las siguientes columnas en este orden:\n\n' +
-      '1. Nombre completo\n' +
-      '2. DNI\n' +
-      '3. Fecha de nacimiento (YYYY-MM-DD)\n' +
-      '4. Número de camiseta (opcional)\n' +
-      '5. Posición\n' +
-      '6. Pie dominante\n' +
-      '7. Altura en cm (opcional)\n' +
-      '8. Peso en kg (opcional)\n' +
-      '9. Nacionalidad\n' +
-      '10. Es refuerzo (0 o 1)\n' +
-      '11. Es capitán (0 o 1)\n\n' +
-      'Ejemplo:\n' +
-      'Juan Pérez,12345678,2000-05-15,10,Delantero,derecho,175,70,Argentina,0,0\n\n' +
-      '¿Deseas continuar?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Seleccionar CSV',
-          onPress: async () => {
-            try {
-              // Pick CSV file from device
-              const result = await DocumentPicker.getDocumentAsync({
-                type: ['text/csv', 'text/comma-separated-values', 'application/csv', '*/*'],
-                copyToCacheDirectory: true,
-              });
+    // Show CSV format modal first
+    setShowCSVFormatModal(true);
+  };
 
-              if (result.canceled) {
+  const handleProceedWithCSVSelection = async () => {
+    try {
+      // Close format modal
+      setShowCSVFormatModal(false);
+
+      // Pick CSV file from device
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['text/csv', 'text/comma-separated-values', 'application/csv', '*/*'],
+        copyToCacheDirectory: true,
+      });
+
+      if (result.canceled) {
+        return;
+      }
+
+      const file = result.assets[0];
+
+      // Start import process immediately
+      setImportingCSV(true);
+      setImportStatus('Procesando archivo CSV...');
+
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('📤 [ImportCSV] INICIANDO IMPORTACIÓN DE JUGADORES');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('📄 [ImportCSV] Archivo:', file.name);
+      console.log('🏆 [ImportCSV] Equipo ID:', equipoId);
+
+      // Create file object in React Native format
+      const csvFile = {
+        uri: file.uri,
+        type: 'text/csv',
+        name: file.name,
+      } as any;
+
+      setImportStatus('Enviando datos al servidor...');
+
+      // Upload CSV
+      const uploadResult = await safeAsync(
+        async () => {
+          const apiResponse = await api.jugadores.createBulk(equipoId, csvFile);
+          return apiResponse;
+        },
+        'importCSV',
+        {
+          severity: 'high',
+          fallbackValue: null,
+          onError: (error: any) => {
+            console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.error('❌ [ImportCSV] ERROR AL IMPORTAR');
+            console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.error('❌ [ImportCSV] Error completo:', error);
+            console.error('❌ [ImportCSV] Error message:', error?.message);
+            console.error('❌ [ImportCSV] Error name:', error?.name);
+
+            // Información detallada de la respuesta HTTP
+            if (error?.response) {
+              console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+              console.error('📡 [ImportCSV] HTTP RESPONSE ERROR:');
+              console.error('  - Status:', error.response.status);
+              console.error('  - Status Text:', error.response.statusText);
+              console.error('  - Data:', JSON.stringify(error.response.data, null, 2));
+              console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+              // Obtener mensaje específico del servidor
+              const serverMessage = error.response.data?.message || error.response.data?.error;
+
+              // Error 400 - Bad Request (formato inválido, datos incorrectos)
+              if (error.response.status === 400) {
+                console.error('⚠️ [ImportCSV] ERROR 400 - BAD REQUEST');
+                console.error('⚠️ [ImportCSV] Mensaje del servidor:', serverMessage);
+
+                setImportingCSV(false);
+                setImportStatus('');
+
+                // Mostrar mensaje específico del servidor
+                showError(
+                  serverMessage || 'El archivo CSV no cumple con el formato requerido.\n\nVerifica que tenga todas las columnas necesarias y que los datos estén en el formato correcto.',
+                  'Formato de CSV Inválido'
+                );
                 return;
               }
 
-              const file = result.assets[0];
-
-              // Show confirmation with filename
-              Alert.alert(
-                'Confirmar Importación',
-                `Archivo seleccionado:\n${file.name}\n\n¿Deseas importar los jugadores de este archivo?`,
-                [
-                  { text: 'Cancelar', style: 'cancel' },
-                  {
-                    text: 'Importar',
-                    onPress: async () => {
-                      try {
-                        // Create file object in React Native format
-                        const csvFile = {
-                          uri: file.uri,
-                          type: 'text/csv',
-                          name: file.name,
-                        } as any;
-
-                        // Upload CSV
-                        const uploadResult = await safeAsync(
-                          async () => {
-                            const apiResponse = await api.jugadores.createBulk(equipoId, csvFile);
-                            return apiResponse;
-                          },
-                          'importCSV',
-                          {
-                            severity: 'high',
-                            fallbackValue: null,
-                            onError: (error) => {
-                              showError('Error al importar el archivo CSV', 'Error');
-                            }
-                          }
-                        );
-
-                        if (uploadResult && uploadResult.success) {
-                          const { total_processed, successful, failed, errors } = uploadResult.data;
-
-                          if (failed > 0) {
-                            // Show errors
-                            const errorMessages = errors.map((e: any) =>
-                              `Fila ${e.row}: ${e.error}`
-                            ).join('\n');
-
-                            Alert.alert(
-                              'Importación completada con errores',
-                              `Total procesados: ${total_processed}\nExitosos: ${successful}\nFallidos: ${failed}\n\nErrores:\n${errorMessages}`,
-                              [{ text: 'OK' }]
-                            );
-                          } else {
-                            showSuccess(
-                              `${successful} jugadores importados correctamente para ${equipo?.nombre}`,
-                              '¡Éxito!'
-                            );
-                          }
-
-                          // Reload players list
-                          const jugadoresResponse = await api.jugadores.list(equipoId);
-                          if (jugadoresResponse.success && jugadoresResponse.data.jugadores) {
-                            setJugadores(jugadoresResponse.data.jugadores);
-                          }
-                        }
-                      } catch (error) {
-                        console.error('Error uploading CSV:', error);
-                        showError('Error al importar el archivo', 'Error');
-                      }
-                    }
-                  }
-                ]
+              // Otros errores HTTP
+              setImportingCSV(false);
+              setImportStatus('');
+              showError(
+                serverMessage || 'Error al importar el archivo CSV',
+                `Error (${error.response.status})`
               );
-            } catch (error) {
-              console.error('Error picking CSV:', error);
-              showError('Error al seleccionar el archivo', 'Error');
+            } else if (error?.request) {
+              console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+              console.error('📡 [ImportCSV] REQUEST ERROR (Sin respuesta del servidor)');
+              console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+              setImportingCSV(false);
+              setImportStatus('');
+              showError('No se pudo conectar con el servidor', 'Error de Conexión');
+            } else {
+              // Error desconocido
+              setImportingCSV(false);
+              setImportStatus('');
+              showError('Error al importar el archivo CSV', 'Error');
             }
+
+            console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
           }
         }
-      ]
-    );
+      );
+
+      if (uploadResult && uploadResult.success) {
+        const { total_processed, successful, failed, errors } = uploadResult.data;
+
+        console.log('✅ [ImportCSV] IMPORTACIÓN COMPLETADA');
+        console.log('  - Total procesados:', total_processed);
+        console.log('  - Exitosos:', successful);
+        console.log('  - Fallidos:', failed);
+
+        // Intentar recargar la lista de jugadores
+        let newPlayers: Jugador[] = [];
+        if (successful > 0) {
+          setImportStatus('Recargando lista de jugadores...');
+
+          const jugadoresResponse = await safeAsync(
+            async () => {
+              const response = await api.jugadores.list(equipoId);
+              return response;
+            },
+            'ImportCSV - reloadPlayers',
+            {
+              fallbackValue: null,
+              onError: (error) => {
+                console.error('⚠️ [ImportCSV] Error al recargar jugadores:', error);
+                // No mostrar error al usuario, solo loguear
+                // Los resultados se mostrarán de todos modos
+              }
+            }
+          );
+
+          if (jugadoresResponse && jugadoresResponse.success && jugadoresResponse.data.jugadores) {
+            newPlayers = jugadoresResponse.data.jugadores;
+            setJugadores(newPlayers);
+          }
+        }
+
+        // Hide loading
+        setImportingCSV(false);
+        setImportStatus('');
+
+        // Show results modal SIEMPRE (con errores o sin errores)
+        setRegistrationResults({
+          type: 'csv',
+          successful,
+          failed,
+          total: total_processed,
+          errors: errors || [],
+          newPlayers,
+        });
+        setShowResultsModal(true);
+
+        // Si TODOS fallaron, mostrar mensaje adicional
+        if (successful === 0 && failed > 0) {
+          console.error('❌ [ImportCSV] TODOS LOS JUGADORES FALLARON');
+          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        } else {
+          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          console.log('🎉 [ImportCSV] PROCESO FINALIZADO');
+          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        }
+      } else {
+        setImportingCSV(false);
+        setImportStatus('');
+      }
+    } catch (error) {
+      console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.error('❌ [ImportCSV] ERROR INESPERADO AL PROCESAR CSV');
+      console.error('Error:', error);
+      console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      setImportingCSV(false);
+      setImportStatus('');
+      showError('Error inesperado al procesar el archivo CSV', 'Error');
+    }
   };
 
   const handleEditPlayer = (jugador: Jugador) => {
@@ -528,6 +689,9 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
         rightElement={
           isAdmin ? (
             <View style={styles.headerActions}>
+              <TouchableOpacity onPress={handleMoveToGroup} style={styles.headerButton}>
+                <MaterialCommunityIcons name="swap-horizontal" size={24} color={colors.white} />
+              </TouchableOpacity>
               <TouchableOpacity onPress={handleManagePhotoLinks} style={styles.headerButton}>
                 <MaterialCommunityIcons name="camera" size={24} color={colors.white} />
               </TouchableOpacity>
@@ -739,13 +903,20 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
                   {/* Botones de Acción (Admin) */}
                   {isAdmin && (
                     <View style={styles.adminActions}>
-                      <TouchableOpacity style={styles.adminButtonSecondary} onPress={handleImportCSV}>
-                        <MaterialCommunityIcons name="file-upload" size={20} color={colors.info} />
-                        <Text style={styles.adminButtonSecondaryText}>Importar CSV</Text>
+                      <TouchableOpacity
+                        style={[styles.adminButton, { flex: 1 }]}
+                        onPress={handleAddPlayer}
+                      >
+                        <MaterialCommunityIcons name="account-plus" size={20} color={colors.white} />
+                        <Text style={styles.adminButtonText}>Agregar Jugador</Text>
                       </TouchableOpacity>
-                      <TouchableOpacity style={styles.adminButton} onPress={handleMoveToGroup}>
-                        <MaterialCommunityIcons name="swap-horizontal" size={20} color={colors.white} />
-                        <Text style={styles.adminButtonText}>Mover de Grupo</Text>
+                      <TouchableOpacity
+                        style={[styles.adminButton, { flex: 1 }]}
+                        onPress={handleImportCSV}
+                        disabled={importingCSV}
+                      >
+                        <MaterialCommunityIcons name="file-upload" size={20} color={colors.white} />
+                        <Text style={styles.adminButtonText}>Importar CSV</Text>
                       </TouchableOpacity>
                     </View>
                   )}
@@ -855,9 +1026,216 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
         })}
       </PagerView>
 
-      {isAdmin && activeTab === 'jugadores' && (
-        <FAB onPress={handleAddPlayer} icon="person-add" color={colors.success} />
+      {/* Loading Overlay para operaciones */}
+      {importingCSV && (
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loadingContent}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.loadingOverlayText}>{importStatus}</Text>
+          </View>
+        </View>
       )}
+
+      {/* CSV Format Modal */}
+      <Modal
+        visible={showCSVFormatModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowCSVFormatModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {/* Modal Header */}
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Formato del Archivo CSV</Text>
+                <TouchableOpacity
+                  onPress={() => setShowCSVFormatModal(false)}
+                  style={styles.modalCloseButton}
+                >
+                  <MaterialCommunityIcons name="close" size={24} color={colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Modal Content */}
+              <View style={styles.modalContent}>
+                <View style={styles.instructionsCard}>
+                  <MaterialCommunityIcons name="information" size={24} color={colors.info} />
+                  <View style={styles.instructionsTextContainer}>
+                    <Text style={styles.instructionsTitle}>Requisitos del Archivo</Text>
+                    <Text style={styles.instructionsText}>
+                      El archivo CSV debe contener las siguientes columnas en este orden exacto:
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Column List */}
+                <View style={styles.columnListCard}>
+                  <Text style={styles.columnListTitle}>Columnas Requeridas:</Text>
+                  {[
+                    '1. Nombre completo',
+                    '2. DNI',
+                    '3. Fecha de nacimiento (YYYY-MM-DD)',
+                    '4. Número de camiseta (opcional)',
+                    '5. Posición',
+                    '6. Pie dominante',
+                    '7. Altura en cm (opcional)',
+                    '8. Peso en kg (opcional)',
+                    '9. Nacionalidad',
+                    '10. Es refuerzo (0 o 1)',
+                    '11. Es capitán (0 o 1)',
+                  ].map((item, index) => (
+                    <View key={index} style={styles.columnItem}>
+                      <MaterialCommunityIcons
+                        name="circle-small"
+                        size={20}
+                        color={colors.primary}
+                      />
+                      <Text style={styles.columnItemText}>{item}</Text>
+                    </View>
+                  ))}
+                </View>
+
+                {/* Example */}
+                <View style={styles.exampleBox}>
+                  <Text style={styles.exampleTitle}>Ejemplo de Fila:</Text>
+                  <Text style={styles.exampleText}>
+                    Juan Pérez,12345678,2000-05-15,10,{'\n'}
+                    Delantero,derecho,175,70,Argentina,0,0
+                  </Text>
+                </View>
+
+                {/* Buttons */}
+                <View style={styles.modalButtons}>
+                  <TouchableOpacity
+                    style={styles.cancelButton}
+                    onPress={() => setShowCSVFormatModal(false)}
+                  >
+                    <Text style={styles.cancelButtonText}>Cancelar</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.confirmButton}
+                    onPress={handleProceedWithCSVSelection}
+                  >
+                    <MaterialCommunityIcons name="file-document" size={20} color={colors.white} />
+                    <Text style={styles.confirmButtonText}>Seleccionar CSV</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Results Modal */}
+      <Modal
+        visible={showResultsModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => {
+          setShowResultsModal(false);
+          setRegistrationResults(null);
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {/* Modal Header */}
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>
+                  {registrationResults?.type === 'csv' ? 'Importación Completada' : 'Jugador Agregado'}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    setShowResultsModal(false);
+                    setRegistrationResults(null);
+                  }}
+                  style={styles.modalCloseButton}
+                >
+                  <MaterialCommunityIcons name="close" size={24} color={colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Modal Content */}
+              <View style={styles.modalContent}>
+                {/* Success/Error Summary */}
+                <View style={styles.resultsHeader}>
+                  {registrationResults && registrationResults.successful > 0 && (
+                    <View style={styles.resultSuccessCard}>
+                      <MaterialCommunityIcons name="check-circle" size={48} color={colors.success} />
+                      <Text style={styles.resultSuccessNumber}>{registrationResults.successful}</Text>
+                      <Text style={styles.resultSuccessLabel}>
+                        {registrationResults.successful === 1 ? 'Jugador Agregado' : 'Jugadores Agregados'}
+                      </Text>
+                    </View>
+                  )}
+
+                  {registrationResults && registrationResults.failed > 0 && (
+                    <View style={styles.resultErrorCard}>
+                      <MaterialCommunityIcons name="alert-circle" size={48} color={colors.error} />
+                      <Text style={styles.resultErrorNumber}>{registrationResults.failed}</Text>
+                      <Text style={styles.resultErrorLabel}>
+                        {registrationResults.failed === 1 ? 'Error' : 'Errores'}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+
+                {/* Error Details */}
+                {registrationResults && registrationResults.errors.length > 0 && (
+                  <View style={styles.errorsSection}>
+                    <Text style={styles.errorsSectionTitle}>Detalles de Errores:</Text>
+                    {registrationResults.errors.map((error, index) => (
+                      <View key={index} style={styles.errorItem}>
+                        <MaterialCommunityIcons name="alert" size={16} color={colors.error} />
+                        <Text style={styles.errorItemText}>
+                          Fila {error.row}: {error.error}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                {/* Success Message */}
+                {registrationResults && registrationResults.successful > 0 && (
+                  <View style={styles.successMessageCard}>
+                    <MaterialCommunityIcons name="party-popper" size={24} color={colors.success} />
+                    <Text style={styles.successMessageText}>
+                      {registrationResults.type === 'csv'
+                        ? `Se importaron exitosamente ${registrationResults.successful} ${
+                            registrationResults.successful === 1 ? 'jugador' : 'jugadores'
+                          } al equipo ${equipo?.nombre}.`
+                        : `Se agregó exitosamente ${
+                            registrationResults.successful === 1 ? 'el jugador' : 'los jugadores'
+                          } al equipo ${equipo?.nombre}.`}
+                    </Text>
+                  </View>
+                )}
+
+                {/* Buttons */}
+                <View style={styles.modalButtons}>
+                  <TouchableOpacity
+                    style={styles.cancelButton}
+                    onPress={() => {
+                      setShowResultsModal(false);
+                      setRegistrationResults(null);
+                    }}
+                  >
+                    <Text style={styles.cancelButtonText}>Cerrar</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.confirmButton}
+                    onPress={handleViewPlayers}
+                  >
+                    <MaterialCommunityIcons name="account-group" size={20} color={colors.white} />
+                    <Text style={styles.confirmButtonText}>Ver Jugadores</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -1603,5 +1981,152 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: 12,
     lineHeight: 16,
+  },
+  // Estilos para loading overlay
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 9999,
+  },
+  loadingContent: {
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    padding: 32,
+    alignItems: 'center',
+    minWidth: 200,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 10,
+  },
+  loadingOverlayText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: colors.textPrimary,
+    textAlign: 'center',
+    fontWeight: '600',
+  },
+  // Estilos para CSV Format Modal
+  columnListCard: {
+    backgroundColor: colors.backgroundGray,
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  columnListTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 12,
+  },
+  columnItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 4,
+  },
+  columnItemText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginLeft: 4,
+    flex: 1,
+  },
+  // Estilos para Results Modal
+  resultsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 16,
+    marginBottom: 24,
+  },
+  resultSuccessCard: {
+    flex: 1,
+    backgroundColor: colors.backgroundGray,
+    padding: 20,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: colors.success,
+  },
+  resultSuccessNumber: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: colors.success,
+    marginTop: 8,
+  },
+  resultSuccessLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  resultErrorCard: {
+    flex: 1,
+    backgroundColor: colors.backgroundGray,
+    padding: 20,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: colors.error,
+  },
+  resultErrorNumber: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: colors.error,
+    marginTop: 8,
+  },
+  resultErrorLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  errorsSection: {
+    backgroundColor: '#FFF3E0',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.error,
+  },
+  errorsSectionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.error,
+    marginBottom: 12,
+  },
+  errorItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginVertical: 4,
+    gap: 8,
+  },
+  errorItemText: {
+    fontSize: 13,
+    color: colors.textPrimary,
+    flex: 1,
+    lineHeight: 18,
+  },
+  successMessageCard: {
+    flexDirection: 'row',
+    backgroundColor: '#E8F5E9',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+    gap: 12,
+    alignItems: 'center',
+    borderLeftWidth: 4,
+    borderLeftColor: colors.success,
+  },
+  successMessageText: {
+    fontSize: 14,
+    color: colors.textPrimary,
+    flex: 1,
+    lineHeight: 20,
   },
 });

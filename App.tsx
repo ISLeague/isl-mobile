@@ -59,6 +59,7 @@ import ResultPage from './src/screens/admin/ResultPage';
 import { CreateTeamScreen } from './src/screens/admin/CreateTeamScreen';
 import { BulkCreateTeamsScreen } from './src/screens/admin/BulkCreateTeamsScreen';
 import { GrupoDetailScreen } from './src/screens/admin/GrupoDetailScreen';
+import { MoveTeamToGroupScreen } from './src/screens/admin/MoveTeamToGroupScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -130,6 +131,7 @@ export default function App() {
           <Stack.Screen name="EditTeam" component={EditTeamScreen} />
           <Stack.Screen name="CreateTeam" component={CreateTeamScreen} />
           <Stack.Screen name="BulkCreateTeams" component={BulkCreateTeamsScreen} />
+          <Stack.Screen name="MoveTeamToGroup" component={MoveTeamToGroupScreen} />
 
           {/* Local & Cancha Management */}
           <Stack.Screen name="CreateLocal" component={CreateLocalScreen} />
