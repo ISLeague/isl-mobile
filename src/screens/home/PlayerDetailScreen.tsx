@@ -11,7 +11,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { GradientHeader, Card } from '../../components/common';
 import { colors } from '../../theme/colors';
-import { calculateAge, formatDate } from '../../utils';
+import { formatDate } from '../../utils';
 import { JugadorDetalleData } from '../../api/types/jugadores.types';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
@@ -98,9 +98,12 @@ export const PlayerDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     );
   }
 
-  const { jugador, equipo, proximo_partido } = detalleData;
-  const edad = calculateAge(jugador.fecha_nacimiento);
-  const esRefuerzo = jugador.es_refuerzo || false;
+  const { equipo, estadisticas_historicas } = detalleData;
+  const edad = detalleData.edad;
+  const esRefuerzo = detalleData.es_refuerzo || false;
+  const esCapitan = detalleData.es_capitan || false;
+  const esGoleador = estadisticas_historicas.es_goleador || false;
+  const esMejorJugador = estadisticas_historicas.es_mejor_jugador || false;
 
   return (
     <View style={styles.container}>
@@ -109,28 +112,55 @@ export const PlayerDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {/* Datos básicos */}
         <Card style={styles.profileCard}>
+          {detalleData.foto && (
+            <Image
+              source={{ uri: detalleData.foto }}
+              style={styles.playerPhoto}
+            />
+          )}
+
           <View style={styles.profileHeader}>
             <View style={styles.numberBadge}>
-              <Text style={styles.numberText}>#{jugador.numero_camiseta || '-'}</Text>
+              <Text style={styles.numberText}>#{detalleData.numero_camiseta || '-'}</Text>
+              {esCapitan && (
+                <View style={styles.capitanBadge}>
+                  <Text style={styles.capitanText}>C</Text>
+                </View>
+              )}
             </View>
             <View style={styles.profileInfo}>
               <View style={styles.nameRow}>
-                <Text style={styles.playerName}>{formatPlayerName(jugador.nombre_completo)}</Text>
+                <Text style={styles.playerName}>{formatPlayerName(detalleData.nombre_completo)}</Text>
                 {esRefuerzo && (
-                  <View style={styles.refuerzoBadge}>
-                    <Text style={styles.refuerzoText}>R</Text>
+                  <View style={[styles.badge, styles.refuerzoBadge]}>
+                    <Text style={styles.badgeText}>R</Text>
+                  </View>
+                )}
+                {esGoleador && (
+                  <View style={[styles.badge, styles.goleadorBadge]}>
+                    <MaterialCommunityIcons name="soccer" size={14} color={colors.white} />
+                  </View>
+                )}
+                {esMejorJugador && (
+                  <View style={[styles.badge, styles.mvpBadge]}>
+                    <MaterialCommunityIcons name="trophy" size={14} color={colors.white} />
                   </View>
                 )}
               </View>
 
               {/* Mostrar edad solo para admin */}
-              {isAdmin && (
-                <Text style={styles.playerAge}>{edad} años</Text>
+              {(isAdmin || isSuperAdmin) && (
+                <Text style={styles.playerAge}>{edad} años • {formatDate(detalleData.fecha_nacimiento)}</Text>
               )}
 
               {/* Mostrar DNI solo para superadmin */}
               {isSuperAdmin && (
-                <Text style={styles.playerDNI}>DNI: {jugador.dni}</Text>
+                <Text style={styles.playerDNI}>DNI: {detalleData.dni}</Text>
+              )}
+
+              {/* Mostrar pie dominante solo para admin */}
+              {(isAdmin || isSuperAdmin) && detalleData.pie_dominante && (
+                <Text style={styles.playerDetail}>Pie dominante: {detalleData.pie_dominante}</Text>
               )}
 
               {/* Removed: Weight, Height, Nationality, Position text */}
@@ -146,80 +176,101 @@ export const PlayerDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           </View>
         </Card>
 
-        {/* Estadísticas */}
+        {/* Estadísticas principales */}
         <Card style={styles.statsCard}>
-          <Text style={styles.sectionTitle}>Estadísticas</Text>
+          <Text style={styles.sectionTitle}>Estadísticas Principales</Text>
           <View style={styles.statsGrid}>
+            {renderStatItem(
+              'run',
+              'Partidos',
+              estadisticas_historicas.partidos_jugados || 0,
+              colors.primary
+            )}
+            {renderStatItem(
+              'clock-outline',
+              'Minutos',
+              estadisticas_historicas.minutos_jugados || 0,
+              colors.info
+            )}
             {renderStatItem(
               'soccer',
               'Goles',
-              jugador.estadisticas?.goles || 0,
+              estadisticas_historicas.goles_totales || 0,
               colors.success
             )}
             {renderStatItem(
               'handball',
               'Asistencias',
-              jugador.estadisticas?.asistencias || 0,
-              colors.info
-            )}
-            {renderStatItem(
-              'card',
-              'Amarillas',
-              jugador.estadisticas?.amarillas || 0,
-              colors.warning
-            )}
-            {renderStatItem(
-              'card',
-              'Rojas',
-              jugador.estadisticas?.rojas || 0,
-              colors.error
+              estadisticas_historicas.asistencias_totales || 0,
+              '#00BCD4'
             )}
           </View>
         </Card>
 
-        {/* Próximo partido */}
-        {proximo_partido && (
-          <Card style={styles.nextMatchCard}>
-            <View style={styles.nextMatchHeader}>
-              <MaterialCommunityIcons
-                name="soccer-field"
-                size={24}
-                color={colors.primary}
-              />
-              <Text style={styles.sectionTitle}>Próximo Partido</Text>
-            </View>
+        {/* Tarjetas y sanciones */}
+        <Card style={styles.statsCard}>
+          <Text style={styles.sectionTitle}>Tarjetas y Sanciones</Text>
+          <View style={styles.statsGrid}>
+            {renderStatItem(
+              'card',
+              'Amarillas',
+              estadisticas_historicas.amarillas_totales || 0,
+              colors.warning
+            )}
+            {renderStatItem(
+              'card-multiple',
+              'Dobles Am.',
+              estadisticas_historicas.dobles_amarillas || 0,
+              '#FF9800'
+            )}
+            {renderStatItem(
+              'card',
+              'Rojas',
+              estadisticas_historicas.rojas_totales || 0,
+              colors.error
+            )}
+            {renderStatItem(
+              'own-goal',
+              'Autogoles',
+              estadisticas_historicas.autogoles || 0,
+              '#9C27B0'
+            )}
+          </View>
+        </Card>
 
-            <View style={styles.matchRow}>
-              <View style={styles.matchTeam}>
-                <Image
-                  source={equipo.logo ? { uri: equipo.logo } : require('../../assets/InterLOGO.png')}
-                  style={styles.matchTeamLogo}
-                />
-                <Text style={styles.matchTeamName} numberOfLines={2}>
-                  {equipo.nombre}
-                </Text>
-              </View>
-
-              <View style={styles.matchDetailsCenter}>
-                <Text style={styles.matchDate}>{formatDate(proximo_partido.fecha)}</Text>
-                <Text style={styles.matchTime}>{proximo_partido.hora}</Text>
-                <Text style={styles.matchVenue} numberOfLines={1}>
-                  {proximo_partido.cancha.nombre}
-                </Text>
-              </View>
-
-              <View style={styles.matchTeam}>
-                <Image
-                  source={proximo_partido.rival.logo ? { uri: proximo_partido.rival.logo } : require('../../assets/InterLOGO.png')}
-                  style={styles.matchTeamLogo}
-                />
-                <Text style={styles.matchTeamName} numberOfLines={2}>
-                  {proximo_partido.rival.nombre}
-                </Text>
-              </View>
+        {/* Estadísticas adicionales */}
+        {(isAdmin || isSuperAdmin) && (
+          <Card style={styles.statsCard}>
+            <Text style={styles.sectionTitle}>Estadísticas Adicionales</Text>
+            <View style={styles.statsGrid}>
+              {renderStatItem(
+                'bullseye-arrow',
+                'Penales Conv.',
+                estadisticas_historicas.penales_convertidos || 0,
+                '#4CAF50'
+              )}
+              {renderStatItem(
+                'close-circle',
+                'Penales Fall.',
+                estadisticas_historicas.penales_fallados || 0,
+                '#F44336'
+              )}
+              {renderStatItem(
+                'star',
+                'MVP',
+                estadisticas_historicas.mvp_partidos || 0,
+                '#FFD700'
+              )}
+              {estadisticas_historicas.posicion_final_equipo && renderStatItem(
+                'podium',
+                'Posición',
+                estadisticas_historicas.posicion_final_equipo,
+                '#607D8B'
+              )}
             </View>
           </Card>
         )}
+
       </ScrollView>
     </View>
   );
@@ -263,6 +314,7 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',
+    position: 'relative',
   },
   numberText: {
     color: colors.white,
@@ -282,19 +334,52 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: colors.textPrimary,
+    flex: 1,
   },
-  refuerzoBadge: {
-    backgroundColor: '#FFC107',
+  playerPhoto: {
+    width: '100%',
+    height: 200,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  badge: {
     borderRadius: 12,
     width: 24,
     height: 24,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  refuerzoText: {
+  refuerzoBadge: {
+    backgroundColor: '#FFC107',
+  },
+  goleadorBadge: {
+    backgroundColor: '#4CAF50',
+  },
+  mvpBadge: {
+    backgroundColor: '#FFD700',
+  },
+  badgeText: {
     color: colors.white,
     fontSize: 12,
     fontWeight: '700',
+  },
+  capitanBadge: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: '#FF5722',
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.white,
+  },
+  capitanText: {
+    color: colors.white,
+    fontSize: 10,
+    fontWeight: 'bold',
   },
   playerAge: {
     fontSize: 14,
@@ -306,6 +391,12 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginBottom: 8,
     fontStyle: 'italic',
+  },
+  playerDetail: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginBottom: 4,
+    textTransform: 'capitalize',
   },
   teamContainer: {
     flexDirection: 'row',
@@ -365,60 +456,5 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 14,
     color: colors.textSecondary,
-  },
-  nextMatchCard: {
-    marginHorizontal: 16,
-    marginBottom: 16,
-    padding: 16,
-  },
-  nextMatchHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-    gap: 8,
-  },
-  matchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  matchTeam: {
-    flex: 1,
-    alignItems: 'center',
-    maxWidth: '30%',
-  },
-  matchTeamLogo: {
-    width: 50,
-    height: 50,
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  matchTeamName: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: colors.textPrimary,
-    textAlign: 'center',
-  },
-  matchDetailsCenter: {
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    minWidth: 80,
-  },
-  matchDate: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: colors.textPrimary,
-  },
-  matchTime: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginTop: 4,
-  },
-  matchVenue: {
-    fontSize: 10,
-    color: colors.textSecondary,
-    marginTop: 2,
-    textAlign: 'center',
   },
 });

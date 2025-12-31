@@ -10,6 +10,23 @@ export interface EstadisticasJugador {
   partidos_jugados: number;
 }
 
+export interface EstadisticasHistoricas {
+  partidos_jugados: number;
+  minutos_jugados: number;
+  goles_totales: number;
+  asistencias_totales: number;
+  amarillas_totales: number;
+  rojas_totales: number;
+  dobles_amarillas: number;
+  autogoles: number;
+  penales_convertidos: number;
+  penales_fallados: number;
+  mvp_partidos: number;
+  es_goleador: boolean;
+  es_mejor_jugador: boolean;
+  posicion_final_equipo: number | null;
+}
+
 export interface Jugador {
   id_jugador: number;
   nombre_completo: string;
@@ -57,26 +74,27 @@ export interface JugadoresListResponse {
 }
 
 export interface JugadorDetalleData {
-  jugador: Jugador;
+  id_plantilla: number;
+  nombre_completo: string;
+  dni: string;
+  fecha_nacimiento: string;
+  edad: number;
+  numero_camiseta: number;
+  pie_dominante: string;
+  foto: string | null;
+  activo_en_equipo: boolean;
+  es_refuerzo: boolean;
+  es_capitan: boolean;
+  fecha_registro: string;
   equipo: {
     id_equipo: number;
     nombre: string;
-    logo?: string | null;
+    nombre_corto: string;
+    logo: string | null;
   };
-  proximo_partido?: {
-    id_partido: number;
-    fecha: string;
-    hora: string;
-    rival: {
-      nombre: string;
-      logo?: string | null;
-    };
-    cancha: {
-      nombre: string;
-      direccion?: string;
-    };
-    local: boolean;
-  } | null;
+  estadisticas_historicas: EstadisticasHistoricas;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface JugadorDetalleResponse {
