@@ -8,6 +8,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -164,10 +165,10 @@ export const RegisterScreen = ({ navigation }: any) => {
               error={errors.nombre}
               autoCapitalize="words"
               leftIcon={
-                <MaterialCommunityIcons 
-                  name="account" 
-                  size={22} 
-                  color={colors.textSecondary} 
+                <MaterialCommunityIcons
+                  name="account"
+                  size={22}
+                  color={colors.textSecondary}
                 />
               }
             />
@@ -183,10 +184,10 @@ export const RegisterScreen = ({ navigation }: any) => {
               error={errors.apellido}
               autoCapitalize="words"
               leftIcon={
-                <MaterialCommunityIcons 
-                  name="account-outline" 
-                  size={22} 
-                  color={colors.textSecondary} 
+                <MaterialCommunityIcons
+                  name="account-outline"
+                  size={22}
+                  color={colors.textSecondary}
                 />
               }
             />
@@ -204,10 +205,10 @@ export const RegisterScreen = ({ navigation }: any) => {
               autoCapitalize="none"
               autoComplete="email"
               leftIcon={
-                <MaterialCommunityIcons 
-                  name="email-outline" 
-                  size={22} 
-                  color={colors.textSecondary} 
+                <MaterialCommunityIcons
+                  name="email-outline"
+                  size={22}
+                  color={colors.textSecondary}
                 />
               }
             />
@@ -223,10 +224,10 @@ export const RegisterScreen = ({ navigation }: any) => {
               error={errors.password}
               isPassword
               leftIcon={
-                <MaterialCommunityIcons 
-                  name="lock-outline" 
-                  size={22} 
-                  color={colors.textSecondary} 
+                <MaterialCommunityIcons
+                  name="lock-outline"
+                  size={22}
+                  color={colors.textSecondary}
                 />
               }
             />
@@ -242,16 +243,16 @@ export const RegisterScreen = ({ navigation }: any) => {
               error={errors.confirmPassword}
               isPassword
               leftIcon={
-                <MaterialCommunityIcons 
-                  name="lock-check-outline" 
-                  size={22} 
-                  color={colors.textSecondary} 
+                <MaterialCommunityIcons
+                  name="lock-check-outline"
+                  size={22}
+                  color={colors.textSecondary}
                 />
               }
             />
 
             {/* Casilla de Términos y Condiciones */}
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.checkboxContainer}
               onPress={() => setAcceptTerms(!acceptTerms)}
               activeOpacity={0.7}
@@ -263,9 +264,19 @@ export const RegisterScreen = ({ navigation }: any) => {
               </View>
               <Text style={styles.checkboxText}>
                 Acepto los{' '}
-                <Text style={styles.termsLink}>Términos y Condiciones</Text>
+                <Text
+                  style={styles.termsLink}
+                  onPress={() => Linking.openURL('https://www.interleagueonline.com/terminos-y-condiciones-isl/')}
+                >
+                  Términos y Condiciones
+                </Text>
                 {' '}y la{' '}
-                <Text style={styles.termsLink}>Política de Privacidad</Text>
+                <Text
+                  style={styles.termsLink}
+                  onPress={() => Linking.openURL('https://www.interleagueonline.com/politica-de-privacidad-isl/')}
+                >
+                  Política de Privacidad
+                </Text>
               </Text>
             </TouchableOpacity>
 

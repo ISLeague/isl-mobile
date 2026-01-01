@@ -136,43 +136,43 @@ export const ProfileScreen = ({ navigation: navProp }: any) => {
   // Estilos dinámicos que usan el tema actual
   const styles = createStyles(colors);
 
-// Lista de opciones del perfil
-const menuItems = [
-  ...(isTournamentAdmin ? [
+  // Lista de opciones del perfil
+  const menuItems = [
+    ...(isTournamentAdmin ? [
+      {
+        id: 0,
+        icon: 'trophy',
+        title: 'Mis Torneos',
+        subtitle: 'Gestionar mis torneos asignados',
+        onPress: handleMisTorneos,
+        highlight: true,
+      }
+    ] : []),
     {
-      id: 0,
-      icon: 'trophy',
-      title: 'Mis Torneos',
-      subtitle: 'Gestionar mis torneos asignados',
-      onPress: handleMisTorneos,
-      highlight: true,
-    }
-  ] : []),
-  {
-    id: 4,
-    icon: 'web',
-    title: 'Redes Sociales',
-    subtitle: 'Síguenos en redes',
-    onPress: () =>
-      Linking.openURL(
-        'https://linktr.ee/idp.pe?utm_source=linktree_profile_share&ltsid=2c882a4e-5a1a-4265-a750-7f5fd3f34aaf'
-      ),
-  },
-  {
-    id: 5,
-    icon: 'cog-outline',
-    title: 'Configuración',
-    subtitle: 'Ajustes de la cuenta',
-    onPress: () => setShowConfigModal(true),
-  },
-  {
-    id: 6,
-    icon: 'help-circle-outline',
-    title: 'Ayuda y Soporte',
-    subtitle: '¿Necesitas ayuda?',
-    onPress: () => Linking.openURL('https://interleagueperu.fullfoto.com/help'),
-  },
-];
+      id: 4,
+      icon: 'web',
+      title: 'Redes Sociales',
+      subtitle: 'Síguenos en redes',
+      onPress: () =>
+        Linking.openURL(
+          'https://linktr.ee/idp.pe?utm_source=linktree_profile_share&ltsid=2c882a4e-5a1a-4265-a750-7f5fd3f34aaf'
+        ),
+    },
+    {
+      id: 5,
+      icon: 'cog-outline',
+      title: 'Configuración',
+      subtitle: 'Ajustes de la cuenta',
+      onPress: () => setShowConfigModal(true),
+    },
+    {
+      id: 6,
+      icon: 'help-circle-outline',
+      title: 'Ayuda y Soporte',
+      subtitle: '¿Necesitas ayuda?',
+      onPress: () => Linking.openURL('mailto:bdiaz@intercollegecorp.com'),
+    },
+  ];
 
   return (
     <SafeAreaView style={styles.container} edges={[]}>
@@ -197,7 +197,7 @@ const menuItems = [
               <View style={styles.guestIconContainer}>
                 <MaterialCommunityIcons name="account-alert-outline" size={80} color={colors.primary} />
               </View>
-              
+
               <Text style={styles.guestTitle}>Estás navegando como invitado</Text>
               <Text style={styles.guestSubtitle}>
                 Para disfrutar de todas las funcionalidades de ISL, crea una cuenta o inicia sesión
@@ -205,22 +205,22 @@ const menuItems = [
 
               <View style={styles.guestBenefits}>
                 <Text style={styles.benefitsTitle}>Con una cuenta podrás:</Text>
-                
+
                 <View style={styles.benefitItem}>
                   <MaterialCommunityIcons name="heart" size={20} color={colors.primary} />
                   <Text style={styles.benefitText}>Seguir a tu equipo favorito</Text>
                 </View>
-                
+
                 <View style={styles.benefitItem}>
                   <MaterialCommunityIcons name="image-multiple" size={20} color={colors.primary} />
                   <Text style={styles.benefitText}>Ver y comprar fotos de los partidos</Text>
                 </View>
-                
+
                 <View style={styles.benefitItem}>
                   <MaterialCommunityIcons name="bell" size={20} color={colors.primary} />
                   <Text style={styles.benefitText}>Recibir notificaciones de tus equipos</Text>
                 </View>
-                
+
                 <View style={styles.benefitItem}>
                   <MaterialCommunityIcons name="account-multiple" size={20} color={colors.primary} />
                   <Text style={styles.benefitText}>Conectar con otros fanáticos</Text>
@@ -256,99 +256,99 @@ const menuItems = [
           </View>
         ) : (
           <>
-        {/* User Info Card */}
-        <View style={styles.userCard}>
-          <View style={styles.avatarContainer}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {usuario.email.charAt(0).toUpperCase()}
-              </Text>
-            </View>
-            {usuario.pais && (
-              <View style={styles.countryBadge}>
-                <Text style={styles.countryEmoji}>{usuario.pais.emoji}</Text>
+            {/* User Info Card */}
+            <View style={styles.userCard}>
+              <View style={styles.avatarContainer}>
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarText}>
+                    {usuario.email.charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+                {usuario.pais && (
+                  <View style={styles.countryBadge}>
+                    <Text style={styles.countryEmoji}>{usuario.pais.emoji}</Text>
+                  </View>
+                )}
               </View>
-            )}
-          </View>
-          
-          <View style={styles.userInfo}>
-            <Text style={styles.userName}>{usuario.email.split('@')[0]}</Text>
-            <Text style={styles.userEmail}>{usuario.email}</Text>
-            <View style={styles.roleBadge}>
-              <Text style={styles.roleBadgeText}>
-                {usuario.rol.toUpperCase()}
-              </Text>
+
+              <View style={styles.userInfo}>
+                <Text style={styles.userName}>{usuario.email.split('@')[0]}</Text>
+                <Text style={styles.userEmail}>{usuario.email}</Text>
+                <View style={styles.roleBadge}>
+                  <Text style={styles.roleBadgeText}>
+                    {usuario.rol.toUpperCase()}
+                  </Text>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                style={styles.editButton}
+                onPress={() => {
+                  setEditTab('profile');
+                  setShowEditProfileModal(true);
+                }}
+              >
+                <Text style={styles.editButtonText}>Editar</Text>
+              </TouchableOpacity>
             </View>
-          </View>
-
-          <TouchableOpacity 
-            style={styles.editButton}
-            onPress={() => {
-              setEditTab('profile');
-              setShowEditProfileModal(true);
-            }}
-          >
-            <Text style={styles.editButtonText}>Editar</Text>
-          </TouchableOpacity>
-        </View>
 
 
 
-        {/* Menu Items */}
-        <View style={styles.menuSection}>
-          {menuItems.map((item) => (
+            {/* Menu Items */}
+            <View style={styles.menuSection}>
+              {menuItems.map((item) => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={[
+                    styles.menuItem,
+                    (item as any).highlight && styles.menuItemHighlight
+                  ]}
+                  onPress={item.onPress}
+                  activeOpacity={0.7}
+                >
+                  <View style={[
+                    styles.menuIconContainer,
+                    (item as any).highlight && styles.menuIconContainerHighlight
+                  ]}>
+                    <MaterialCommunityIcons
+                      name={item.icon as any}
+                      size={24}
+                      color={(item as any).highlight ? colors.white : colors.primary}
+                    />
+                  </View>
+                  <View style={styles.menuTextContainer}>
+                    <Text style={[
+                      styles.menuTitle,
+                      (item as any).highlight && styles.menuTitleHighlight
+                    ]}>{item.title}</Text>
+                    <Text style={[
+                      styles.menuSubtitle,
+                      (item as any).highlight && styles.menuSubtitleHighlight
+                    ]}>{item.subtitle}</Text>
+                  </View>
+                  <MaterialCommunityIcons
+                    name="chevron-right"
+                    size={24}
+                    color={(item as any).highlight ? colors.white : colors.textLight}
+                  />
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Logout Button */}
             <TouchableOpacity
-              key={item.id}
-              style={[
-                styles.menuItem,
-                (item as any).highlight && styles.menuItemHighlight
-              ]}
-              onPress={item.onPress}
+              style={styles.logoutButton}
+              onPress={handleLogout}
               activeOpacity={0.7}
             >
-              <View style={[
-                styles.menuIconContainer,
-                (item as any).highlight && styles.menuIconContainerHighlight
-              ]}>
-              <MaterialCommunityIcons
-                name={item.icon as any}
-                size={24}
-                color={(item as any).highlight ? colors.white : colors.primary}
-              />
-            </View>
-              <View style={styles.menuTextContainer}>
-                <Text style={[
-                  styles.menuTitle,
-                  (item as any).highlight && styles.menuTitleHighlight
-                ]}>{item.title}</Text>
-                <Text style={[
-                  styles.menuSubtitle,
-                  (item as any).highlight && styles.menuSubtitleHighlight
-                ]}>{item.subtitle}</Text>
-              </View>
-              <MaterialCommunityIcons 
-                name="chevron-right" 
-                size={24} 
-                color={(item as any).highlight ? colors.white : colors.textLight} 
-              />
+              <Text style={styles.logoutText}>Cerrar Sesión</Text>
             </TouchableOpacity>
-          ))}
-        </View>
 
-        {/* Logout Button */}
-        <TouchableOpacity
-          style={styles.logoutButton}
-          onPress={handleLogout}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.logoutText}>Cerrar Sesión</Text>
-        </TouchableOpacity>
+            {/* App Version */}
+            <Text style={styles.versionText}>InterLeague v1.0.0</Text>
 
-        {/* App Version */}
-        <Text style={styles.versionText}>InterLeague v1.0.0</Text>
-
-        <View style={{ height: 40 }} />
-        </>
+            <View style={{ height: 40 }} />
+          </>
         )}
       </ScrollView>
 
@@ -374,10 +374,10 @@ const menuItems = [
                 style={[styles.tab, editTab === 'profile' && styles.tabActive]}
                 onPress={() => setEditTab('profile')}
               >
-                <MaterialCommunityIcons 
-                  name="account-edit" 
-                  size={20} 
-                  color={editTab === 'profile' ? colors.primary : colors.textSecondary} 
+                <MaterialCommunityIcons
+                  name="account-edit"
+                  size={20}
+                  color={editTab === 'profile' ? colors.primary : colors.textSecondary}
                 />
                 <Text style={[styles.tabText, editTab === 'profile' && styles.tabTextActive]}>
                   Perfil
@@ -388,10 +388,10 @@ const menuItems = [
                 style={[styles.tab, editTab === 'password' && styles.tabActive]}
                 onPress={() => setEditTab('password')}
               >
-                <MaterialCommunityIcons 
-                  name="lock-reset" 
-                  size={20} 
-                  color={editTab === 'password' ? colors.primary : colors.textSecondary} 
+                <MaterialCommunityIcons
+                  name="lock-reset"
+                  size={20}
+                  color={editTab === 'password' ? colors.primary : colors.textSecondary}
                 />
                 <Text style={[styles.tabText, editTab === 'password' && styles.tabTextActive]}>
                   Contraseña
@@ -565,7 +565,7 @@ const menuItems = [
 
               <TouchableOpacity
                 style={styles.configItem}
-                onPress={() => Alert.alert('Política de Privacidad', 'Aquí se mostraría la política de privacidad completa')}
+                onPress={() => Linking.openURL('https://www.interleagueonline.com/politica-de-privacidad-isl/')}
               >
                 <View style={styles.configItemLeft}>
                   <MaterialCommunityIcons name="shield-check-outline" size={24} color={colors.textPrimary} />
