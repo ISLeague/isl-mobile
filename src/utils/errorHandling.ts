@@ -99,7 +99,7 @@ export const safeAsync = async <T,>(
     return await fn();
   } catch (error) {
     const err = error instanceof Error ? error : new Error(String(error));
-    
+
     // Loggear el error
     errorHandler.logError(
       err,
@@ -147,7 +147,7 @@ export const safeTry = <T,>(
     return fn();
   } catch (error) {
     const err = error instanceof Error ? error : new Error(String(error));
-    
+
     errorHandler.logError(
       err,
       context,
@@ -169,15 +169,15 @@ export const parseApiError = (error: any): string => {
   if (error?.response?.data?.message) {
     return error.response.data.message;
   }
-  
+
   if (error?.message) {
     return error.message;
   }
-  
+
   if (typeof error === 'string') {
     return error;
   }
-  
+
   return 'Ocurrió un error inesperado';
 };
 
@@ -187,9 +187,9 @@ export const parseApiError = (error: any): string => {
 export const isNetworkError = (error: any): boolean => {
   return (
     error?.message === 'Network request failed' ||
-    error?.message?.includes('network') ||
+    error?.message?.toLowerCase().includes('network') ||
     error?.code === 'NETWORK_ERROR' ||
-    !navigator.onLine
+    error?.code === 'ERR_NETWORK'
   );
 };
 
@@ -211,13 +211,19 @@ export const getUserFriendlyMessage = (error: any): string => {
   if (isNetworkError(error)) {
     return 'No hay conexión a internet. Por favor verifica tu conexión y vuelve a intentar.';
   }
-  
+
   if (isTimeoutError(error)) {
     return 'La solicitud tardó demasiado. Por favor intenta de nuevo.';
   }
-  
+
+  // Error de credenciales inválidas (401 del login)
+  const statusCode = error?.response?.status;
   const message = parseApiError(error);
-  
+
+  if (statusCode === 401 || message === 'Credenciales inválidas' || message?.includes('401')) {
+    return 'Credenciales inválidas. Verifica tu usuario y contraseña.';
+  }
+
   // Mapear mensajes técnicos a mensajes amigables
   const friendlyMessages: Record<string, string> = {
     'Unauthorized': 'Tu sesión ha expirado. Por favor inicia sesión nuevamente.',
@@ -226,7 +232,7 @@ export const getUserFriendlyMessage = (error: any): string => {
     'Internal Server Error': 'Ocurrió un error en el servidor. Estamos trabajando para solucionarlo.',
     'Bad Request': 'La solicitud no es válida. Por favor verifica los datos.',
   };
-  
+
   return friendlyMessages[message] || message || 'Ocurrió un error inesperado';
 };
 
@@ -242,26 +248,26 @@ export const retry = async <T,>(
   } = {}
 ): Promise<T> => {
   const { maxAttempts = 3, delay = 1000, onRetry } = options;
-  
+
   let lastError: Error;
-  
+
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       return await fn();
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
-      
+
       if (attempt < maxAttempts) {
         if (onRetry) {
           onRetry(attempt, lastError);
         }
-        
+
         // Esperar antes de reintentar (con backoff exponencial)
         await new Promise(resolve => setTimeout(resolve, delay * attempt));
       }
     }
   }
-  
+
   throw lastError!;
 };
 

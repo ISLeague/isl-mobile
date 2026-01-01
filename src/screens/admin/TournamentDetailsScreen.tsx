@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -17,13 +18,14 @@ import { Edicion } from '../../api/types/ediciones.types';
 import { useAuth } from '../../contexts/AuthContext';
 
 export const TournamentDetailsScreen = ({ navigation, route }: any) => {
-  const { torneo, pais } = route.params;
+  const { torneo: initialTorneo, pais } = route.params;
   const { isSuperAdmin, usuario } = useAuth();
+  const [currentTorneo, setCurrentTorneo] = useState<Torneo>(initialTorneo);
 
   // Check if user can edit this tournament
   const canEditTournament =
     isSuperAdmin ||
-    (usuario?.id_torneos && usuario.id_torneos.includes(torneo.id_torneo));
+    (usuario?.id_torneos && usuario.id_torneos.includes(currentTorneo.id_torneo));
 
   // Check if user can create editions for this tournament
   const canCreateEdition = canEditTournament;
@@ -32,9 +34,39 @@ export const TournamentDetailsScreen = ({ navigation, route }: any) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Sincronizar estado si los params cambian (ej: al volver de editar)
   useEffect(() => {
-    loadEdiciones();
-  }, []);
+    if (initialTorneo) {
+      setCurrentTorneo(initialTorneo);
+    }
+  }, [initialTorneo]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadTournamentDetails();
+      loadEdiciones();
+    }, [])
+  );
+
+  const loadTournamentDetails = async () => {
+    try {
+      // Intentamos cargar los detalles frescos del torneo
+      // Como no hay un endpoint getById directo, usamos list filtrando por ID
+      // Importante: pasar activo: undefined para traerlo aunque esté inactivo
+      const response = await api.torneos.list({
+        activo: undefined
+      });
+
+      if (response && response.data) {
+        const found = response.data.find((t: Torneo) => t.id_torneo === initialTorneo.id_torneo);
+        if (found) {
+          setCurrentTorneo(found);
+        }
+      }
+    } catch (error) {
+      console.error('Error refreshing tournament details:', error);
+    }
+  };
 
   const loadEdiciones = async (isRefreshing = false) => {
     try {
@@ -43,8 +75,8 @@ export const TournamentDetailsScreen = ({ navigation, route }: any) => {
       } else {
         setLoading(true);
       }
-      console.log('Loading editions for tournament ID:', torneo.id_torneo);
-      const response = await api.ediciones.list({ id_torneo: torneo.id_torneo });
+      console.log('Loading editions for tournament ID:', currentTorneo.id_torneo);
+      const response = await api.ediciones.list({ id_torneo: currentTorneo.id_torneo });
       setEdiciones(response.data || []);
     } catch (error: any) {
       // Handle 404 gracefully - no editions yet
@@ -66,19 +98,19 @@ export const TournamentDetailsScreen = ({ navigation, route }: any) => {
   };
 
   const handleEditTournament = () => {
-    navigation.navigate('EditTournament', { torneo, pais });
+    navigation.navigate('EditTournament', { torneo: currentTorneo, pais });
   };
 
   const handleCreateEdition = () => {
-    navigation.navigate('CreateEdition', { torneo, pais });
+    navigation.navigate('CreateEdition', { torneo: currentTorneo, pais });
   };
 
   const handleEditionPress = (edicion: Edicion) => {
-    navigation.navigate('TournamentCategories', { torneo, edicion, pais });
+    navigation.navigate('TournamentCategories', { torneo: currentTorneo, edicion, pais });
   };
 
   const handleEditEdition = (edicion: Edicion) => {
-    navigation.navigate('EditEdition', { edicion, torneo, pais });
+    navigation.navigate('EditEdition', { edicion, torneo: currentTorneo, pais });
   };
 
   const getEstadoBadgeStyle = (estado: string) => {
@@ -197,7 +229,7 @@ export const TournamentDetailsScreen = ({ navigation, route }: any) => {
         </TouchableOpacity>
 
         <View style={styles.headerInfo}>
-          <Text style={styles.title}>{torneo.nombre}</Text>
+          <Text style={styles.title}>{currentTorneo.nombre}</Text>
         </View>
 
         {canEditTournament ? (
@@ -213,15 +245,15 @@ export const TournamentDetailsScreen = ({ navigation, route }: any) => {
       <View style={styles.tournamentInfo}>
         <View style={styles.infoRow}>
           <MaterialCommunityIcons name="calendar" size={20} color={colors.textSecondary} />
-          <Text style={styles.infoText}>Temporada: {torneo.temporada}</Text>
+          <Text style={styles.infoText}>Temporada: {currentTorneo.temporada}</Text>
         </View>
         <View style={styles.infoRow}>
           <MaterialCommunityIcons
             name="circle"
             size={12}
-            color={torneo.activo ? colors.success : colors.textSecondary}
+            color={currentTorneo.activo ? colors.success : colors.textSecondary}
           />
-          <Text style={styles.infoText}>{torneo.activo ? 'Activo' : 'Inactivo'}</Text>
+          <Text style={styles.infoText}>{currentTorneo.activo ? 'Activo' : 'Inactivo'}</Text>
         </View>
       </View>
 

@@ -38,19 +38,19 @@ export const LoginScreen = ({ navigation }: any) => {
     else if (password.length < 6) newErrors.password = 'Debe tener al menos 6 caracteres';
 
     setErrors(newErrors);
-    
+
     if (Object.keys(newErrors).length > 0) {
       showWarning('Por favor completa todos los campos correctamente', 'Validación');
     }
-    
+
     return Object.keys(newErrors).length === 0;
   };
 
   const handleLogin = async () => {
     if (!validateForm()) return;
-    
+
     setLoading(true);
-    
+
     const response = await safeAsync(
       async () => {
         return await api.auth.login({ email, password });
@@ -60,16 +60,11 @@ export const LoginScreen = ({ navigation }: any) => {
         severity: 'high',
         fallbackValue: null,
         onError: (error) => {
-          showError(
-            error.message === 'Credenciales inválidas'
-              ? 'Email o contraseña incorrectos'
-              : getUserFriendlyMessage(error),
-            'Error al iniciar sesión'
-          );
+          showError(getUserFriendlyMessage(error), 'Error');
         }
       }
     );
-    
+
     setLoading(false);
 
     if (response) {
@@ -144,22 +139,22 @@ export const LoginScreen = ({ navigation }: any) => {
     <SafeAreaView style={styles.safeArea}>
       {/* fondo de círculos / gradiente en posición absoluta (detrás) */}
       <View style={styles.backgroundContainer} pointerEvents="none">
-    {/* Círculo grande - opacidad 78% */}
-    <LinearGradient
-      colors={['#F13A21', '#BE0127']}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={[styles.bigCircle, { opacity: 0.78 }]}
-    />
-    
-    {/* Círculo pequeño - opacidad 100% */}
-    <LinearGradient
-      colors={['#F13A21', '#BE0127']}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={[styles.smallCircle, { opacity: 1 }]}
-    />
-  </View>
+        {/* Círculo grande - opacidad 78% */}
+        <LinearGradient
+          colors={['#F13A21', '#BE0127']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.bigCircle, { opacity: 0.78 }]}
+        />
+
+        {/* Círculo pequeño - opacidad 100% */}
+        <LinearGradient
+          colors={['#F13A21', '#BE0127']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.smallCircle, { opacity: 1 }]}
+        />
+      </View>
 
 
       <KeyboardAvoidingView
@@ -224,8 +219,8 @@ export const LoginScreen = ({ navigation }: any) => {
             <Button title="Iniciar Sesión" onPress={handleLogin} loading={loading} style={styles.loginButton} />
 
             {/* Botón Ingresar como Invitado */}
-            <TouchableOpacity 
-              style={styles.guestButton} 
+            <TouchableOpacity
+              style={styles.guestButton}
               onPress={handleGuestLogin}
               disabled={loading}
             >
