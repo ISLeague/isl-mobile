@@ -156,14 +156,44 @@ export const CreateCanchaScreen = ({ navigation, route }: any) => {
               leftIcon={<MaterialCommunityIcons name="soccer-field" size={20} color={colors.textLight} />}
             />
 
-            <Input
-              label="Tipo de Superficie"
-              placeholder="Ej: césped, tierra, sintético"
-              value={tipoSuperficie}
-              onChangeText={setTipoSuperficie}
-              error={errors.tipoSuperficie}
-              leftIcon={<MaterialCommunityIcons name="texture-box" size={20} color={colors.textLight} />}
-            />
+            {/* Tipo de Superficie Options */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Tipo de Superficie</Text>
+              <View style={styles.surfaceOptionsContainer}>
+                {[
+                  { id: 'cesped_natural', label: 'Césped Natural', icon: 'grass' },
+                  { id: 'cesped_sintetico', label: 'Césped Sintético', icon: 'soccer' }, // using soccer as proxy for turf
+                  { id: 'tierra', label: 'Tierra', icon: 'image-filter-hdr' }, // generic terrain
+                  { id: 'concreto', label: 'Concreto', icon: 'wall' },
+                ].map((option) => (
+                  <TouchableOpacity
+                    key={option.id}
+                    style={[
+                      styles.surfaceOption,
+                      tipoSuperficie === option.id && styles.surfaceOptionSelected,
+                    ]}
+                    onPress={() => setTipoSuperficie(option.id)}
+                  >
+                    <MaterialCommunityIcons
+                      name={option.icon as any}
+                      size={20}
+                      color={tipoSuperficie === option.id ? colors.white : colors.textSecondary}
+                    />
+                    <Text
+                      style={[
+                        styles.surfaceOptionText,
+                        tipoSuperficie === option.id && styles.surfaceOptionTextSelected,
+                      ]}
+                    >
+                      {option.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              {errors.tipoSuperficie && (
+                <Text style={styles.errorText}>{errors.tipoSuperficie}</Text>
+              )}
+            </View>
 
             <Input
               label="Dimensiones"
@@ -435,5 +465,51 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: colors.white,
+  },
+  inputGroup: {
+    marginBottom: 16,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    marginBottom: 8,
+    marginLeft: 4,
+  },
+  surfaceOptionsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  surfaceOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    backgroundColor: colors.white,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: 6,
+    marginBottom: 4,
+  },
+  surfaceOptionSelected: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  surfaceOptionText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    fontWeight: '500',
+  },
+  surfaceOptionTextSelected: {
+    color: colors.white,
+    fontWeight: '600',
+  },
+  errorText: {
+    fontSize: 12,
+    color: colors.error,
+    marginTop: 4,
+    marginLeft: 4,
   },
 });

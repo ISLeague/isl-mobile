@@ -3,54 +3,61 @@ import { CreateLocalRequest, UpdateLocalRequest, CreateCanchaRequest, UpdateCanc
 
 export const localesService = {
   list: async (idEdicionCategoria: number) => {
-    const response = await apiClient.get('/locales-list', {
-      params: { id_edicion_categoria: idEdicionCategoria }
+    const response = await apiClient.get('/locales', {
+      params: { id_edicion_categoria: idEdicionCategoria, action: 'list' }
     });
     return response.data;
   },
 
   get: async (id: number) => {
-    const response = await apiClient.get('/locales-get', { params: { id } });
+    const response = await apiClient.get('/locales', { params: { id, action: 'get' } });
     return response.data;
   },
 
   mapa: async () => {
-    const response = await apiClient.get('/locales-mapa');
+    const response = await apiClient.get('/locales', {
+      params: { action: 'mapa' }
+    });
     return response.data;
   },
 
   cercanos: async (lat: number, lng: number, radio: number) => {
-    const response = await apiClient.get('/locales-cercanos', {
-      params: { lat, lng, radio },
+    const response = await apiClient.get('/locales', {
+      params: { lat, lng, radio, action: 'cercanos' },
     });
     return response.data;
   },
 
   create: async (data: CreateLocalRequest) => {
-    const response = await apiClient.post('/locales-create', data);
+    const response = await apiClient.post('/locales', data, {
+      params: { action: 'create' }
+    });
     return response.data;
   },
 
   update: async (data: UpdateLocalRequest) => {
-    const response = await apiClient.put('/locales-update', data);
+    const response = await apiClient.patch('/locales', data, {
+      params: { action: 'update', id: data.id_local }
+    });
     return response.data;
   },
 
   delete: async (id: number) => {
-    const response = await apiClient.delete('/locales-delete', { params: { id } });
+    const response = await apiClient.delete('/locales', { params: { id, action: 'delete' } });
     return response.data;
   },
 
   uploadFoto: async (formData: FormData) => {
-    const response = await apiClient.post('/locales-foto-upload', formData, {
+    const response = await apiClient.post('/locales', formData, {
+      params: { action: 'foto-upload' },
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     return response.data;
   },
 
   deleteFoto: async (local_id: number, foto_url: string) => {
-    const response = await apiClient.delete('/locales-foto-delete', {
-      params: { local_id, foto_url },
+    const response = await apiClient.delete('/locales', {
+      params: { id_local: local_id, foto_url, action: 'foto-delete' },
     });
     return response.data;
   },
@@ -58,29 +65,33 @@ export const localesService = {
 
 export const canchasService = {
   list: async (idLocal: number) => {
-    const response = await apiClient.get('/canchas-list', {
-      params: { id_local: idLocal }
+    const response = await apiClient.get('/canchas', {
+      params: { id_local: idLocal, action: 'list' }
     });
     return response.data;
   },
 
   get: async (id: number) => {
-    const response = await apiClient.get('/canchas-get', { params: { id } });
+    const response = await apiClient.get('/canchas', { params: { id, action: 'get' } });
     return response.data;
   },
 
   create: async (data: CreateCanchaRequest) => {
-    const response = await apiClient.post('/canchas-create', data);
+    const response = await apiClient.post('/canchas', data, {
+      params: { action: 'create' }
+    });
     return response.data;
   },
 
   update: async (data: UpdateCanchaRequest) => {
-    const response = await apiClient.put('/canchas-update', data);
+    const response = await apiClient.patch('/canchas', data, {
+      params: { action: 'update', id: data.id_cancha }
+    });
     return response.data;
   },
 
   delete: async (id: number) => {
-    const response = await apiClient.delete('/canchas-delete', { params: { id } });
+    const response = await apiClient.delete('/canchas', { params: { id, action: 'delete' } });
     return response.data;
   },
 };

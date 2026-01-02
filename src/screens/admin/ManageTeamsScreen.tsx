@@ -21,9 +21,6 @@ export const ManageTeamsScreen = ({ navigation, route }: any) => {
   const { torneo } = route.params;
   const { showSuccess, showError, showWarning } = useToast();
   const [equipos, setEquipos] = useState<Equipo[]>([]);
-  const [showModal, setShowModal] = useState(false);
-  const [newTeamName, setNewTeamName] = useState('');
-  const [newTeamLogo, setNewTeamLogo] = useState('');
   const [loading, setLoading] = useState(true);
 
   // Load equipos from API
@@ -51,44 +48,9 @@ export const ManageTeamsScreen = ({ navigation, route }: any) => {
     loadEquipos();
   }, [route.params?.idEdicionCategoria, torneo?.id_edicion_categoria]);
 
-  const handleCreateTeam = async () => {
-    if (!newTeamName.trim()) {
-      showWarning('El nombre del equipo es requerido', 'Campo requerido');
-      return;
-    }
-
-    const success = await safeAsync(
-      async () => {
-        const newTeam: Equipo = {
-          id_equipo: equipos.length + 1,
-          nombre: newTeamName,
-          logo: newTeamLogo || '⚽',
-          id_edicion_categoria: 1,
-        };
-
-        setEquipos([...equipos, newTeam]);
-        setShowModal(false);
-        setNewTeamName('');
-        setNewTeamLogo('');
-        return true;
-      },
-      'createTeam',
-      {
-        severity: 'medium',
-        fallbackValue: false,
-        onError: (error) => {
-          showError('No se pudo crear el equipo', 'Error');
-        }
-      }
-    );
-
-    if (success) {
-      showSuccess(`Equipo "${newTeamName}" creado correctamente`, '¡Éxito!');
-    }
-  };
 
   const handleEditTeam = (equipo: Equipo) => {
-    Alert.alert('Editar Equipo', `Editar ${equipo.nombre} (Próximamente)`);
+    navigation.navigate('EditTeam', { equipo });
   };
 
   const handleDeleteTeam = async (equipo: Equipo) => {
@@ -103,6 +65,7 @@ export const ManageTeamsScreen = ({ navigation, route }: any) => {
           onPress: async () => {
             const success = await safeAsync(
               async () => {
+                await api.equipos.delete(equipo.id_equipo);
                 setEquipos(equipos.filter(e => e.id_equipo !== equipo.id_equipo));
                 return true;
               },
@@ -128,20 +91,17 @@ export const ManageTeamsScreen = ({ navigation, route }: any) => {
   const handleImportCSV = (equipo: Equipo) => {
     Alert.alert(
       'Formato del Archivo CSV',
-      'El archivo CSV debe tener las siguientes columnas en este orden:\n\n' +
-      '1. Nombre completo\n' +
-      '2. DNI\n' +
-      '3. Fecha de nacimiento (YYYY-MM-DD)\n' +
-      '4. Número de camiseta (opcional)\n' +
-      '5. Posición\n' +
-      '6. Pie dominante\n' +
-      '7. Altura en cm (opcional)\n' +
-      '8. Peso en kg (opcional)\n' +
-      '9. Nacionalidad\n' +
-      '10. Es refuerzo (0 o 1)\n' +
-      '11. Es capitán (0 o 1)\n\n' +
+      'El archivo CSV debe tener las siguientes columnas (el orden de columnas no importa si usas cabeceras correctas):\n\n' +
+      '1. nombre_completo\n' +
+      '2. dni\n' +
+      '3. fecha_nacimiento (YYYY-MM-DD)\n' +
+      '4. numero_camiseta\n' +
+      '5. pie_dominante (opcional: derecho, izquierdo, ambidiestro)\n' +
+      '6. es_refuerzo (0 o 1)\n' +
+      '7. es_capitan (0 o 1)\n\n' +
       'Ejemplo:\n' +
-      'Juan Pérez,12345678,2000-05-15,10,Delantero,derecho,175,70,Argentina,0,0\n\n' +
+      'nombre_completo,dni,fecha_nacimiento,numero_camiseta,pie_dominante,es_refuerzo,es_capitan\n' +
+      'Juan Pérez,12345678,2000-05-15,10,derecho,0,0\n\n' +
       '¿Deseas continuar?',
       [
         { text: 'Cancelar', style: 'cancel' },
@@ -255,7 +215,14 @@ export const ManageTeamsScreen = ({ navigation, route }: any) => {
         <View style={styles.actionsContainer}>
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() => setShowModal(true)}
+            onPress={() => navigation.navigate('CreateTeam', {
+              idEdicionCategoria: route.params?.idEdicionCategoria || torneo?.id_edicion_categoria,
+              onTeamCreated: () => {
+                // Trigger reload
+                setLoading(true);
+                // The useEffect will handle it
+              }
+            })}
           >
             <Text style={styles.actionIcon}>➕</Text>
             <Text style={styles.actionText}>Nuevo Equipo</Text>
@@ -304,62 +271,6 @@ export const ManageTeamsScreen = ({ navigation, route }: any) => {
         <View style={{ height: 40 }} />
       </ScrollView>
 
-      {/* Create Team Modal */}
-      <Modal
-        visible={showModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Crear Equipo</Text>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Nombre del Equipo *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Ej: FC Barcelona"
-                value={newTeamName}
-                onChangeText={setNewTeamName}
-                placeholderTextColor={colors.textLight}
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Logo (Emoji)</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Ej: 🔴🔵"
-                value={newTeamLogo}
-                onChangeText={setNewTeamLogo}
-                placeholderTextColor={colors.textLight}
-                maxLength={4}
-              />
-            </View>
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.cancelButton]}
-                onPress={() => {
-                  setShowModal(false);
-                  setNewTeamName('');
-                  setNewTeamLogo('');
-                }}
-              >
-                <Text style={styles.cancelButtonText}>Cancelar</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.modalButton, styles.confirmButton]}
-                onPress={handleCreateTeam}
-              >
-                <Text style={styles.confirmButtonText}>Crear</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 };

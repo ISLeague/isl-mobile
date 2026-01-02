@@ -2,6 +2,7 @@ import axios, { AxiosInstance, AxiosError } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const BASE_URL = 'https://htjksrcbpozlgjqpqguw.supabase.co/functions/v1';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh0amtzcmNicG96bGdqcXBxZ3V3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU1MDcwMTUsImV4cCI6MjA4MTA4MzAxNX0.vKrzsTSJW3l_Sm13nZ4rrNmbWyCiKpvR1fboEP4stHg';
 const TOKEN_KEY = '@isl_access_token';
 
 // Cliente Axios configurado
@@ -10,6 +11,7 @@ export const apiClient: AxiosInstance = axios.create({
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
+    'apikey': SUPABASE_ANON_KEY,
   },
 });
 

@@ -13,7 +13,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../../theme/colors';
 import { Sponsor } from '../../../api/types';
 import { useAuth } from '../../../contexts/AuthContext';
-import { mockSponsors } from '../../../data/mockData';
+import api from '../../../api';
 
 interface SponsorTabProps {
   idEdicionCategoria: number;
@@ -22,7 +22,7 @@ interface SponsorTabProps {
   onDeleteSponsor?: (idSponsor: number) => void;
 }
 
-export const SponsorTab: React.FC<SponsorTabProps> = ({ 
+export const SponsorTab: React.FC<SponsorTabProps> = ({
   idEdicionCategoria,
   onCreateSponsor,
   onEditSponsor,
@@ -37,9 +37,12 @@ export const SponsorTab: React.FC<SponsorTabProps> = ({
   }, []);
 
   const loadSponsors = async () => {
+    setLoading(true);
     try {
-      // TODO: Llamar a la API real
-      setSponsors(mockSponsors);
+      const response = await api.sponsors.list(idEdicionCategoria);
+      if (response.success) {
+        setSponsors(response.data);
+      }
     } catch (error) {
       console.error('Error cargando sponsors:', error);
     } finally {
@@ -102,15 +105,15 @@ export const SponsorTab: React.FC<SponsorTabProps> = ({
 
   return (
     <View style={styles.container}>
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         {/* Header con botón agregar */}
         {isAdmin && (
-          <TouchableOpacity 
-            style={styles.addButton} 
+          <TouchableOpacity
+            style={styles.addButton}
             onPress={onCreateSponsor}
           >
             <MaterialCommunityIcons name="plus" size={24} color={colors.white} />

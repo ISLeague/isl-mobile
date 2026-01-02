@@ -191,8 +191,7 @@ export const AdminTournamentsScreen = ({ navigation, route }: any) => {
           style: 'destructive',
           onPress: async () => {
             try {
-              // TODO: Llamar API
-              // await api.tournaments.deleteTournament(torneo.id_torneo);
+              await api.torneos.delete(torneo.id_torneo);
               console.log('Eliminar torneo:', torneo.id_torneo);
               setTorneos(torneos.filter(t => t.id_torneo !== torneo.id_torneo));
             } catch (error) {
@@ -221,7 +220,7 @@ export const AdminTournamentsScreen = ({ navigation, route }: any) => {
         </View>
 
         <View style={styles.headerActions}>
-         
+
           <TouchableOpacity
             style={styles.iconButton}
             onPress={() => navigation.navigate('Main')}
@@ -330,8 +329,8 @@ export const AdminTournamentsScreen = ({ navigation, route }: any) => {
         {searchQuery
           ? `No hay resultados para "${searchQuery}"`
           : isSuperAdmin
-          ? 'Presiona el botón + para crear el primer torneo'
-          : 'Aún no hay torneos disponibles para este país'}
+            ? 'Presiona el botón + para crear el primer torneo'
+            : 'Aún no hay torneos disponibles para este país'}
       </Text>
     </View>
   ), [searchQuery, isSuperAdmin]);

@@ -169,7 +169,7 @@ export const FixtureManagementScreen: React.FC<FixtureManagementScreenProps> = (
       const mensaje = gruposConEquipos
         .map(g => `${g.grupo}: ${g.cantidad} equipos`)
         .join('\n');
-      
+
       Alert.alert(
         'Error',
         `Todos los grupos deben tener la misma cantidad de equipos para generar el fixture.\n\n${mensaje}`,
@@ -218,7 +218,7 @@ export const FixtureManagementScreen: React.FC<FixtureManagementScreenProps> = (
           style: 'destructive',
           onPress: async () => {
             try {
-              // TODO: Llamar API para eliminar ronda
+              await api.rondas.delete(ronda.id_ronda);
               console.log('Eliminar ronda:', ronda.id_ronda);
               setRondas(rondas.filter(r => r.id_ronda !== ronda.id_ronda));
               showSuccess('Ronda eliminada exitosamente');
@@ -291,7 +291,7 @@ export const FixtureManagementScreen: React.FC<FixtureManagementScreenProps> = (
               {formatDate(partido.fecha || '')} {partido.hora && `- ${partido.hora}`}
             </Text>
           </View>
-          
+
           {partido.id_cancha && (
             <View style={styles.canchaChip}>
               <MaterialCommunityIcons name="soccer-field" size={12} color={colors.white} />
@@ -354,15 +354,15 @@ export const FixtureManagementScreen: React.FC<FixtureManagementScreenProps> = (
                 <Text style={styles.actionButtonText}>Editar</Text>
               </TouchableOpacity>
             )}
-            
+
             <TouchableOpacity
               style={[styles.actionButton, styles.resultButton]}
               onPress={() => handleLoadResult(partido)}
             >
-              <MaterialCommunityIcons 
-                name={isFinished ? "trophy" : "flag-checkered"} 
-                size={16} 
-                color={colors.white} 
+              <MaterialCommunityIcons
+                name={isFinished ? "trophy" : "flag-checkered"}
+                size={16}
+                color={colors.white}
               />
               <Text style={styles.actionButtonText}>
                 {isFinished ? 'Ver Resultado' : 'Cargar Resultado'}
@@ -459,69 +459,69 @@ export const FixtureManagementScreen: React.FC<FixtureManagementScreenProps> = (
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <GestureHandlerRootView style={{ flex: 1 }}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <MaterialCommunityIcons name="arrow-left" size={24} color={colors.primary} />
-        </TouchableOpacity>
-        <Text style={styles.title}>Fixture</Text>
-      </View>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <MaterialCommunityIcons name="arrow-left" size={24} color={colors.primary} />
+          </TouchableOpacity>
+          <Text style={styles.title}>Fixture</Text>
+        </View>
 
-      {/* Búsqueda */}
-      <View style={styles.searchSection}>
-        <SearchBar
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          placeholder="Buscar equipo en fixture..."
-          onClear={() => setSearchQuery('')}
-        />
-      </View>
-
-      {/* Botones de Admin */}
-      {isAdmin && (
-        <View style={styles.adminButtons}>
-          <Button
-            title="Generar Fixture de Grupos"
-            onPress={handleGenerateFixture}
-            variant="primary"
-            style={styles.generateButton}
+        {/* Búsqueda */}
+        <View style={styles.searchSection}>
+          <SearchBar
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholder="Buscar equipo en fixture..."
+            onClear={() => setSearchQuery('')}
           />
         </View>
-      )}
 
-      {/* Lista de Rondas */}
-      <ScrollView 
-        style={styles.scrollView} 
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        {rondas.map(ronda => renderRonda(ronda))}
-        
-        <View style={{ height: 100 }} />
-      </ScrollView>
+        {/* Botones de Admin */}
+        {isAdmin && (
+          <View style={styles.adminButtons}>
+            <Button
+              title="Generar Fixture de Grupos"
+              onPress={handleGenerateFixture}
+              variant="primary"
+              style={styles.generateButton}
+            />
+          </View>
+        )}
 
-      {/* FAB para crear ronda (solo admin) */}
-      {isAdmin && (
-        <FAB
-          onPress={handleCreateRonda}
-          icon="add-circle"
-          color={colors.success}
-        />
-      )}
-
-      {/* Botón flotante para ronda amistosa */}
-      {isAdmin && (
-        <TouchableOpacity
-          style={styles.amistosaFAB}
-          onPress={handleCreateRondaAmistosa}
-          activeOpacity={0.8}
+        {/* Lista de Rondas */}
+        <ScrollView
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
         >
-          <MaterialCommunityIcons name="handshake" size={24} color={colors.white} />
-        </TouchableOpacity>
-      )}
+          {rondas.map(ronda => renderRonda(ronda))}
+
+          <View style={{ height: 100 }} />
+        </ScrollView>
+
+        {/* FAB para crear ronda (solo admin) */}
+        {isAdmin && (
+          <FAB
+            onPress={handleCreateRonda}
+            icon="add-circle"
+            color={colors.success}
+          />
+        )}
+
+        {/* Botón flotante para ronda amistosa */}
+        {isAdmin && (
+          <TouchableOpacity
+            style={styles.amistosaFAB}
+            onPress={handleCreateRondaAmistosa}
+            activeOpacity={0.8}
+          >
+            <MaterialCommunityIcons name="handshake" size={24} color={colors.white} />
+          </TouchableOpacity>
+        )}
       </GestureHandlerRootView>
     </SafeAreaView>
   );

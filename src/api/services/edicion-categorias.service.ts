@@ -12,8 +12,8 @@ export const edicionCategoriasService = {
    */
   list: async (params?: EdicionCategoriaListParams): Promise<EdicionCategoriaListResponse> => {
     const response = await apiClient.get<EdicionCategoriaListResponse>(
-      '/edicion-categorias-list',
-      { params }
+      '/edicion-categorias',
+      { params: { ...params, action: 'list' } }
     );
     return response.data;
   },
@@ -23,8 +23,9 @@ export const edicionCategoriasService = {
    */
   create: async (data: CreateEdicionCategoriaRequest): Promise<CreateEdicionCategoriaResponse> => {
     const response = await apiClient.post<CreateEdicionCategoriaResponse>(
-      '/edicion-categorias-create',
-      data
+      '/edicion-categorias',
+      data,
+      { params: { action: 'create' } }
     );
     return response.data;
   },

@@ -9,19 +9,17 @@ export const jugadoresService = {
    * Listar todos los jugadores
    */
   list: async (idEquipo: number) => {
-    const response = await apiClient.get('/jugadores-list', {
+    const response = await apiClient.get('/jugadores', {
       params: { id_equipo: idEquipo },
     });
     return response.data;
   },
 
-  
-
   /**
    * Obtener un jugador por ID
    */
   get: async (id: number) => {
-    const response = await apiClient.get('/jugadores-get', {
+    const response = await apiClient.get('/jugadores', {
       params: { id },
     });
     return response.data;
@@ -31,7 +29,7 @@ export const jugadoresService = {
    * Obtener un jugador por DNI
    */
   getByDNI: async (dni: string) => {
-    const response = await apiClient.get('/jugadores-dni', {
+    const response = await apiClient.get('/jugadores', {
       params: { dni },
     });
     return response.data;
@@ -41,7 +39,7 @@ export const jugadoresService = {
    * Obtener detalle completo de un jugador
    */
   detalle: async (id: number) => {
-    const response = await apiClient.get('/jugadores-detalle', {
+    const response = await apiClient.get('/jugadores', {
       params: { id },
     });
     return response.data;
@@ -51,7 +49,7 @@ export const jugadoresService = {
    * Crear un nuevo jugador
    */
   create: async (data: CreateJugadorRequest) => {
-    const response = await apiClient.post('/jugadores-create', data);
+    const response = await apiClient.post('/jugadores', data);
     return response.data;
   },
 
@@ -62,10 +60,31 @@ export const jugadoresService = {
     const formData = new FormData();
     formData.append('csv', csvFile);
 
-    const response = await apiClient.post(`/jugadores-create-bulk/${idEquipo}`, formData, {
+    const response = await apiClient.post('/jugadores', formData, {
+      params: { action: 'bulk', id_equipo: idEquipo },
       headers: {
         'Content-Type': 'multipart/form-data',
       },
+    });
+    return response.data;
+  },
+
+  /**
+   * Eliminar un jugador
+   */
+  delete: async (id_plantilla: number) => {
+    const response = await apiClient.delete('/jugadores', {
+      params: { id_plantilla },
+    });
+    return response.data;
+  },
+
+  /**
+   * Vaciar plantilla de un equipo
+   */
+  clearSquad: async (idEquipo: number) => {
+    const response = await apiClient.delete('/jugadores', {
+      params: { id_equipo: idEquipo, action: 'clear' },
     });
     return response.data;
   },

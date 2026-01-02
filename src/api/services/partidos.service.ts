@@ -20,8 +20,8 @@ export const partidosService = {
    * Listar todos los partidos
    */
   list: async (id_ronda?: number) => {
-    const response = await apiClient.get('/partidos-list', {
-      params: id_ronda ? { id_ronda } : undefined,
+    const response = await apiClient.get('/partidos', {
+      params: { id_ronda, action: 'list' },
     });
     return response.data;
   },
@@ -30,7 +30,9 @@ export const partidosService = {
    * Obtener un partido por ID
    */
   get: async (id: number) => {
-    const response = await apiClient.get(`/partidos-get/${id}`);
+    const response = await apiClient.get('/partidos', {
+      params: { id, action: 'get' }
+    });
     return response.data;
   },
 
@@ -38,7 +40,9 @@ export const partidosService = {
    * Obtener resultado completo de un partido con estadísticas
    */
   getResultado: async (id: number) => {
-    const response = await apiClient.get(`/partidos-resultado/${id}`);
+    const response = await apiClient.get('/partidos', {
+      params: { id, action: 'get' } // consolidated
+    });
     return response.data;
   },
 
@@ -46,8 +50,8 @@ export const partidosService = {
    * Obtener detalle completo de un partido
    */
   detalle: async (id: number) => {
-    const response = await apiClient.get('/partidos-detalle', {
-      params: { id },
+    const response = await apiClient.get('/partidos', {
+      params: { id, action: 'detalle' },
     });
     return response.data;
   },
@@ -56,7 +60,9 @@ export const partidosService = {
    * Crear un nuevo partido
    */
   create: async (data: CreatePartidoRequest) => {
-    const response = await apiClient.post('/partidos-create', data);
+    const response = await apiClient.post('/partidos', data, {
+      params: { action: 'create' }
+    });
     return response.data;
   },
 
@@ -64,7 +70,9 @@ export const partidosService = {
    * Actualizar un partido
    */
   update: async (data: UpdatePartidoRequest) => {
-    const response = await apiClient.put('/partidos-update', data);
+    const response = await apiClient.patch('/partidos', data, {
+      params: { action: 'update', id: data.id }
+    });
     return response.data;
   },
 
@@ -72,7 +80,9 @@ export const partidosService = {
    * Registrar resultado de un partido (legacy)
    */
   resultado: async (data: PartidoResultadoRequest) => {
-    const response = await apiClient.post('/partidos-resultado', data);
+    const response = await apiClient.post('/partidos', data, {
+      params: { action: 'resultado' }
+    });
     return response.data;
   },
 
@@ -82,7 +92,9 @@ export const partidosService = {
   registrarResultado: async (
     data: RegistrarResultadoRequest
   ): Promise<RegistrarResultadoResponse> => {
-    const response = await apiClient.post('/partidos-resultado', data);
+    const response = await apiClient.post('/partidos', data, {
+      params: { action: 'resultado' }
+    });
     return response.data;
   },
 
@@ -92,7 +104,9 @@ export const partidosService = {
   createAmistoso: async (
     data: CreatePartidoAmistosoRequest
   ): Promise<CreatePartidoAmistosoResponse> => {
-    const response = await apiClient.post('/partidos-create-amistoso', data);
+    const response = await apiClient.post('/partidos', data, {
+      params: { action: 'create-amistoso' }
+    });
     return response.data;
   },
 
@@ -104,7 +118,9 @@ export const partidosService = {
   getPartidosPorJornada: async (
     params?: GetPartidosPorJornadaRequest
   ): Promise<PartidosPorJornadaResponse> => {
-    const response = await apiClient.get('/partidos-por-jornada', { params });
+    const response = await apiClient.get('/partidos', {
+      params: { ...params, action: 'por-jornada' }
+    });
     return response.data;
   },
 
@@ -112,7 +128,9 @@ export const partidosService = {
    * Crear partido desde fixture generado (requiere autorización)
    */
   createFromFixture: async (data: CreatePartidoFromFixtureRequest) => {
-    const response = await apiClient.post('/partidos-create', data);
+    const response = await apiClient.post('/partidos', data, {
+      params: { action: 'create' }
+    });
     return response.data;
   },
 };

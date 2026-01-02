@@ -31,6 +31,7 @@ export { adminCategoriaService } from './services/admin-categoria.service';
 export { adminEdicionService } from './services/admin-edicion.service';
 export { edicionCategoriasService } from './services/edicion-categorias.service';
 export { reglasClasificacionService } from './services/reglas-clasificacion.service';
+export { sponsorsService } from './services/sponsors.service';
 
 // ============================================
 // 🔧 API CONSOLIDADA (Para compatibilidad)
@@ -57,6 +58,7 @@ import { adminCategoriaService } from './services/admin-categoria.service';
 import { adminEdicionService } from './services/admin-edicion.service';
 import { edicionCategoriasService } from './services/edicion-categorias.service';
 import { reglasClasificacionService } from './services/reglas-clasificacion.service';
+import { sponsorsService } from './services/sponsors.service';
 
 /**
  * API consolidada - Exportación default para compatibilidad
@@ -94,6 +96,7 @@ export const api = {
   adminEdicion: adminEdicionService,
   edicionCategorias: edicionCategoriasService,
   reglasClasificacion: reglasClasificacionService,
+  sponsors: sponsorsService,
 };
 
 export default api;

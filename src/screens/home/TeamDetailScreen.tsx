@@ -444,8 +444,25 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
         {
           text: 'Eliminar',
           style: 'destructive',
-          onPress: () => {
-            console.log('Eliminando jugador:', jugador.id_jugador);
+          onPress: async () => {
+            const result = await safeAsync(
+              async () => {
+                const response = await api.jugadores.delete(jugador.id_jugador);
+                return response;
+              },
+              'TeamDetailScreen - handleDeletePlayer',
+              {
+                onError: (error) => {
+                  showError(error.message, 'Error al Eliminar Jugador');
+                }
+              }
+            );
+
+            if (result && result.success) {
+              showSuccess(`${jugador.nombre_completo} eliminado exitosamente`);
+              // Actualizar lista local
+              setJugadores(prev => prev.filter(j => j.id_jugador !== jugador.id_jugador));
+            }
           },
         },
       ]
@@ -479,16 +496,9 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
           text: 'Eliminar Todos',
           style: 'destructive',
           onPress: async () => {
-            await safeAsync(
+            const result = await safeAsync(
               async () => {
-                // TODO: Llamar a la API para eliminar todos los jugadores del equipo
-                // await api.teams.clearRoster(equipoId);
-
-                console.log('Vaciando plantilla del equipo:', equipoId);
-                showSuccess(`Plantilla de "${equipo?.nombre ?? 'Equipo'}" vaciada exitosamente`, 'Plantilla Vaciada');
-
-                // Opcional: Volver atrás o recargar
-                // navigation.goBack();
+                return await api.jugadores.clearSquad(equipoId);
               },
               'TeamDetailScreen - handleClearRoster',
               {
@@ -497,6 +507,11 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
                 },
               }
             );
+
+            if (result && result.success) {
+              showSuccess(`Plantilla de "${equipo?.nombre ?? 'Equipo'}" vaciada exitosamente`, 'Plantilla Vaciada');
+              setJugadores([]); // Limpiar lista local
+            }
           },
         },
       ]
@@ -625,7 +640,7 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
                 )}
               </View>
               {/* Mostrar edad solo para admin */}
-              {isAdmin ||isSuperAdmin && (
+              {isAdmin || isSuperAdmin && (
                 <Text style={styles.playerDetails}>
                   {edad} años
                 </Text>
@@ -752,7 +767,7 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
               <View key={tab.id} style={styles.page}>
                 <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
                   {/* Información del Equipo */}
-                  {(equipo.nombre_corto || equipo.color_primario || equipo.nombre_delegado) && (
+                  {(equipo.nombre_corto || equipo.nombre_delegado) && (
                     <View style={styles.teamInfoSection}>
                       {equipo.nombre_corto && (
                         <InfoCard
@@ -761,47 +776,6 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
                           icon="text-short"
                           iconColor={colors.primary}
                         />
-                      )}
-
-                      {/* Colores del Equipo */}
-                      {(equipo.color_primario || equipo.color_secundario) && (
-                        <Card style={styles.colorsCard}>
-                          <Text style={styles.cardTitle}>Colores del Equipo</Text>
-                          <View style={styles.colorsContainer}>
-                            {equipo.color_primario && (
-                              <View style={styles.colorItem}>
-                                <View
-                                  style={[
-                                    styles.colorPreview,
-                                    {
-                                      backgroundColor: equipo.color_primario,
-                                      borderWidth: equipo.color_primario.toLowerCase() === '#ffffff' ? 1 : 0,
-                                      borderColor: colors.border,
-                                    },
-                                  ]}
-                                />
-                                <Text style={styles.colorLabel}>Primario</Text>
-                                <Text style={styles.colorValue}>{equipo.color_primario}</Text>
-                              </View>
-                            )}
-                            {equipo.color_secundario && (
-                              <View style={styles.colorItem}>
-                                <View
-                                  style={[
-                                    styles.colorPreview,
-                                    {
-                                      backgroundColor: equipo.color_secundario,
-                                      borderWidth: equipo.color_secundario.toLowerCase() === '#ffffff' ? 1 : 0,
-                                      borderColor: colors.border,
-                                    },
-                                  ]}
-                                />
-                                <Text style={styles.colorLabel}>Secundario</Text>
-                                <Text style={styles.colorValue}>{equipo.color_secundario}</Text>
-                              </View>
-                            )}
-                          </View>
-                        </Card>
                       )}
 
                       {/* Información del Delegado - Solo Admin */}
@@ -1202,12 +1176,10 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
                     <MaterialCommunityIcons name="party-popper" size={24} color={colors.success} />
                     <Text style={styles.successMessageText}>
                       {registrationResults.type === 'csv'
-                        ? `Se importaron exitosamente ${registrationResults.successful} ${
-                            registrationResults.successful === 1 ? 'jugador' : 'jugadores'
-                          } al equipo ${equipo?.nombre}.`
-                        : `Se agregó exitosamente ${
-                            registrationResults.successful === 1 ? 'el jugador' : 'los jugadores'
-                          } al equipo ${equipo?.nombre}.`}
+                        ? `Se importaron exitosamente ${registrationResults.successful} ${registrationResults.successful === 1 ? 'jugador' : 'jugadores'
+                        } al equipo ${equipo?.nombre}.`
+                        : `Se agregó exitosamente ${registrationResults.successful === 1 ? 'el jugador' : 'los jugadores'
+                        } al equipo ${equipo?.nombre}.`}
                     </Text>
                   </View>
                 )}
@@ -1868,36 +1840,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 16,
     gap: 16,
-  },
-  colorsCard: {
-    padding: 16,
-  },
-  colorsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginTop: 16,
-    gap: 20,
-  },
-  colorItem: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  colorPreview: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    marginBottom: 8,
-  },
-  colorLabel: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginBottom: 4,
-    fontWeight: '600',
-  },
-  colorValue: {
-    fontSize: 11,
-    color: colors.textSecondary,
-    fontFamily: 'monospace',
   },
   delegadoCard: {
     padding: 16,

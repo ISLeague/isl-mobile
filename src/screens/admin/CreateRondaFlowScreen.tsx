@@ -589,6 +589,36 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
             Emparejamientos al azar
           </Text>
         </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.generacionButton,
+            tipoGeneracion === 'amistoso_intergrupos' && styles.generacionButtonActive,
+            tipo !== 'amistosa' && styles.generacionButtonDisabled
+          ]}
+          onPress={() => setTipoGeneracion('amistoso_intergrupos')}
+          disabled={tipo !== 'amistosa'}
+        >
+          <MaterialCommunityIcons
+            name="account-group"
+            size={28}
+            color={tipoGeneracion === 'amistoso_intergrupos' ? colors.white : tipo !== 'amistosa' ? colors.textLight : colors.primary}
+          />
+          <Text style={[
+            styles.generacionButtonText,
+            tipoGeneracion === 'amistoso_intergrupos' && styles.generacionButtonTextActive,
+            tipo !== 'amistosa' && styles.generacionButtonTextDisabled
+          ]}>
+            Inter-Grupos
+          </Text>
+          <Text style={[
+            styles.generacionButtonDesc,
+            tipoGeneracion === 'amistoso_intergrupos' && styles.generacionButtonDescActive,
+            tipo !== 'amistosa' && styles.generacionButtonTextDisabled
+          ]}>
+            Cruces entre grupos
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {tipo === 'fase_grupos' && tipoGeneracion === 'round_robin' && (
@@ -1043,6 +1073,10 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     backgroundColor: colors.white,
     alignItems: 'center',
+  },
+  generacionButtonDisabled: {
+    backgroundColor: colors.backgroundGray,
+    borderColor: colors.border,
   },
   generacionButtonActive: {
     borderColor: colors.primary,

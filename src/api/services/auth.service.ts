@@ -11,7 +11,7 @@ export const authService = {
    * Iniciar sesión
    */
   login: async (data: LoginRequest): Promise<AuthResponse> => {
-    const response = await apiClient.post('/auth-login', data);
+    const response = await apiClient.post('/auth', data, { params: { action: 'login' } });
 
     // Transformar la respuesta del backend al formato esperado
     const backendData = response.data.data || response.data;
@@ -32,7 +32,7 @@ export const authService = {
    * Registrar nuevo usuario
    */
   register: async (data: RegisterRequest): Promise<AuthResponse> => {
-    const response = await apiClient.post('/auth-register', data);
+    const response = await apiClient.post('/auth', data, { params: { action: 'register' } });
 
     // Transformar la respuesta del backend al formato esperado
     const backendData = response.data.data || response.data;
@@ -53,7 +53,7 @@ export const authService = {
    * Cerrar sesión
    */
   logout: async (): Promise<void> => {
-    await apiClient.post('/auth-logout');
+    await apiClient.post('/auth', {}, { params: { action: 'logout' } });
     await clearAuthToken();
   },
 };

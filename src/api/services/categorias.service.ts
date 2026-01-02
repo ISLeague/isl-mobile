@@ -3,12 +3,12 @@ import { CreateCategoriaRequest, UpdateCategoriaRequest } from '../types/categor
 
 export const categoriasService = {
   list: async () => {
-    const response = await apiClient.get('/categorias-list');
+    const response = await apiClient.get('/categorias', { params: { action: 'list' } });
     return response.data;
   },
 
   get: async (id_categoria: number) => {
-    const response = await apiClient.get('/categorias-get', { params: { id_categoria } });
+    const response = await apiClient.get('/categorias', { params: { id: id_categoria, action: 'get' } });
     return response.data;
   },
 
@@ -16,25 +16,30 @@ export const categoriasService = {
    * Obtener categorías por edición
    */
   getByEdition: async (id_edicion: number) => {
-    const response = await apiClient.get('/categorias-por-edicion', {
-      params: { id_edicion },
+    // This is often handled by edicion-categorias-list, but we keep the action here for compatibility
+    const response = await apiClient.get('/categorias', {
+      params: { id_edicion, action: 'list' },
     });
     return response.data;
   },
 
   create: async (data: CreateCategoriaRequest) => {
-    const response = await apiClient.post('/categorias-create', data);
+    const response = await apiClient.post('/categorias', data, {
+      params: { action: 'create' }
+    });
     return response.data;
   },
 
   update: async (data: UpdateCategoriaRequest) => {
     const { id_categoria, ...updateData } = data;
-    const response = await apiClient.put(`/categorias-update/${id_categoria}`, updateData);
+    const response = await apiClient.patch('/categorias', updateData, {
+      params: { action: 'update', id: id_categoria }
+    });
     return response.data;
   },
 
   delete: async (id_categoria: number) => {
-    const response = await apiClient.delete('/categorias-delete', { params: { id_categoria } });
+    const response = await apiClient.delete('/categorias', { params: { id: id_categoria, action: 'delete' } });
     return response.data;
   },
 };

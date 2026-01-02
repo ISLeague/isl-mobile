@@ -20,7 +20,7 @@ interface CreateGroupScreenProps {
 
 export const CreateGroupScreen: React.FC<CreateGroupScreenProps> = ({ navigation, route }) => {
   const { idEdicionCategoria } = route.params || {};
-  
+
   const [nombre, setNombre] = useState('');
   const [equiposPasanOro, setEquiposPasanOro] = useState('2');
   const [equiposPasanPlata, setEquiposPasanPlata] = useState('0');
@@ -60,14 +60,14 @@ export const CreateGroupScreen: React.FC<CreateGroupScreenProps> = ({ navigation
 
     console.log('Crear grupo:', grupoData);
     console.log('Reglas de clasificación auto-generadas:', tipoClasificacion);
-    
+
     // TODO: Llamar a la API para crear el grupo
     // await api.groups.createGroup(grupoData);
-    
+
     // TODO: Auto-generar reglas de clasificación
     // const reglas = generarReglasClasificacion(oro, plata, tipoClasificacion);
     // await api.classification.createRules(reglas);
-    
+
     Alert.alert('Éxito', `Grupo "${nombre}" creado exitosamente con reglas de clasificación auto-generadas`, [
       { text: 'OK', onPress: () => navigation.goBack() }
     ]);
@@ -121,7 +121,7 @@ export const CreateGroupScreen: React.FC<CreateGroupScreenProps> = ({ navigation
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>

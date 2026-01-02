@@ -17,8 +17,8 @@ export const estadisticasService = {
    * Obtener estadísticas globales de equipos por edición categoría
    */
   equiposGlobal: async (idEdicionCategoria: number): Promise<EstadisticasEquiposGlobalResponse> => {
-    const response = await apiClient.get('/estadisticas-equipos-global', {
-      params: { id_edicion_categoria: idEdicionCategoria },
+    const response = await apiClient.get('/estadisticas', {
+      params: { id_edicion_categoria: idEdicionCategoria, action: 'equipos-global' },
     });
     return response.data;
   },
@@ -27,8 +27,8 @@ export const estadisticasService = {
    * Obtener estadísticas de equipos por grupo
    */
   equiposGrupo: async (idGrupo: number): Promise<EstadisticasEquiposGrupoResponse> => {
-    const response = await apiClient.get('/estadisticas-equipos-grupo', {
-      params: { id_grupo: idGrupo },
+    const response = await apiClient.get('/estadisticas', {
+      params: { id_grupo: idGrupo, action: 'equipos-grupo' },
     });
     return response.data;
   },
@@ -37,10 +37,11 @@ export const estadisticasService = {
    * Obtener top goleadores
    */
   goleadores: async (idEdicionCategoria: number, limit: number = 10): Promise<GoleadoresResponse> => {
-    const response = await apiClient.get('/estadisticas-jugadores-goleadores', {
+    const response = await apiClient.get('/estadisticas', {
       params: {
         id_edicion_categoria: idEdicionCategoria,
         limit,
+        action: 'goleadores'
       },
     });
     return response.data;
@@ -50,10 +51,11 @@ export const estadisticasService = {
    * Obtener top asistencias
    */
   asistencias: async (idEdicionCategoria: number, limit: number = 10): Promise<AsistenciasResponse> => {
-    const response = await apiClient.get('/estadisticas-jugadores-asistencias', {
+    const response = await apiClient.get('/estadisticas', {
       params: {
         id_edicion_categoria: idEdicionCategoria,
         limit,
+        action: 'asistencias'
       },
     });
     return response.data;
@@ -63,8 +65,8 @@ export const estadisticasService = {
    * Obtener tabla de tarjetas
    */
   tarjetas: async (idEdicionCategoria: number): Promise<TarjetasResponse> => {
-    const response = await apiClient.get('/estadisticas-jugadores-tarjetas', {
-      params: { id_edicion_categoria: idEdicionCategoria },
+    const response = await apiClient.get('/estadisticas', {
+      params: { id_edicion_categoria: idEdicionCategoria, action: 'tarjetas' },
     });
     return response.data;
   },
@@ -73,10 +75,11 @@ export const estadisticasService = {
    * Obtener jugadores MVP
    */
   mvp: async (idEdicionCategoria: number, limit: number = 10): Promise<MVPResponse> => {
-    const response = await apiClient.get('/estadisticas-jugadores-mvp', {
+    const response = await apiClient.get('/estadisticas', {
       params: {
         id_edicion_categoria: idEdicionCategoria,
         limit,
+        action: 'mvp'
       },
     });
     return response.data;
@@ -86,10 +89,11 @@ export const estadisticasService = {
    * Obtener detalle de estadísticas de un jugador
    */
   detalleJugador: async (idJugador: number, idEdicionCategoria: number): Promise<DetalleJugadorResponse> => {
-    const response = await apiClient.get('/estadisticas-jugadores-detalle', {
+    const response = await apiClient.get('/estadisticas', {
       params: {
         id_jugador: idJugador,
         id_edicion_categoria: idEdicionCategoria,
+        action: 'detalle-jugador'
       },
     });
     return response.data;
@@ -97,8 +101,8 @@ export const estadisticasService = {
 
   // Legacy methods (mantener compatibilidad)
   goleadoresPorEdicion: async (edicion_id: number) => {
-    const response = await apiClient.get('/estadisticas-goleadores-edicion', {
-      params: { edicion_id },
+    const response = await apiClient.get('/estadisticas', {
+      params: { id_edicion: edicion_id, action: 'goleadores' },
     });
     return response.data;
   },

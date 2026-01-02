@@ -16,7 +16,7 @@ export const equiposService = {
    * Obtener un equipo por ID (sin autorización)
    */
   getById: async (idEquipo: number): Promise<{ data: Equipo }> => {
-    const response = await apiClient.get('/equipos-get', {
+    const response = await apiClient.get('/equipos', {
       params: { id: idEquipo },
     });
     return response.data;
@@ -31,7 +31,7 @@ export const equiposService = {
     if (grupos === true) {
       params.grupos = 'true';
     }
-    const response = await apiClient.get('/equipos-list', { params });
+    const response = await apiClient.get('/equipos', { params });
     return response.data;
   },
 
@@ -39,7 +39,7 @@ export const equiposService = {
    * Crear un nuevo equipo (requiere autorización)
    */
   create: async (data: CreateEquipoRequest): Promise<CreateEquipoResponse> => {
-    const response = await apiClient.post('/equipos-create', data);
+    const response = await apiClient.post('/equipos', data);
     return response.data;
   },
 
@@ -50,7 +50,8 @@ export const equiposService = {
     const formData = new FormData();
     formData.append('csv', csvFile);
 
-    const response = await apiClient.post(`/equipos-create-bulk/${idEdicionCategoria}`, formData, {
+    const response = await apiClient.post('/equipos', formData, {
+      params: { action: 'bulk', id_edicion_categoria: idEdicionCategoria },
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -64,6 +65,36 @@ export const equiposService = {
   getImagenes: async (idEquipo: number): Promise<ImagenesEquipoResponse> => {
     const response = await apiClient.get('/equipos-imagenes', {
       params: { id_equipo: idEquipo },
+    });
+    return response.data;
+  },
+
+  /**
+   * Actualizar un equipo (requiere autorización)
+   */
+  update: async (id: number, data: Partial<CreateEquipoRequest>): Promise<CreateEquipoResponse> => {
+    const response = await apiClient.patch('/equipos', { id_equipo: id, ...data });
+    return response.data;
+  },
+
+  /**
+   * Eliminar un equipo (requiere autorización)
+   */
+  delete: async (id: number): Promise<void> => {
+    await apiClient.delete('/equipos', { params: { id } });
+  },
+
+  /**
+   * Subir logo de un equipo (requiere autorización)
+   */
+  uploadLogo: async (id: number, file: any): Promise<{ success: boolean; data: { logo_url: string } }> => {
+    const formData = new FormData();
+    formData.append('logo', file);
+    const response = await apiClient.post('/equipos', formData, {
+      params: { action: 'upload-logo', id },
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
     });
     return response.data;
   },

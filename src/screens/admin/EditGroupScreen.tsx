@@ -21,7 +21,7 @@ interface EditGroupScreenProps {
 
 export const EditGroupScreen: React.FC<EditGroupScreenProps> = ({ navigation, route }) => {
   const { grupo } = route.params as { grupo: Grupo };
-  
+
   const [nombre, setNombre] = useState(grupo.nombre);
   const [equiposPasanOro, setEquiposPasanOro] = useState(grupo.equipos_pasan_oro?.toString() || '2');
   const [equiposPasanPlata, setEquiposPasanPlata] = useState(grupo.equipos_pasan_plata?.toString() || '0');
@@ -56,10 +56,10 @@ export const EditGroupScreen: React.FC<EditGroupScreenProps> = ({ navigation, ro
     };
 
     console.log('Actualizar grupo:', grupoData);
-    
+
     // TODO: Llamar a la API para actualizar el grupo
     // await api.groups.updateGroup(grupo.id_grupo, grupoData);
-    
+
     Alert.alert('Éxito', `Grupo "${nombre}" actualizado exitosamente`, [
       { text: 'OK', onPress: () => navigation.goBack() }
     ]);
@@ -88,7 +88,7 @@ export const EditGroupScreen: React.FC<EditGroupScreenProps> = ({ navigation, ro
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>

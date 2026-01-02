@@ -4,8 +4,6 @@
 /*  "nombre": "Athletic Club",
                 "nombre_corto": "Athletic",
                 "logo": "https://logoeps.com/wp-content/uploads/2013/03/athletic-bilbao-vector-logo.png",
-                "color_primario": "#EE2523",
-                "color_secundario": "#FFFFFF",
                 "id_edicion_categoria": 1,
                 "nombre_delegado": "Pedro Sanchez",
                 "telefono_delegado": "+34944556677",
@@ -18,8 +16,7 @@ export interface Equipo {
   nombre: string;
   nombre_corto?: string;
   logo?: string;
-  color_primario?: string;
-  color_secundario?: string;
+
   id_edicion_categoria: number;
   nombre_delegado?: string;
   telefono_delegado?: string;
@@ -34,8 +31,7 @@ export interface CreateEquipoRequest {
   nombre_corto?: string;
   logo?: string;
   id_edicion_categoria: number;
-  color_primario?: string;
-  color_secundario?: string;
+
   nombre_delegado?: string;
   telefono_delegado?: string;
   email_delegado?: string;

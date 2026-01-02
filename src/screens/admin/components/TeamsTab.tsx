@@ -157,7 +157,7 @@ export const TeamsTab: React.FC<TeamsTabProps> = ({
               <View
                 style={[
                   styles.teamCardHeader,
-                  { backgroundColor: equipo.color_primario || colors.primary },
+                  { backgroundColor: colors.primary },
                 ]}
               >
                 {equipo.logo ? (
@@ -170,7 +170,7 @@ export const TeamsTab: React.FC<TeamsTabProps> = ({
                   <MaterialCommunityIcons
                     name="shield"
                     size={48}
-                    color={equipo.color_secundario || colors.white}
+                    color={colors.white}
                   />
                 )}
               </View>
@@ -204,8 +204,9 @@ export const TeamsTab: React.FC<TeamsTabProps> = ({
             </TouchableOpacity>
           ))}
         </View>
-      )}
-    </ScrollView>
+      )
+      }
+    </ScrollView >
   );
 };
 

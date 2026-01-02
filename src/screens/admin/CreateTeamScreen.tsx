@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import api from '../../api';
+import { ImagePickerInput } from '../../components/common';
 
 interface CreateTeamScreenProps {
   navigation: any;
@@ -28,8 +29,7 @@ export const CreateTeamScreen: React.FC<CreateTeamScreenProps> = ({
   const [nombre, setNombre] = useState('');
   const [nombreCorto, setNombreCorto] = useState('');
   const [logo, setLogo] = useState('');
-  const [colorPrimario, setColorPrimario] = useState('#BE0127');
-  const [colorSecundario, setColorSecundario] = useState('#FFFFFF');
+
   const [nombreDelegado, setNombreDelegado] = useState('');
   const [telefonoDelegado, setTelefonoDelegado] = useState('');
   const [emailDelegado, setEmailDelegado] = useState('');
@@ -48,15 +48,32 @@ export const CreateTeamScreen: React.FC<CreateTeamScreenProps> = ({
         nombre: nombre.trim(),
         nombre_corto: nombreCorto.trim() || undefined,
         logo: logo.trim() || undefined,
-        color_primario: colorPrimario.trim() || undefined,
-        color_secundario: colorSecundario.trim() || undefined,
+
         nombre_delegado: nombreDelegado.trim() || undefined,
         telefono_delegado: telefonoDelegado.trim() || undefined,
         email_delegado: emailDelegado.trim() || undefined,
         id_edicion_categoria: idEdicionCategoria,
       };
 
-      await api.equipos.create(teamData);
+      const response = await api.equipos.create(teamData);
+      const newTeamId = response.data.id_equipo;
+
+      // Si hay un logo local (URI de dispositivo), subirlo
+      if (logo && (logo.startsWith('file://') || logo.startsWith('content://'))) {
+        try {
+          // Necesitamos convertir la URI a un objeto que apiClient/axios pueda manejar como multipart
+          const logoFile = {
+            uri: logo,
+            type: 'image/jpeg', // Opcional, el backend lo valida
+            name: `logo_${newTeamId}.jpg`,
+          };
+          await api.equipos.uploadLogo(newTeamId, logoFile);
+        } catch (uploadError) {
+          console.error('Error uploading team logo:', uploadError);
+          // No bloqueamos el éxito de la creación si falla el logo
+          Alert.alert('Aviso', 'El equipo se creó pero no se pudo subir el logo.');
+        }
+      }
 
       Alert.alert('Éxito', 'Equipo creado correctamente', [
         {
@@ -145,72 +162,13 @@ export const CreateTeamScreen: React.FC<CreateTeamScreenProps> = ({
             </Text>
           </View>
 
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>URL del Logo</Text>
-            <TextInput
-              style={styles.input}
-              value={logo}
-              onChangeText={setLogo}
-              placeholder="https://ejemplo.com/logo.png"
-              placeholderTextColor={colors.textSecondary}
-              autoCapitalize="none"
-              keyboardType="url"
-            />
-            <Text style={styles.hint}>URL de la imagen del escudo del equipo</Text>
-          </View>
-        </View>
-
-        {/* Colores */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Colores del Equipo</Text>
-
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Color Primario</Text>
-            <View style={styles.colorInputContainer}>
-              <TextInput
-                style={[styles.input, styles.colorInput]}
-                value={colorPrimario}
-                onChangeText={setColorPrimario}
-                placeholder="#BE0127"
-                placeholderTextColor={colors.textSecondary}
-                autoCapitalize="none"
-                maxLength={7}
-              />
-              <View
-                style={[
-                  styles.colorPreview,
-                  { backgroundColor: colorPrimario || '#BE0127' },
-                ]}
-              />
-            </View>
-            <Text style={styles.hint}>Código hexadecimal (Ej: #BE0127)</Text>
-          </View>
-
-          <View style={styles.formGroup}>
-            <Text style={styles.label}>Color Secundario</Text>
-            <View style={styles.colorInputContainer}>
-              <TextInput
-                style={[styles.input, styles.colorInput]}
-                value={colorSecundario}
-                onChangeText={setColorSecundario}
-                placeholder="#FFFFFF"
-                placeholderTextColor={colors.textSecondary}
-                autoCapitalize="none"
-                maxLength={7}
-              />
-              <View
-                style={[
-                  styles.colorPreview,
-                  {
-                    backgroundColor: colorSecundario || '#FFFFFF',
-                    borderWidth: 1,
-                    borderColor: colors.border,
-                  },
-                ]}
-              />
-            </View>
-            <Text style={styles.hint}>Código hexadecimal (Ej: #FFFFFF)</Text>
-          </View>
+          <ImagePickerInput
+            label="Logo del Equipo"
+            value={logo}
+            onChangeImage={setLogo}
+            onChangeUrl={setLogo}
+            helpText="Selecciona un escudo para el equipo"
+          />
         </View>
 
         {/* Información del Delegado */}
@@ -369,19 +327,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textSecondary,
     marginTop: 6,
-  },
-  colorInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  colorInput: {
-    flex: 1,
-  },
-  colorPreview: {
-    width: 48,
-    height: 48,
-    borderRadius: 8,
   },
   actions: {
     flexDirection: 'row',

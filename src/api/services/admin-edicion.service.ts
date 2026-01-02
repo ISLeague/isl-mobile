@@ -18,8 +18,9 @@ export const adminEdicionService = {
    */
   register: async (data: AdminEdicionRegisterRequest): Promise<AdminEdicionRegisterResponse> => {
     const response = await apiClient.post<AdminEdicionRegisterResponse>(
-      '/admin-edicion-register',
-      data
+      '/admin',
+      data,
+      { params: { action: 'register-edicion' } }
     );
     return response.data;
   },
@@ -29,8 +30,8 @@ export const adminEdicionService = {
    * Can be filtered by id_Edicion and/or id_usuario
    */
   list: async (params?: AdminEdicionListParams): Promise<AdminEdicionListResponse> => {
-    const response = await apiClient.get<AdminEdicionListResponse>('/admin-edicion-list', {
-      params,
+    const response = await apiClient.get<AdminEdicionListResponse>('/admin', {
+      params: { ...params, action: 'list-edicion' },
     });
     return response.data;
   },
@@ -40,8 +41,9 @@ export const adminEdicionService = {
    */
   asignar: async (data: AdminEdicionAsignarRequest): Promise<AdminEdicionAsignarResponse> => {
     const response = await apiClient.post<AdminEdicionAsignarResponse>(
-      '/admin-edicion-asignar',
-      data
+      '/admin',
+      { id_usuario: data.id_usuario, id_target: data.id_edicion },
+      { params: { action: 'assign-edicion' } }
     );
     return response.data;
   },
@@ -50,8 +52,8 @@ export const adminEdicionService = {
    * Delete an admin_Edicion assignment
    */
   delete: async (data: AdminEdicionDeleteRequest): Promise<AdminEdicionDeleteResponse> => {
-    const response = await apiClient.delete<AdminEdicionDeleteResponse>('/admin-edicion-delete', {
-      data,
+    const response = await apiClient.delete<AdminEdicionDeleteResponse>('/admin', {
+      params: { action: 'delete-edicion', id: data.id_admin_edicion },
     });
     return response.data;
   },
@@ -60,8 +62,8 @@ export const adminEdicionService = {
    * Get available admins (not yet assigned) for a specific edicion
    */
   disponibles: async (id_edicion: number): Promise<AdminEdicionDisponiblesResponse> => {
-    const response = await apiClient.get<AdminEdicionDisponiblesResponse>('/admin-edicion-disponibles', {
-      params: { id_edicion },
+    const response = await apiClient.get<AdminEdicionDisponiblesResponse>('/admin', {
+      params: { id_edicion, action: 'available-edicion' },
     });
     return response.data;
   },

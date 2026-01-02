@@ -13,6 +13,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import { Button, ImagePickerInput } from '../../components/common';
 import { Equipo } from '../../api/types';
+import api from '../../api';
+import { useToast } from '../../contexts/ToastContext';
 
 interface EditTeamScreenProps {
   navigation: any;
@@ -21,32 +23,58 @@ interface EditTeamScreenProps {
 
 export const EditTeamScreen: React.FC<EditTeamScreenProps> = ({ navigation, route }) => {
   const { equipo } = route.params as { equipo: Equipo };
-  
+
   const [nombre, setNombre] = useState(equipo.nombre);
   const [logo, setLogo] = useState(equipo.logo || '');
   const [jugadores, setJugadores] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const { showSuccess, showError } = useToast();
 
   const handleUpdate = () => {
     // Validaciones
     if (!nombre.trim()) {
-      Alert.alert('Error', 'El nombre del equipo es requerido');
+      showError('El nombre del equipo es obligatorio');
       return;
     }
 
-    const equipoData = {
-      ...equipo,
-      nombre: nombre.trim(),
-      logo: logo.trim() || undefined,
-    };
+    Alert.alert(
+      'Actualizar Equipo',
+      `¿Deseas actualizar el equipo "${equipo.nombre}"?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Actualizar',
+          onPress: async () => {
+            setLoading(true);
+            try {
+              // 1. Actualizar datos básicos
+              await api.equipos.update(equipo.id_equipo, {
+                nombre: nombre.trim(),
+                logo: logo.startsWith('http') ? logo : undefined
+              });
 
-    console.log('Actualizar equipo:', equipoData);
-    
-    // TODO: Llamar a la API para actualizar el equipo
-    // await api.teams.updateTeam(equipo.id_equipo, equipoData);
-    
-    Alert.alert('Éxito', `Equipo "${nombre}" actualizado exitosamente`, [
-      { text: 'OK', onPress: () => navigation.goBack() }
-    ]);
+              // 2. Si hay logo local, subirlo
+              if (logo && (logo.startsWith('file://') || logo.startsWith('content://'))) {
+                const logoFile = {
+                  uri: logo,
+                  type: 'image/jpeg',
+                  name: `logo_${equipo.id_equipo}.jpg`,
+                };
+                await api.equipos.uploadLogo(equipo.id_equipo, logoFile);
+              }
+
+              showSuccess('Equipo actualizado exitosamente');
+              navigation.goBack();
+            } catch (error) {
+              console.error('Error updating team:', error);
+              showError('Error al actualizar el equipo');
+            } finally {
+              setLoading(false);
+            }
+          }
+        },
+      ]
+    );
   };
 
   const handleDelete = () => {
@@ -58,13 +86,18 @@ export const EditTeamScreen: React.FC<EditTeamScreenProps> = ({ navigation, rout
         {
           text: 'Eliminar',
           style: 'destructive',
-          onPress: () => {
-            console.log('Eliminar equipo:', equipo.id_equipo);
-            // TODO: Llamar a la API para eliminar el equipo
-            // await api.teams.deleteTeam(equipo.id_equipo);
-            Alert.alert('Éxito', 'Equipo eliminado exitosamente', [
-              { text: 'OK', onPress: () => navigation.goBack() }
-            ]);
+          onPress: async () => {
+            setLoading(true);
+            try {
+              await api.equipos.delete(equipo.id_equipo);
+              showSuccess('Equipo eliminado exitosamente');
+              navigation.navigate('AdminTournaments'); // O donde sea pertinente
+            } catch (error) {
+              console.error('Error deleting team:', error);
+              showError('Error al eliminar el equipo');
+            } finally {
+              setLoading(false);
+            }
           },
         },
       ]
@@ -118,8 +151,8 @@ export const EditTeamScreen: React.FC<EditTeamScreenProps> = ({ navigation, rout
             <ImagePickerInput
               label=""
               value=""
-              onChangeImage={() => {}}
-              onChangeUrl={() => {}}
+              onChangeImage={() => { }}
+              onChangeUrl={() => { }}
               allowPlayerManagement={true}
               onJugadoresChanged={setJugadores}
               initialJugadores={jugadores}
@@ -159,6 +192,7 @@ export const EditTeamScreen: React.FC<EditTeamScreenProps> = ({ navigation, rout
         <Button
           title="Guardar Cambios"
           onPress={handleUpdate}
+          loading={loading}
           style={styles.saveButton}
         />
       </View>

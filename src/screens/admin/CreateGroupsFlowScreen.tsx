@@ -61,8 +61,8 @@ export const CreateGroupsFlowScreen: React.FC<CreateGroupsFlowScreenProps> = ({ 
   useEffect(() => {
     if (configuracionClasificacion) {
       const minimo = configuracionClasificacion.equipos_oro +
-                     configuracionClasificacion.equipos_plata +
-                     configuracionClasificacion.equipos_bronce + 1;
+        configuracionClasificacion.equipos_plata +
+        configuracionClasificacion.equipos_bronce + 1;
       setCantidadEquipos(minimo.toString());
     }
   }, [configuracionClasificacion]);
@@ -605,8 +605,8 @@ export const CreateGroupsFlowScreen: React.FC<CreateGroupsFlowScreenProps> = ({ 
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <ScrollView contentContainerStyle={styles.scrollContent} style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
@@ -999,6 +999,9 @@ const styles = StyleSheet.create({
   content: {
     padding: 20,
   },
+  scrollContent: {
+    paddingBottom: 40,
+  },
   faseCard: {
     padding: 16,
     marginBottom: 24,
@@ -1096,6 +1099,7 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     padding: 20,
+    paddingBottom: 40,
   },
   inputGroup: {
     marginBottom: 20,

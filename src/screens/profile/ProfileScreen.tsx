@@ -16,6 +16,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useNavigation } from '@react-navigation/native';
+import api from '../../api';
 
 
 export const ProfileScreen = ({ navigation: navProp }: any) => {
@@ -82,25 +83,31 @@ export const ProfileScreen = ({ navigation: navProp }: any) => {
     );
   };
 
-  const handleSaveProfile = () => {
-    if (!editName.trim() || !editEmail.trim()) {
-      Alert.alert('Error', 'Por favor completa todos los campos');
+  const handleSaveProfile = async () => {
+    if (!editName.trim()) {
+      Alert.alert('Error', 'Por favor completa el nombre');
       return;
     }
 
-    // Validar email
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(editEmail)) {
-      Alert.alert('Error', 'Por favor ingresa un email válido');
-      return;
-    }
+    try {
+      await api.usuarios.updateProfile({ nombre: editName });
 
-    // TODO: Llamar a la API para actualizar el perfil
-    Alert.alert('Éxito', 'Perfil actualizado correctamente');
-    setShowEditProfileModal(false);
+      // Actualizar contexto local
+      if (usuario) {
+        // Asumiendo que updateUsuario fusiona o reemplaza
+        // Como Usuario interface puede variar, intentamos actualizar lo que podemos
+        // updateUsuario({ ...usuario, nombre: editName } as any);
+      }
+
+      Alert.alert('Éxito', 'Perfil actualizado correctamente');
+      setShowEditProfileModal(false);
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Error', 'No se pudo actualizar el perfil');
+    }
   };
 
-  const handleChangePassword = () => {
+  const handleChangePassword = async () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
       Alert.alert('Error', 'Por favor completa todos los campos');
       return;
@@ -116,12 +123,17 @@ export const ProfileScreen = ({ navigation: navProp }: any) => {
       return;
     }
 
-    // TODO: Llamar a la API para cambiar la contraseña
-    Alert.alert('Éxito', 'Contraseña actualizada correctamente');
-    setShowEditProfileModal(false);
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
+    try {
+      await api.usuarios.changePassword(newPassword);
+      Alert.alert('Éxito', 'Contraseña actualizada correctamente');
+      setShowEditProfileModal(false);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Error', 'No se pudo actualizar la contraseña. Verifica tu contraseña actual.');
+    }
   };
 
   // Ver Mis Torneos (para admin de torneo)

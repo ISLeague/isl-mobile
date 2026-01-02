@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import { Button, ImagePickerInput } from '../../components/common';
+import api from '../../api';
 import { useToast } from '../../contexts/ToastContext';
 
 export const EditSponsorScreen = ({ navigation, route }: any) => {
@@ -21,6 +22,7 @@ export const EditSponsorScreen = ({ navigation, route }: any) => {
   const [nombre, setNombre] = useState(sponsor.nombre);
   const [logo, setLogo] = useState(sponsor.logo);
   const [link, setLink] = useState(sponsor.link || '');
+  const [loading, setLoading] = useState(false);
 
   const handleUpdate = () => {
     if (!nombre.trim()) {
@@ -41,14 +43,21 @@ export const EditSponsorScreen = ({ navigation, route }: any) => {
         {
           text: 'Actualizar',
           onPress: async () => {
+            setLoading(true);
             try {
-              // TODO: Llamar API
-              // await api.sponsors.updateSponsor(sponsor.id_sponsor, { nombre, logo, link });
-              console.log('Actualizar sponsor:', { nombre, logo, link });
+              await api.sponsors.update({
+                id_sponsor: sponsor.id_sponsor,
+                nombre,
+                logo,
+                link
+              });
               showSuccess('Sponsor actualizado exitosamente');
               navigation.goBack();
             } catch (error) {
+              console.error('Error updating sponsor:', error);
               showError('Error al actualizar el sponsor');
+            } finally {
+              setLoading(false);
             }
           },
         },
@@ -66,14 +75,16 @@ export const EditSponsorScreen = ({ navigation, route }: any) => {
           text: 'Eliminar',
           style: 'destructive',
           onPress: async () => {
+            setLoading(true);
             try {
-              // TODO: Llamar API
-              // await api.sponsors.deleteSponsor(sponsor.id_sponsor);
-              console.log('Eliminar sponsor:', sponsor.id_sponsor);
+              await api.sponsors.delete(sponsor.id_sponsor);
               showSuccess('Sponsor eliminado exitosamente');
               navigation.goBack();
             } catch (error) {
+              console.error('Error deleting sponsor:', error);
               showError('Error al eliminar el sponsor');
+            } finally {
+              setLoading(false);
             }
           },
         },
@@ -141,6 +152,7 @@ export const EditSponsorScreen = ({ navigation, route }: any) => {
             <Button
               title="Actualizar Sponsor"
               onPress={handleUpdate}
+              loading={loading}
             />
           </View>
 

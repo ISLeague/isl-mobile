@@ -14,10 +14,9 @@ export const edicionesService = {
    * Can be filtered by id_torneo and/or estado
    */
   list: async (params?: EdicionesListParams): Promise<EdicionesListResponse> => {
-    const response = await apiClient.get<EdicionesListResponse>('/ediciones-list', {
-      params,
+    const response = await apiClient.get<EdicionesListResponse>('/ediciones', {
+      params: { ...params, action: 'list' },
     });
-    console.log(response.data.data)
     return response.data;
   },
 
@@ -26,8 +25,9 @@ export const edicionesService = {
    */
   create: async (data: CreateEdicionRequest): Promise<CreateEdicionResponse> => {
     const response = await apiClient.post<CreateEdicionResponse>(
-      '/ediciones-create',
-      data
+      '/ediciones',
+      data,
+      { params: { action: 'create' } }
     );
     return response.data;
   },
@@ -38,10 +38,10 @@ export const edicionesService = {
    */
   update: async (id_edicion: number, data: UpdateEdicionRequest): Promise<UpdateEdicionResponse> => {
     const response = await apiClient.patch<UpdateEdicionResponse>(
-      '/ediciones-update',
+      '/ediciones',
       data,
       {
-        params: { id_edicion },
+        params: { id_edicion, action: 'update' },
       }
     );
     return response.data;

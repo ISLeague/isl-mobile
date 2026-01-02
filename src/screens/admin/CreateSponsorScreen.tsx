@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import { Button, ImagePickerInput } from '../../components/common';
+import api from '../../api';
 
 interface CreateSponsorScreenProps {
   navigation: any;
@@ -20,12 +21,13 @@ interface CreateSponsorScreenProps {
 
 export const CreateSponsorScreen: React.FC<CreateSponsorScreenProps> = ({ navigation, route }) => {
   const { idEdicionCategoria } = route.params || {};
-  
+
   const [nombre, setNombre] = useState('');
   const [logo, setLogo] = useState('');
   const [link, setLink] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     // Validaciones
     if (!nombre.trim()) {
       Alert.alert('Error', 'El nombre del sponsor es requerido');
@@ -44,14 +46,21 @@ export const CreateSponsorScreen: React.FC<CreateSponsorScreenProps> = ({ naviga
       id_edicion_categoria: idEdicionCategoria,
     };
 
-    console.log('Crear sponsor:', sponsorData);
-    
-    // TODO: Llamar a la API para crear el sponsor
-    // await api.sponsors.createSponsor(sponsorData);
-    
-    Alert.alert('Éxito', `Sponsor "${nombre}" creado exitosamente.`, [
-      { text: 'OK', onPress: () => navigation.goBack() }
-    ]);
+    setLoading(true);
+    try {
+      console.log('Crear sponsor:', sponsorData);
+
+      await api.sponsors.create(sponsorData);
+
+      Alert.alert('Éxito', `Sponsor "${nombre}" creado exitosamente.`, [
+        { text: 'OK', onPress: () => navigation.goBack() }
+      ]);
+    } catch (error) {
+      console.error('Error creando sponsor:', error);
+      Alert.alert('Error', 'No se pudo crear el sponsor. Por favor intenta de nuevo.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -125,6 +134,7 @@ export const CreateSponsorScreen: React.FC<CreateSponsorScreenProps> = ({ naviga
             <Button
               title="Crear Sponsor"
               onPress={handleCreate}
+              loading={loading}
             />
           </View>
         </View>

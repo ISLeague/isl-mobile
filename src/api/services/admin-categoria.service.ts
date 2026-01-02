@@ -8,8 +8,9 @@ export const adminCategoriaService = {
    */
   register: async (data: AdminCategoriaRegisterRequest): Promise<AdminCategoriaRegisterResponse> => {
     const response = await apiClient.post<AdminCategoriaRegisterResponse>(
-      '/admin-categoria-register',
-      data
+      '/admin',
+      data,
+      { params: { action: 'register-categoria' } }
     );
     return response.data;
   },
@@ -19,8 +20,8 @@ export const adminCategoriaService = {
    * Can be filtered by id_Categoria and/or id_usuario
    */
   list: async (params?: AdminCategoriaListParams): Promise<AdminCategoriaListResponse> => {
-    const response = await apiClient.get<AdminCategoriaListResponse>('/admin-categoria-list', {
-      params,
+    const response = await apiClient.get<AdminCategoriaListResponse>('/admin', {
+      params: { ...params, action: 'list-categoria' },
     });
     return response.data;
   },
@@ -30,8 +31,9 @@ export const adminCategoriaService = {
    */
   asignar: async (data: AdminCategoriaAsignarRequest): Promise<AdminCategoriaAsignarResponse> => {
     const response = await apiClient.post<AdminCategoriaAsignarResponse>(
-      '/admin-categoria-asignar',
-      data
+      '/admin',
+      { id_usuario: data.id_usuario, id_target: data.id_categoria },
+      { params: { action: 'assign-categoria' } }
     );
     return response.data;
   },
@@ -40,8 +42,8 @@ export const adminCategoriaService = {
    * Delete an admin_Categoria assignment
    */
   delete: async (data: AdminCategoriaDeleteRequest): Promise<AdminCategoriaDeleteResponse> => {
-    const response = await apiClient.delete<AdminCategoriaDeleteResponse>('/admin-categoria-delete', {
-      data,
+    const response = await apiClient.delete<AdminCategoriaDeleteResponse>('/admin', {
+      params: { action: 'delete-categoria', id: data.id_admin_categoria },
     });
     return response.data;
   },

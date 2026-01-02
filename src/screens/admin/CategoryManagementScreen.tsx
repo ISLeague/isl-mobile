@@ -37,7 +37,7 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
   const pagerRef = useRef<PagerView>(null);
   const tabScrollRef = useRef<ScrollView>(null);
   const tabRefs = useRef<{ [key: string]: View | null }>({});
-  const { torneo, pais, categoria, edicionCategoria } = route.params;
+  const { torneo, pais, categoria, edicionCategoria, edicion } = route.params;
 
   console.log('🎯 [CategoryManagement] Route params:', { torneo, pais, categoria, edicionCategoria });
   console.log('🎯 [CategoryManagement] idEdicionCategoria from params:', edicionCategoria?.id_edicion_categoria);
@@ -154,8 +154,25 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
   );
 
   useEffect(() => {
+    loadCategorias();
+  }, [edicion.id_edicion]);
+
+  useEffect(() => {
     loadFaseGrupos();
   }, [idEdicionCategoria]);
+
+  const loadCategorias = async () => {
+    try {
+      const response = await api.edicionCategorias.list({ id_edicion: edicion.id_edicion });
+      if (response.success && response.data) {
+        // Handle both { data: [...] } and { data: { data: [...] } }
+        const categoriesArray = response.data.data || response.data || [];
+        setCategorias(categoriesArray);
+      }
+    } catch (error) {
+      console.error('Error loading categorias:', error);
+    }
+  };
 
   const loadFaseGrupos = async () => {
     if (!idEdicionCategoria) {
@@ -201,7 +218,7 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={[]}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       <LinearGradient colors={gradient as [string, string, ...string[]]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.headerGradient}>
         {/* --- HEADER --- */}
         <View style={styles.headerTop}>
@@ -244,11 +261,19 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
         {showCategoryPicker && (
           <View style={styles.categoryPicker}>
             {categorias.map((cat) => (
-              <TouchableOpacity key={cat.id_edicion_categoria} style={styles.categoryOption} onPress={() => setSelectedCategoria(cat.categoria)}>
+              <TouchableOpacity
+                key={cat.id_edicion_categoria}
+                style={styles.categoryOption}
+                onPress={() => {
+                  setSelectedCategoria(cat.categoria);
+                  setIdEdicionCategoria(cat.id_edicion_categoria);
+                  setShowCategoryPicker(false);
+                }}
+              >
                 <Text
                   style={[
                     styles.categoryOptionText,
-                    cat.categoria.id_categoria === selectedCategoria.id_categoria ? styles.categoryOptionActive : undefined,
+                    cat.id_edicion_categoria === idEdicionCategoria ? styles.categoryOptionActive : undefined,
                   ]}
                 >
                   {cat.categoria.nombre}

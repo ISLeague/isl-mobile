@@ -18,8 +18,9 @@ export const adminTorneoService = {
    */
   register: async (data: AdminTorneoRegisterRequest): Promise<AdminTorneoRegisterResponse> => {
     const response = await apiClient.post<AdminTorneoRegisterResponse>(
-      '/admin-torneo-register',
-      data
+      '/admin',
+      data,
+      { params: { action: 'register-torneo' } }
     );
     return response.data;
   },
@@ -29,8 +30,8 @@ export const adminTorneoService = {
    * Can be filtered by id_torneo and/or id_usuario
    */
   list: async (params?: AdminTorneoListParams): Promise<AdminTorneoListResponse> => {
-    const response = await apiClient.get<AdminTorneoListResponse>('/admin-torneo-list', {
-      params,
+    const response = await apiClient.get<AdminTorneoListResponse>('/admin', {
+      params: { ...params, action: 'list-torneo' },
     });
     return response.data;
   },
@@ -40,8 +41,9 @@ export const adminTorneoService = {
    */
   asignar: async (data: AdminTorneoAsignarRequest): Promise<AdminTorneoAsignarResponse> => {
     const response = await apiClient.post<AdminTorneoAsignarResponse>(
-      '/admin-torneo-asignar',
-      data
+      '/admin',
+      { id_usuario: data.id_usuario, id_target: data.id_torneo },
+      { params: { action: 'assign-torneo' } }
     );
     return response.data;
   },
@@ -50,8 +52,8 @@ export const adminTorneoService = {
    * Delete an admin_torneo assignment
    */
   delete: async (data: AdminTorneoDeleteRequest): Promise<AdminTorneoDeleteResponse> => {
-    const response = await apiClient.delete<AdminTorneoDeleteResponse>('/admin-torneo-delete', {
-      data,
+    const response = await apiClient.delete<AdminTorneoDeleteResponse>('/admin', {
+      params: { action: 'delete-torneo', id: data.id_admin_torneo },
     });
     return response.data;
   },
@@ -60,8 +62,8 @@ export const adminTorneoService = {
    * Get available admins (not yet assigned) for a specific tournament
    */
   disponibles: async (id_torneo: number): Promise<AdminTorneoDisponiblesResponse> => {
-    const response = await apiClient.get<AdminTorneoDisponiblesResponse>('/admin-torneo-disponibles', {
-      params: { id_torneo },
+    const response = await apiClient.get<AdminTorneoDisponiblesResponse>('/admin', {
+      params: { id_torneo, action: 'available-torneo' },
     });
     return response.data;
   },

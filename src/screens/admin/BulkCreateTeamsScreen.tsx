@@ -111,18 +111,16 @@ export const BulkCreateTeamsScreen: React.FC<BulkCreateTeamsScreenProps> = ({
   const handleDownloadTemplate = () => {
     Alert.alert(
       'Plantilla CSV',
-      'La plantilla debe contener las siguientes columnas:\n\n' +
-        '• nombre (requerido)\n' +
-        '• nombre_corto\n' +
-        '• logo (URL)\n' +
-        '• color_primario\n' +
-        '• color_secundario\n' +
-        '• nombre_delegado\n' +
-        '• telefono_delegado\n' +
-        '• email_delegado\n\n' +
-        'Ejemplo:\n' +
-        'nombre,nombre_corto,logo,color_primario,color_secundario,nombre_delegado,telefono_delegado,email_delegado\n' +
-        'Athletic Club,Athletic,https://...,#BE0127,#FFFFFF,Pedro Sánchez,+34944556677,pedro@athletic.com'
+      'La plantilla soporta dos formatos:\n\n' +
+      'OPCIÓN 1: SOLO EQUIPOS (Cabeceras simples)\n' +
+      'nombre, nombre_corto, logo\n\n' +
+      'OPCIÓN 2: EQUIPOS Y JUGADORES (Formato avanzado)\n' +
+      'EQUIPO: Nombre Equipo, Logo URL, Nombre Corto\n' +
+      'JUGADOR: Nombre Completo, DNI, YYYY-MM-DD, Numero, Es Refuerzo (0/1), Es Capitan (0/1)\n\n' +
+      'Ejemplo Opción 2:\n' +
+      'EQUIPO: Real Madrid, https://logo.png, RMA\n' +
+      'JUGADOR: Vinicius Jr, 12345678, 2000-07-12, 7, 0, 0\n' +
+      'JUGADOR: Modric, 87654321, 1985-09-09, 10, 0, 1'
     );
   };
 
