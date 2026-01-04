@@ -17,7 +17,7 @@ import { useToast } from '../../contexts/ToastContext';
 import api from '../../api';
 
 export const CreateCanchaScreen = ({ navigation, route }: any) => {
-  const { idLocal, nombreLocal, idEdicionCategoria } = route.params || {};
+  const { idLocal, nombreLocal, idEdicionCategoria, returnTo, returnParams } = route.params || {};
   const { showSuccess, showError } = useToast();
 
   // Form states
@@ -80,7 +80,6 @@ export const CreateCanchaScreen = ({ navigation, route }: any) => {
         showError('No se pudo crear la cancha');
       }
     } catch (error: any) {
-      console.error('Error creating cancha:', error);
       showError(error.message || 'Error al crear la cancha');
     } finally {
       setLoading(false);
@@ -89,11 +88,17 @@ export const CreateCanchaScreen = ({ navigation, route }: any) => {
 
   const handleFinalizar = () => {
     setShowSuccessModal(false);
-    // Navegar a la pantalla de detalles del local
-    navigation.navigate('LocalDetailScreen', {
-      idLocal,
-      refresh: true // Para que recargue las canchas
-    });
+
+    // If coming from CreateRondaFlow, navigate back with return params
+    if (returnTo && returnParams) {
+      navigation.navigate(returnTo, returnParams);
+    } else {
+      // Otherwise, navigate to LocalDetailScreen as usual
+      navigation.navigate('LocalDetailScreen', {
+        idLocal,
+        refresh: true // Para que recargue las canchas
+      });
+    }
   };
 
   const handleCrearOtra = () => {

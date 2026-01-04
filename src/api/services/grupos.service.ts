@@ -35,11 +35,11 @@ export const gruposService = {
    * Incluye: fase, configuración de clasificación, grupos con equipos, y resumen
    */
   get: async (idFase: number): Promise<GruposGetResponse> => {
-    console.log("entrando a obtener grupos ", idFase)
+    // console.log("entrando a obtener grupos ", idFase)
     const response = await apiClient.get('/grupos', {
       params: { id_fase: idFase, action: 'list' },
     });
-    console.log("respuesta get grupos ", response)
+    // console.log("respuesta get grupos ", response)
     return response.data;
   },
 
@@ -120,11 +120,11 @@ export const gruposService = {
    * @param idGrupo - ID del grupo a eliminar
    */
   delete: async (idGrupo: number): Promise<DeleteGrupoResponse> => {
-    console.log("eliminando... ", idGrupo)
+    // console.log("eliminando... ", idGrupo)
     const response = await apiClient.delete('/grupos', {
       params: { id: idGrupo },
     });
-    console.log("respuestaaa ", response.data)
+    // console.log("respuestaaa ", response.data)
     return response.data;
   },
 };

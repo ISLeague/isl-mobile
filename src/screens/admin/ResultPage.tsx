@@ -70,37 +70,30 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
     try {
       setLoading(true);
 
-      console.log('📊 [ResultPage] Loading partido resultado for ID:', partido.id_partido);
 
       // Load full partido details with players and statistics in ONE call
       const resultadoResponse = await api.partidos.getResultado(partido.id_partido);
 
-      console.log('📊 [ResultPage] Resultado response:', JSON.stringify(resultadoResponse, null, 2));
 
       if (resultadoResponse.success && resultadoResponse.data) {
         const data = resultadoResponse.data;
 
         // Set teams from nested objects
         if (data.equipo_local) {
-          console.log('📊 [ResultPage] Equipo local data:', JSON.stringify(data.equipo_local, null, 2));
           setEquipoLocal(data.equipo_local);
-          console.log('✅ [ResultPage] Equipo local set:', data.equipo_local.nombre);
         } else {
-          console.warn('⚠️ [ResultPage] No equipo_local in response');
+          // console.warn('⚠️ [ResultPage] No equipo_local in response');
         }
 
         if (data.equipo_visitante) {
-          console.log('📊 [ResultPage] Equipo visitante data:', JSON.stringify(data.equipo_visitante, null, 2));
           setEquipoVisitante(data.equipo_visitante);
-          console.log('✅ [ResultPage] Equipo visitante set:', data.equipo_visitante.nombre);
         } else {
-          console.warn('⚠️ [ResultPage] No equipo_visitante in response');
+          // console.warn('⚠️ [ResultPage] No equipo_visitante in response');
         }
 
         // Set ronda data from API response
         if (data.ronda) {
           setRondaData(data.ronda);
-          console.log('✅ [ResultPage] Ronda set:', data.ronda.nombre);
         }
 
         // Load existing resultado if available
@@ -128,7 +121,6 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
         // Process local team players and statistics
         if (data.equipo_local?.estadisticas_jugadores) {
           const jugadoresLocalData = data.equipo_local.estadisticas_jugadores;
-          console.log(`✅ [ResultPage] Loaded ${jugadoresLocalData.length} jugadores for equipo local`);
 
           setJugadoresLocal(jugadoresLocalData);
           setEventosLocal(
@@ -142,13 +134,12 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
             }))
           );
         } else {
-          console.warn('⚠️ [ResultPage] No estadisticas_jugadores found in equipo_local');
+          // console.warn('⚠️ [ResultPage] No estadisticas_jugadores found in equipo_local');
         }
 
         // Process visiting team players and statistics
         if (data.equipo_visitante?.estadisticas_jugadores) {
           const jugadoresVisitanteData = data.equipo_visitante.estadisticas_jugadores;
-          console.log(`✅ [ResultPage] Loaded ${jugadoresVisitanteData.length} jugadores for equipo visitante`);
 
           setJugadoresVisitante(jugadoresVisitanteData);
           setEventosVisitante(
@@ -162,13 +153,13 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
             }))
           );
         } else {
-          console.warn('⚠️ [ResultPage] No estadisticas_jugadores found in equipo_visitante');
+          // console.warn('⚠️ [ResultPage] No estadisticas_jugadores found in equipo_visitante');
         }
       } else {
-        console.error('❌ [ResultPage] Invalid resultado response:', resultadoResponse);
+        // console.error('❌ [ResultPage] Invalid resultado response:', resultadoResponse);
       }
     } catch (error) {
-      console.error('❌ [ResultPage] Error loading data:', error);
+      // console.error('❌ [ResultPage] Error loading data:', error);
       showError('Error al cargar los datos del partido');
     } finally {
       setLoading(false);
@@ -320,7 +311,7 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
         showError('Error al guardar el resultado');
       }
     } catch (error) {
-      console.error('Error saving result:', error);
+      // console.error('Error saving result:', error);
       showError('Error al guardar el resultado');
     } finally {
       setLoading(false);

@@ -22,7 +22,6 @@ export const EditCountryScreen: React.FC<EditCountryScreenProps> = ({ navigation
     }
 
     // TODO: Llamar a la API para actualizar el país
-    console.log('Guardando país:', { id_pais: pais.id_pais, nombre, emoji });
     
     Alert.alert('Éxito', 'País actualizado correctamente', [
       {
@@ -43,7 +42,6 @@ export const EditCountryScreen: React.FC<EditCountryScreenProps> = ({ navigation
           style: 'destructive',
           onPress: () => {
             // TODO: Llamar a la API para eliminar el país
-            console.log('Eliminando país:', pais.id_pais);
             navigation.goBack();
           },
         },

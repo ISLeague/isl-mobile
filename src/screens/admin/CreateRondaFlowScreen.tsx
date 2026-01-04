@@ -44,7 +44,7 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
   // Step 2: Generate Fixture
   const [createdRondaId, setCreatedRondaId] = useState<number | null>(null);
   const [createdFaseId, setCreatedFaseId] = useState<number | null>(null);
-  const [tipoGeneracion, setTipoGeneracion] = useState<'round_robin' | 'amistoso_aleatorio'>('round_robin');
+  const [tipoGeneracion, setTipoGeneracion] = useState<'round_robin' | 'amistoso_aleatorio' | 'amistoso_intergrupos'>('round_robin');
   const [idaVuelta, setIdaVuelta] = useState(false);
   const [cantidadPartidos, setCantidadPartidos] = useState('');
   const [fixtureResponse, setFixtureResponse] = useState<FixtureGenerateResponse | null>(null);
@@ -64,6 +64,31 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
       loadCanchas();
     }
   }, [currentStep]);
+
+  // Restore state when coming back from creating locales/canchas
+  useEffect(() => {
+    if (route.params?.returnFromCanchas) {
+      const {
+        savedRondaId,
+        savedFaseId,
+        savedFixtureResponse,
+        savedFixtureDetails,
+        savedNombre,
+        savedTipo,
+      } = route.params;
+
+      if (savedRondaId && savedFaseId && savedFixtureResponse) {
+        setCreatedRondaId(savedRondaId);
+        setCreatedFaseId(savedFaseId);
+        setFixtureResponse(savedFixtureResponse);
+        setFixtureDetails(savedFixtureDetails || {});
+        setNombre(savedNombre || '');
+        setTipo(savedTipo || 'fase_grupos');
+        setCurrentStep('assign');
+        loadCanchas();
+      }
+    }
+  }, [route.params?.returnFromCanchas]);
 
   const loadCanchas = async () => {
     setLoading(true);
@@ -97,65 +122,64 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
     setLoading(false);
   };
 
-  const handleCreateRonda = async () => {
-    console.log('🎯 [CreateRondaFlow] Iniciando creación de ronda...');
-    console.log('📝 [CreateRondaFlow] Datos del formulario:', {
-      nombre: nombre.trim(),
-      tipo,
-      subtipoEliminatoria,
-      fechaInicio,
-      fechaFin,
-      orden,
-      idEdicionCategoria,
-    });
+  const handleNavigateToCreateLocal = () => {
+    // Save current state
+    const savedState = {
+      returnFromCanchas: true,
+      savedRondaId: createdRondaId,
+      savedFaseId: createdFaseId,
+      savedFixtureResponse: fixtureResponse,
+      savedFixtureDetails: fixtureDetails,
+      savedNombre: nombre,
+      savedTipo: tipo,
+    };
 
+    // Navigate to create local screen with return params
+    navigation.navigate('CreateLocal', {
+      idEdicionCategoria,
+      returnTo: 'CreateRondaFlow',
+      returnParams: savedState,
+    });
+  };
+
+  const handleCreateRonda = async () => {
     if (!nombre.trim()) {
-      console.warn('⚠️ [CreateRondaFlow] Error: Nombre vacío');
       Alert.alert('Error', 'El nombre de la ronda es requerido');
       return;
     }
 
     if (!orden.trim() || isNaN(parseInt(orden))) {
-      console.warn('⚠️ [CreateRondaFlow] Error: Orden inválido');
       Alert.alert('Error', 'El orden debe ser un número');
       return;
     }
 
     setLoading(true);
-    console.log('🔄 [CreateRondaFlow] Loading iniciado, obteniendo fase...');
 
     // Get fase for this edicion
     const fasesResult = await safeAsync(
       async () => {
-        console.log('📡 [CreateRondaFlow] Llamando a api.fases.list con id_edicion_categoria:', idEdicionCategoria);
         const response = await api.fases.list(idEdicionCategoria);
-        console.log('📥 [CreateRondaFlow] Respuesta de fases:', response);
 
         const fase = response.success && response.data && response.data.length > 0
           ? response.data.find((f: any) => f.tipo === 'grupo') || response.data[0]
           : null;
 
-        console.log('✅ [CreateRondaFlow] Fase seleccionada:', fase);
         return fase;
       },
       'CreateRondaFlow - getFase',
       {
         fallbackValue: null,
         onError: (error) => {
-          console.error('❌ [CreateRondaFlow] Error al obtener fase:', error);
           showError('Error al obtener la fase');
         },
       }
     );
 
     if (!fasesResult || !fasesResult.id_fase) {
-      console.error('❌ [CreateRondaFlow] No se encontró fase válida');
       showError('No se encontró una fase válida para esta edición');
       setLoading(false);
       return;
     }
-
-    console.log('🎯 [CreateRondaFlow] Fase obtenida correctamente, id_fase:', fasesResult.id_fase);
 
     const rondaData = {
       nombre: nombre.trim(),
@@ -168,63 +192,42 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
       orden: parseInt(orden),
     };
 
-    console.log('📡 [CreateRondaFlow] Enviando datos para crear ronda:', rondaData);
-
     const result = await safeAsync(
       async () => {
         const response = await api.rondas.create(rondaData);
-        console.log('📥 [CreateRondaFlow] Respuesta de crear ronda:', response);
         return response;
       },
       'CreateRondaFlow - createRonda',
       {
         fallbackValue: null,
         onError: (error) => {
-          console.error('❌ [CreateRondaFlow] Error al crear ronda:', error);
           showError('Error al crear la ronda');
         },
       }
     );
 
     setLoading(false);
-    console.log('🔄 [CreateRondaFlow] Loading finalizado');
 
     if (result && result.success && result.data) {
       const rondaId = result.data.id_ronda || result.data.id;
-      console.log('✅ [CreateRondaFlow] Ronda creada exitosamente! ID:', rondaId);
       setCreatedRondaId(rondaId);
       setCreatedFaseId(fasesResult.id_fase);
       showSuccess(`Ronda "${nombre}" creada exitosamente`);
       setCurrentStep('generate');
-      console.log('🎯 [CreateRondaFlow] Avanzando al paso: generate');
-    } else {
-      console.error('❌ [CreateRondaFlow] Falló la creación de ronda. Resultado:', result);
     }
   };
 
   const handleGenerateFixture = async () => {
-    console.log('🎯 [CreateRondaFlow] Iniciando generación de fixture...');
-    console.log('📝 [CreateRondaFlow] Estado actual:', {
-      createdRondaId,
-      tipo,
-      tipoGeneracion,
-      idaVuelta,
-      cantidadPartidos,
-    });
-
     if (!createdRondaId) {
-      console.error('❌ [CreateRondaFlow] No hay ID de ronda creada');
       return;
     }
 
     if (tipo === 'amistosa' && (!cantidadPartidos || parseInt(cantidadPartidos) <= 0)) {
-      console.warn('⚠️ [CreateRondaFlow] Error: Cantidad de partidos inválida para amistosa');
       Alert.alert('Error', 'Para amistosos, especifica la cantidad de partidos');
       return;
     }
 
     setLoading(true);
-    console.log('🔄 [CreateRondaFlow] Loading iniciado, generando fixture...');
 
     const fixtureData: any = {
       id_ronda: createdRondaId,
@@ -237,30 +240,23 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
       fixtureData.cantidad_partidos = parseInt(cantidadPartidos);
     }
 
-    console.log('📡 [CreateRondaFlow] Enviando datos para generar fixture:', fixtureData);
-
     const result = await safeAsync(
       async () => {
         const response = await api.rondas.generarFixture(fixtureData);
-        console.log('📥 [CreateRondaFlow] Respuesta de generar fixture:', response);
         return response;
       },
       'CreateRondaFlow - generateFixture',
       {
         fallbackValue: null,
         onError: (error) => {
-          console.error('❌ [CreateRondaFlow] Error al generar fixture:', error);
           showError('Error al generar el fixture');
         },
       }
     );
 
     setLoading(false);
-    console.log('🔄 [CreateRondaFlow] Loading finalizado');
 
     if (result && result.success) {
-      console.log('✅ [CreateRondaFlow] Fixture generado exitosamente!');
-      console.log('📊 [CreateRondaFlow] Datos del fixture:', result.data);
 
       // Store the fixture response for Step 3
       setFixtureResponse(result);
@@ -280,17 +276,11 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
 
       showSuccess('Fixture generado exitosamente');
       setCurrentStep('assign');
-      console.log('🎯 [CreateRondaFlow] Avanzando al paso: assign');
-    } else {
-      console.error('❌ [CreateRondaFlow] Falló la generación de fixture. Resultado:', result);
     }
   };
 
   const handleCreatePartidos = async () => {
-    console.log('🎯 [CreateRondaFlow] Iniciando creación de partidos...');
-
     if (!fixtureResponse || !createdRondaId || !createdFaseId) {
-      console.error('❌ [CreateRondaFlow] No hay datos de fixture o IDs');
       showError('No hay datos de fixture disponibles');
       return;
     }
@@ -315,7 +305,6 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
     }
 
     setLoading(true);
-    console.log('🔄 [CreateRondaFlow] Creando partidos...');
 
     let createdCount = 0;
     let errorCount = 0;
@@ -343,19 +332,15 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
           : `Partido de ${tipo === 'amistosa' ? 'amistoso' : tipo}`,
       };
 
-      console.log('📡 [CreateRondaFlow] Creando partido:', partidoData);
-
       const result = await safeAsync(
         async () => {
           const response = await api.partidos.createFromFixture(partidoData);
-          console.log('📥 [CreateRondaFlow] Respuesta de crear partido:', response);
           return response;
         },
         'CreateRondaFlow - createPartido',
         {
           fallbackValue: null,
           onError: (error) => {
-            console.error('❌ [CreateRondaFlow] Error al crear partido:', error);
             errorCount++;
           },
         }
@@ -367,7 +352,6 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
     }
 
     setLoading(false);
-    console.log(`✅ [CreateRondaFlow] Partidos creados: ${createdCount}/${allFixtures.length}`);
 
     if (errorCount > 0) {
       showError(`Se crearon ${createdCount} partidos con ${errorCount} errores`);
@@ -706,6 +690,25 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={colors.primary} />
             <Text style={styles.loadingText}>Cargando canchas...</Text>
+          </View>
+        ) : canchas.length === 0 ? (
+          <View style={styles.emptyCanchasContainer}>
+            <MaterialCommunityIcons name="soccer-field" size={64} color={colors.textLight} />
+            <Text style={styles.emptyCanchasTitle}>No hay canchas disponibles</Text>
+            <Text style={styles.emptyCanchasText}>
+              Para continuar necesitas crear al menos un local y una cancha
+            </Text>
+            <Button
+              title="Crear Local y Canchas"
+              onPress={handleNavigateToCreateLocal}
+              style={styles.createLocalButton}
+            />
+            <Button
+              title="Reintentar"
+              onPress={loadCanchas}
+              variant="secondary"
+              style={styles.retryButton}
+            />
           </View>
         ) : (
           <View>
@@ -1384,5 +1387,34 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: colors.success,
+  },
+  emptyCanchasContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+    gap: 16,
+  },
+  emptyCanchasTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+    textAlign: 'center',
+    marginTop: 16,
+  },
+  emptyCanchasText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+  createLocalButton: {
+    width: '100%',
+    marginTop: 8,
+  },
+  retryButton: {
+    width: '100%',
+    marginTop: 8,
   },
 });

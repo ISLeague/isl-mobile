@@ -10,10 +10,20 @@ import {
 } from '../types/rondas.types';
 
 export const rondasService = {
-  list: async (id_fase?: number) => {
+  list: async (params: {
+    id_edicion_categoria?: number;
+    id_fase?: number;
+    tipo_ronda?: 'fase_grupos' | 'eliminatorias' | 'amistosa';
+  }) => {
+    console.log("entrandooooo---")
+
     const response = await apiClient.get('/rondas', {
-      params: { id_fase, action: 'list' }
+      params: {
+        ...params,
+        action: 'list'
+      }
     });
+     console.log("resonse ", response.data)
     return response.data;
   },
 
@@ -23,6 +33,7 @@ export const rondasService = {
   },
 
   create: async (data: CreateRondaRequest) => {
+    // console.log("intentando crear rondas " )
     const response = await apiClient.post('/rondas', data, {
       params: { action: 'create' }
     });

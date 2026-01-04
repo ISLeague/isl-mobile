@@ -28,9 +28,11 @@ export const equiposService = {
    */
   list: async (idEdicionCategoria: number, grupos?: boolean): Promise<EquiposListResponse> => {
     const params: any = { id_edicion_categoria: idEdicionCategoria };
+    
     if (grupos === true) {
       params.grupos = 'true';
     }
+    // console.log("acaaa ", params)
     const response = await apiClient.get('/equipos', { params });
     
     return response.data;
@@ -57,7 +59,7 @@ export const equiposService = {
         'Content-Type': 'multipart/form-data',
       },
     });
-    console.log("respuesta dek servidor al bulk ", response.data)
+    // console.log("respuesta dek servidor al bulk ", response.data)
     return response.data;
   },
 

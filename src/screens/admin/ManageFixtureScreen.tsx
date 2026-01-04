@@ -114,14 +114,12 @@ export const ManageFixtureScreen = ({ navigation, route }: any) => {
   const handleCreate = async () => {
     // Aquí iría la lógica para crear el partido usando el endpoint
     // POST /admin/phases/{id_fase}/matches
-    console.log('Crear partido:', formData);
     setShowCreateModal(false);
   };
 
   const handleModify = async () => {
     // Aquí iría la lógica para modificar la fase
     // PUT /admin/phases/{id_fase}
-    console.log('Modificar fase:', formData);
     setShowEditModal(false);
   };
 

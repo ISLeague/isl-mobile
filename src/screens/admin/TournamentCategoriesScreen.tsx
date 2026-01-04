@@ -61,10 +61,8 @@ export const TournamentCategoriesScreen = ({ navigation, route }: any) => {
         const allResponse = await api.categorias.list();
         // Handle both { data: [...] } and { data: { data: [...] } }
         const categoriasArray = allResponse.data?.data || allResponse.data || [];
-        console.log('📋 All categorias loaded:', categoriasArray.length);
         setAllCategorias(categoriasArray);
       } catch (error: any) {
-        console.log('⚠️ Error loading all categorias:', error);
         setAllCategorias([]);
       }
 
@@ -75,14 +73,11 @@ export const TournamentCategoriesScreen = ({ navigation, route }: any) => {
         });
         // Handle both { data: [...] } and { data: { data: [...] } }
         const assignedArray = assignedResponse.data?.data || assignedResponse.data || [];
-        console.log('✅ Assigned categorias loaded:', assignedArray.length);
         setAssignedCategorias(assignedArray);
       } catch (error: any) {
-        console.log('⚠️ Error loading assigned categorias:', error);
         setAssignedCategorias([]);
       }
     } catch (error) {
-      console.log('❌ Outer error loading categorias:', error);
       setAllCategorias([]);
       setAssignedCategorias([]);
     } finally {
@@ -149,7 +144,7 @@ export const TournamentCategoriesScreen = ({ navigation, route }: any) => {
       Alert.alert('Éxito', `Categoría "${selectedCategoria.nombre}" asignada correctamente`);
       loadCategorias();
     } catch (error) {
-      console.error('Error assigning category:', error);
+      // console.error('Error assigning category:', error);
       Alert.alert('Error', 'No se pudo asignar la categoría');
     } finally {
       setIsSaving(false);
@@ -196,11 +191,6 @@ export const TournamentCategoriesScreen = ({ navigation, route }: any) => {
     cat => !assignedCategorias.some(assigned => assigned.id_categoria === cat.id_categoria)
   );
 
-  console.log('🔍 TournamentCategoriesScreen - Estado actual:');
-  console.log('  - All categorias:', allCategorias.length);
-  console.log('  - Assigned categorias:', assignedCategorias.length);
-  console.log('  - Available categorias:', availableCategorias.length);
-  console.log('  - Show modal:', showAssignModal);
 
   if (loading) {
     return (
@@ -284,7 +274,6 @@ export const TournamentCategoriesScreen = ({ navigation, route }: any) => {
                 <TouchableOpacity
                   style={styles.assignFirstButton}
                   onPress={() => {
-                    console.log('🎯 Assign first button pressed - opening modal');
                     setShowAssignModal(true);
                   }}
                 >
@@ -356,7 +345,6 @@ export const TournamentCategoriesScreen = ({ navigation, route }: any) => {
         <TouchableOpacity
           style={styles.fab}
           onPress={() => {
-            console.log('🎯 FAB button pressed - opening modal');
             setShowAssignModal(true);
           }}
           activeOpacity={0.8}
@@ -371,7 +359,6 @@ export const TournamentCategoriesScreen = ({ navigation, route }: any) => {
         transparent
         animationType="slide"
         onRequestClose={() => {
-          console.log('🚫 Modal onRequestClose called');
           setShowAssignModal(false);
         }}
       >
@@ -390,7 +377,6 @@ export const TournamentCategoriesScreen = ({ navigation, route }: any) => {
 
             <View style={styles.modalBody}>
               {(() => {
-                console.log('🎨 Modal rendering - available categorias:', availableCategorias.length);
                 return null;
               })()}
               {availableCategorias.length === 0 ? (

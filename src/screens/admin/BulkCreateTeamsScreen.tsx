@@ -45,7 +45,7 @@ export const BulkCreateTeamsScreen: React.FC<BulkCreateTeamsScreenProps> = ({
         setUploadResult(null);
       }
     } catch (error) {
-      console.error('Error picking file:', error);
+      // console.error('Error picking file:', error);
       Alert.alert('Error', 'No se pudo seleccionar el archivo');
     }
   };
@@ -60,7 +60,6 @@ export const BulkCreateTeamsScreen: React.FC<BulkCreateTeamsScreenProps> = ({
       setIsUploading(true);
       setUploadStatus('Procesando archivo CSV...');
 
-      console.log('📊 [BulkCreateTeams] Iniciando importación de equipos');
       showInfo('Procesando archivo CSV...', 'Importando equipos');
 
       // Crear objeto File para la API
@@ -73,7 +72,6 @@ export const BulkCreateTeamsScreen: React.FC<BulkCreateTeamsScreenProps> = ({
       setUploadStatus('Creando equipos en el servidor...');
       const response = await api.equipos.createBulk(idEdicionCategoria, file);
 
-      console.log('✅ [BulkCreateTeams] Respuesta del servidor:', response.data);
 
       setUploadResult(response.data);
       setUploadStatus('');
@@ -95,8 +93,8 @@ export const BulkCreateTeamsScreen: React.FC<BulkCreateTeamsScreenProps> = ({
         );
       }
     } catch (error: any) {
-      console.error('❌ [BulkCreateTeams] Error uploading CSV:', error);
-      console.error('❌ [BulkCreateTeams] Error details:', error?.response?.data);
+      // console.error('❌ [BulkCreateTeams] Error uploading CSV:', error);
+      // console.error('❌ [BulkCreateTeams] Error details:', error?.response?.data);
 
       const errorMessage =
         error?.response?.data?.message || 'No se pudo importar el archivo';

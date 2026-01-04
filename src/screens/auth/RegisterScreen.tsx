@@ -91,14 +91,7 @@ export const RegisterScreen = ({ navigation }: any) => {
       //   fecha_aceptacion_terminos: new Date().toISOString()
       // });
 
-      console.log('Registrando usuario con términos:', {
-        nombre,
-        apellido,
-        email,
-        acepto_terminos: acceptTerms,
-        acepto_privacidad: acceptTerms,
-        fecha_aceptacion_terminos: new Date().toISOString()
-      });
+     
 
       // Simulación de registro exitoso
       setTimeout(() => {

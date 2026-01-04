@@ -17,7 +17,7 @@ import { useToast } from '../../contexts/ToastContext';
 import api from '../../api';
 
 export const CreateLocalScreen = ({ navigation, route }: any) => {
-  const { idEdicionCategoria } = route.params || {};
+  const { idEdicionCategoria, returnTo, returnParams } = route.params || {};
   const { showSuccess, showError } = useToast();
 
   // Form states
@@ -125,7 +125,6 @@ export const CreateLocalScreen = ({ navigation, route }: any) => {
         showError('No se pudo crear el local');
       }
     } catch (error: any) {
-      console.error('Error creating local:', error);
       showError(error.message || 'Error al crear el local');
     } finally {
       setLoading(false);
@@ -134,7 +133,13 @@ export const CreateLocalScreen = ({ navigation, route }: any) => {
 
   const handleFinalizar = () => {
     setShowSuccessModal(false);
-    navigation.goBack();
+
+    // If coming from CreateRondaFlow, navigate back with return params
+    if (returnTo && returnParams) {
+      navigation.navigate(returnTo, returnParams);
+    } else {
+      navigation.goBack();
+    }
   };
 
   const handleCrearCanchas = () => {
@@ -143,6 +148,9 @@ export const CreateLocalScreen = ({ navigation, route }: any) => {
       idLocal: createdLocalId,
       nombreLocal: nombre,
       idEdicionCategoria,
+      // Pass return params so CreateCancha can navigate back to CreateRondaFlow
+      returnTo,
+      returnParams,
     });
   };
 

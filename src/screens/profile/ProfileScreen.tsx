@@ -102,7 +102,7 @@ export const ProfileScreen = ({ navigation: navProp }: any) => {
       Alert.alert('Éxito', 'Perfil actualizado correctamente');
       setShowEditProfileModal(false);
     } catch (error) {
-      console.error(error);
+      // console.error(error);
       Alert.alert('Error', 'No se pudo actualizar el perfil');
     }
   };
@@ -131,7 +131,7 @@ export const ProfileScreen = ({ navigation: navProp }: any) => {
       setNewPassword('');
       setConfirmPassword('');
     } catch (error) {
-      console.error(error);
+      // console.error(error);
       Alert.alert('Error', 'No se pudo actualizar la contraseña. Verifica tu contraseña actual.');
     }
   };

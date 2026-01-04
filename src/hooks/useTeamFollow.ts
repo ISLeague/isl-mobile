@@ -38,7 +38,7 @@ export const useTeamFollow = (userId: number): UseTeamFollowReturn => {
         setFollowedTeam(null);
       }
     } catch (error) {
-      console.error('Error loading followed team:', error);
+      // console.error('Error loading followed team:', error);
     } finally {
       setLoading(false);
     }
@@ -51,7 +51,7 @@ export const useTeamFollow = (userId: number): UseTeamFollowReturn => {
       // await api.followTeam(userId, team.id_equipo);
       setFollowedTeam(team);
     } catch (error) {
-      console.error('Error following team:', error);
+      // console.error('Error following team:', error);
     } finally {
       setLoading(false);
     }
@@ -64,7 +64,7 @@ export const useTeamFollow = (userId: number): UseTeamFollowReturn => {
       // await api.unfollowTeam(userId);
       setFollowedTeam(null);
     } catch (error) {
-      console.error('Error unfollowing team:', error);
+      // console.error('Error unfollowing team:', error);
     } finally {
       setLoading(false);
     }
@@ -77,7 +77,7 @@ export const useTeamFollow = (userId: number): UseTeamFollowReturn => {
       // await api.changeTeam(userId, newTeam.id_equipo);
       setFollowedTeam(newTeam);
     } catch (error) {
-      console.error('Error changing team:', error);
+      // console.error('Error changing team:', error);
     } finally {
       setLoading(false);
     }

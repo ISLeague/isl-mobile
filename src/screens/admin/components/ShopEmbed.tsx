@@ -84,7 +84,7 @@ export const ShopEmbed: React.FC<ShopEmbedProps> = ({
       setSelectedImageIndex(initialIndexes);
 
     } catch (error) {
-      console.error('Error cargando datos:', error);
+      // console.error('Error cargando datos:', error);
     } finally {
       setLoading(false);
     }

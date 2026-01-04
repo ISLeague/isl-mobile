@@ -39,7 +39,7 @@ export const RondasListScreen: React.FC<RondasListScreenProps> = ({ navigation, 
     setLoading(true);
     const result = await safeAsync(
       async () => {
-        const response = await api.rondas.list(idFase);
+        const response = await api.rondas.list({ id_fase: idFase });
         return response.success && response.data ? response.data : [];
       },
       'RondasList - loadRondas',

@@ -52,7 +52,7 @@ export const TeamsTab: React.FC<TeamsTabProps> = ({
       const equiposArray = Array.isArray(response.data) ? response.data : [];
       setEquipos(equiposArray);
     } catch (error: any) {
-      console.error('Error loading teams:', error);
+      // console.error('Error loading teams:', error);
       if (error?.response?.status === 404) {
         setEquipos([]);
       } else {

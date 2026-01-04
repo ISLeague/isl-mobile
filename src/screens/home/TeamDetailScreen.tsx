@@ -125,7 +125,7 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
         setGrupoEquipo(null);
 
       } catch (error) {
-        console.error('Error fetching team data:', error);
+        // console.error('Error fetching team data:', error);
         showError('No se pudo cargar la información del equipo');
       } finally {
         setLoading(false);
@@ -169,7 +169,6 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
     const unsubscribe = navigation.addListener('focus', async () => {
       // Solo recargar si ya tenemos datos cargados (no es la carga inicial)
       if (!loading && equipo) {
-        console.log('🔄 [TeamDetail] Screen focused - Recargando jugadores...');
 
         const previousCount = jugadores.length;
         const previousJugadores = [...jugadores];
@@ -195,7 +194,6 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
           // Mostrar modal de resultados si se agregó un nuevo jugador
           if (newJugadores.length > previousCount) {
             const playersAdded = newJugadores.length - previousCount;
-            console.log('✅ [TeamDetail] Jugadores agregados:', playersAdded);
 
             // Find the newly added players
             const addedPlayers = newJugadores.filter(
@@ -269,11 +267,6 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
       setImportingCSV(true);
       setImportStatus('Procesando archivo CSV...');
 
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.log('📤 [ImportCSV] INICIANDO IMPORTACIÓN DE JUGADORES');
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.log('📄 [ImportCSV] Archivo:', file.name);
-      console.log('🏆 [ImportCSV] Equipo ID:', equipoId);
 
       // Create file object in React Native format
       const csvFile = {
@@ -295,29 +288,29 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
           severity: 'high',
           fallbackValue: null,
           onError: (error: any) => {
-            console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-            console.error('❌ [ImportCSV] ERROR AL IMPORTAR');
-            console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-            console.error('❌ [ImportCSV] Error completo:', error);
-            console.error('❌ [ImportCSV] Error message:', error?.message);
-            console.error('❌ [ImportCSV] Error name:', error?.name);
+            // console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            // console.error('❌ [ImportCSV] ERROR AL IMPORTAR');
+            // console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            // console.error('❌ [ImportCSV] Error completo:', error);
+            // console.error('❌ [ImportCSV] Error message:', error?.message);
+            // console.error('❌ [ImportCSV] Error name:', error?.name);
 
             // Información detallada de la respuesta HTTP
             if (error?.response) {
-              console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-              console.error('📡 [ImportCSV] HTTP RESPONSE ERROR:');
-              console.error('  - Status:', error.response.status);
-              console.error('  - Status Text:', error.response.statusText);
-              console.error('  - Data:', JSON.stringify(error.response.data, null, 2));
-              console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+              // console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+              // console.error('📡 [ImportCSV] HTTP RESPONSE ERROR:');
+              // console.error('  - Status:', error.response.status);
+              // console.error('  - Status Text:', error.response.statusText);
+              // console.error('  - Data:', JSON.stringify(error.response.data, null, 2));
+              // console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
               // Obtener mensaje específico del servidor
               const serverMessage = error.response.data?.message || error.response.data?.error;
 
               // Error 400 - Bad Request (formato inválido, datos incorrectos)
               if (error.response.status === 400) {
-                console.error('⚠️ [ImportCSV] ERROR 400 - BAD REQUEST');
-                console.error('⚠️ [ImportCSV] Mensaje del servidor:', serverMessage);
+                // console.error('⚠️ [ImportCSV] ERROR 400 - BAD REQUEST');
+                // console.error('⚠️ [ImportCSV] Mensaje del servidor:', serverMessage);
 
                 setImportingCSV(false);
                 setImportStatus('');
@@ -338,9 +331,9 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
                 `Error (${error.response.status})`
               );
             } else if (error?.request) {
-              console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-              console.error('📡 [ImportCSV] REQUEST ERROR (Sin respuesta del servidor)');
-              console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+              // console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+              // console.error('📡 [ImportCSV] REQUEST ERROR (Sin respuesta del servidor)');
+              // console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
               setImportingCSV(false);
               setImportStatus('');
@@ -352,7 +345,7 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
               showError('Error al importar el archivo CSV', 'Error');
             }
 
-            console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            // console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
           }
         }
       );
@@ -360,10 +353,6 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
       if (uploadResult && uploadResult.success) {
         const { total_processed, successful, failed, errors } = uploadResult.data;
 
-        console.log('✅ [ImportCSV] IMPORTACIÓN COMPLETADA');
-        console.log('  - Total procesados:', total_processed);
-        console.log('  - Exitosos:', successful);
-        console.log('  - Fallidos:', failed);
 
         // Intentar recargar la lista de jugadores
         let newPlayers: Jugador[] = [];
@@ -379,7 +368,7 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
             {
               fallbackValue: null,
               onError: (error) => {
-                console.error('⚠️ [ImportCSV] Error al recargar jugadores:', error);
+                // console.error('⚠️ [ImportCSV] Error al recargar jugadores:', error);
                 // No mostrar error al usuario, solo loguear
                 // Los resultados se mostrarán de todos modos
               }
@@ -409,22 +398,18 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
 
         // Si TODOS fallaron, mostrar mensaje adicional
         if (successful === 0 && failed > 0) {
-          console.error('❌ [ImportCSV] TODOS LOS JUGADORES FALLARON');
-          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          // console.error('❌ [ImportCSV] TODOS LOS JUGADORES FALLARON');
         } else {
-          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-          console.log('🎉 [ImportCSV] PROCESO FINALIZADO');
-          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         }
       } else {
         setImportingCSV(false);
         setImportStatus('');
       }
     } catch (error) {
-      console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.error('❌ [ImportCSV] ERROR INESPERADO AL PROCESAR CSV');
-      console.error('Error:', error);
-      console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      // console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      // console.error('❌ [ImportCSV] ERROR INESPERADO AL PROCESAR CSV');
+      // console.error('Error:', error);
+      // console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       setImportingCSV(false);
       setImportStatus('');
       showError('Error inesperado al procesar el archivo CSV', 'Error');
@@ -537,7 +522,6 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
                   onPress: (url?: string) => {
                     if (url) {
                       // TODO: Guardar en API
-                      console.log('Nuevo link de preview:', url);
                       showSuccess('Link de preview actualizado', 'Éxito');
                     }
                   },
@@ -562,7 +546,6 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
                   onPress: (url?: string) => {
                     if (url) {
                       // TODO: Guardar en API
-                      console.log('Nuevo link de compra:', url);
                       showSuccess('Link de compra actualizado', 'Éxito');
                     }
                   },

@@ -139,7 +139,7 @@ export const EditEditionScreen = ({ navigation, route }: any) => {
         },
       ]);
     } catch (error) {
-      console.error('Error updating edition:', error);
+      // console.error('Error updating edition:', error);
       Alert.alert('Error', 'No se pudo actualizar la edición');
     } finally {
       setIsSaving(false);
@@ -168,7 +168,7 @@ export const EditEditionScreen = ({ navigation, route }: any) => {
               Alert.alert('Éxito', 'Administrador asignado correctamente');
               loadAdmins();
             } catch (error) {
-              console.error('Error assigning admin:', error);
+              // console.error('Error assigning admin:', error);
               Alert.alert('Error', 'No se pudo asignar el administrador');
             }
           },
@@ -200,7 +200,7 @@ export const EditEditionScreen = ({ navigation, route }: any) => {
               Alert.alert('Éxito', 'Administrador removido correctamente');
               loadAdmins();
             } catch (error) {
-              console.error('Error removing admin:', error);
+              // console.error('Error removing admin:', error);
               Alert.alert('Error', 'No se pudo quitar el administrador');
             }
           },
@@ -251,7 +251,7 @@ export const EditEditionScreen = ({ navigation, route }: any) => {
         ]
       );
     } catch (error) {
-      console.error('Error creating admin:', error);
+      // console.error('Error creating admin:', error);
       Alert.alert('Error', 'No se pudo crear el administrador');
       setIsCreatingAdmin(false);
     }

@@ -60,25 +60,56 @@ export interface CreatePartidoFromFixtureRequest {
 
 export interface Partido {
   id_partido: number;
+  id_fixture?: number;
   id_equipo_local: number;
   id_equipo_visitante: number;
-  fecha_hora: string;
-  goles_local?: number;
-  goles_visitante?: number;
-  estado: EstadoPartido;
-  id_local?: number;
-  id_cancha?: number;
   id_ronda?: number;
-  // Alias para compatibilidad
-  marcador_local?: number;
-  marcador_visitante?: number;
-  penales_local?: number;
-  penales_visitante?: number;
+  id_fase?: number;
+  id_cancha?: number;
+  tipo_partido?: 'clasificacion' | 'eliminatoria' | 'amistoso';
+  afecta_clasificacion?: boolean;
+  fecha_hora?: string;
   fecha?: string;
   hora?: string;
+  estado?: EstadoPartido;
   estado_partido?: string;
+  marcador_local?: number | null;
+  marcador_visitante?: number | null;
+  penales_local?: number | null;
+  penales_visitante?: number | null;
+  fue_a_penales?: boolean;
+  wo?: boolean;
+  wo_equipo_ganador?: number | null;
+  wo_motivo?: string | null;
+  arbitro_principal?: string;
+  observaciones?: string | null;
+  motivo_amistoso?: string | null;
   created_at?: string;
   updated_at?: string;
+  // Objetos anidados de la API
+  equipo_local?: {
+    id_equipo: number;
+    nombre: string;
+    logo: string;
+  };
+  equipo_visitante?: {
+    id_equipo: number;
+    nombre: string;
+    logo: string;
+  };
+  cancha?: {
+    id_cancha: number;
+    nombre: string;
+  };
+  ronda?: {
+    id_ronda: number;
+    nombre: string;
+    tipo: 'fase_grupos' | 'amistosa' | 'eliminatorias';
+  };
+  // Legacy support
+  goles_local?: number;
+  goles_visitante?: number;
+  id_local?: number;
 }
 
 // Legacy types (mantener compatibilidad)

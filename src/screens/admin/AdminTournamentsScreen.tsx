@@ -66,7 +66,6 @@ export const AdminTournamentsScreen = ({ navigation, route }: any) => {
 
   const loadTorneos = async (isRefreshing: boolean = false) => {
     try {
-      console.log('🔄 [AdminTournaments] Iniciando carga de torneos...', { isRefreshing });
 
       if (isRefreshing) {
         setRefreshing(true);
@@ -74,24 +73,21 @@ export const AdminTournamentsScreen = ({ navigation, route }: any) => {
         setLoading(true);
       }
 
-      console.log('📡 [AdminTournaments] Llamando a api.torneos.getByCountry...');
       const response = await api.torneos.getByCountry(pais.id_pais, {
         activo: filtroActivo,
         q: searchQuery.trim() || undefined,
       });
-      console.log('✅ [AdminTournaments] Torneos obtenidos exitosamente:', response.data?.length);
 
       const data = response.data || [];
 
       // Validar que data sea un array
       if (!Array.isArray(data)) {
-        console.warn('La respuesta de torneos no es un array:', data);
+        // console.warn('La respuesta de torneos no es un array:', data);
         setTorneos([]);
         return;
       }
 
       // Para cada torneo, verificar si tiene una edición activa
-      console.log('🔍 [AdminTournaments] Obteniendo ediciones para cada torneo...');
       const torneosConEstado = await Promise.all(
         data.map(async (torneo) => {
           try {
@@ -115,7 +111,7 @@ export const AdminTournamentsScreen = ({ navigation, route }: any) => {
             }
 
             // Solo loguear errores que NO sean 404
-            console.error(`❌ [AdminTournaments] Error loading editions for tournament ${torneo.id_torneo}:`, error);
+            // console.error(`❌ [AdminTournaments] Error loading editions for tournament ${torneo.id_torneo}:`, error);
             return {
               ...torneo,
               tieneEdicionActiva: false,
@@ -124,21 +120,15 @@ export const AdminTournamentsScreen = ({ navigation, route }: any) => {
           }
         })
       );
-      console.log('✅ [AdminTournaments] Ediciones procesadas exitosamente');
 
       setTorneos(torneosConEstado);
 
     } catch (error: any) {
-      console.error('❌❌❌ [AdminTournaments] Error en loadTorneos - ESTE ES EL ERROR QUE CAUSA EL ALERT:', error);
-      console.error('❌ [AdminTournaments] Error details:', {
-        message: error?.message,
-        response: error?.response,
-        stack: error?.stack,
-      });
+      // console.error('❌❌❌ [AdminTournaments] Error en loadTorneos - ESTE ES EL ERROR QUE CAUSA EL ALERT:', error);
+     
       setTorneos([]);
       Alert.alert('Error', 'No se pudieron cargar los torneos. Intenta de nuevo.');
     } finally {
-      console.log('🏁 [AdminTournaments] Finalizando carga de torneos');
       setLoading(false);
       setRefreshing(false);
     }
@@ -177,7 +167,6 @@ export const AdminTournamentsScreen = ({ navigation, route }: any) => {
           onPress: async () => {
             try {
               await api.torneos.delete(torneo.id_torneo);
-              console.log('Eliminar torneo:', torneo.id_torneo);
               setTorneos(torneos.filter(t => t.id_torneo !== torneo.id_torneo));
             } catch (error) {
               Alert.alert('Error', 'No se pudo eliminar el torneo');

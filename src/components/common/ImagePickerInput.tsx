@@ -95,7 +95,7 @@ export const ImagePickerInput: React.FC<ImagePickerInputProps> = ({
         onChangeImage(imageUri);
       }
     } catch (error) {
-      console.error('Error al seleccionar imagen:', error);
+      // console.error('Error al seleccionar imagen:', error);
       Alert.alert('Error', 'No se pudo seleccionar la imagen');
     }
   };
@@ -126,7 +126,7 @@ export const ImagePickerInput: React.FC<ImagePickerInputProps> = ({
         onChangeImage(imageUri);
       }
     } catch (error) {
-      console.error('Error al tomar foto:', error);
+      // console.error('Error al tomar foto:', error);
       Alert.alert('Error', 'No se pudo tomar la foto');
     }
   };

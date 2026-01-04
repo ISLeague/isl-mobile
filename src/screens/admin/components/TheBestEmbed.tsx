@@ -56,7 +56,7 @@ export const TheBestEmbed: React.FC<TheBestEmbedProps> = ({ navigation, idEdicio
         setEstadisticasEquipos(equiposResponse.data.estadisticas || []);
       }
     } catch (error) {
-      console.error('Error loading statistics:', error);
+      // console.error('Error loading statistics:', error);
       showError('Error al cargar las estadísticas');
     } finally {
       setLoading(false);
@@ -227,7 +227,6 @@ export const TheBestEmbed: React.FC<TheBestEmbedProps> = ({ navigation, idEdicio
 
   const handleViewAll = (rankingId: string, rankingTitle: string) => {
     // TODO: Navigate to full ranking screen
-    console.log(`View all for ${rankingTitle}`);
   };
 
   const renderRankingCard = (ranking: any) => {

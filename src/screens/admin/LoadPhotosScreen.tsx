@@ -65,12 +65,10 @@ export const LoadPhotosScreen: React.FC<LoadPhotosScreenProps> = ({ navigation, 
       // Por ahora retornamos la imagen redimensionada
       // El watermark se aplicará en el servidor cuando se suba a Supabase
       
-      console.log('📸 Imagen procesada:', manipulatedImage.uri);
-      console.log('   - Dimensiones: Se aplicará watermark en servidor');
       
       return manipulatedImage.uri;
     } catch (error) {
-      console.error('Error procesando imagen:', error);
+      // console.error('Error procesando imagen:', error);
       throw error;
     }
   };
@@ -122,7 +120,7 @@ export const LoadPhotosScreen: React.FC<LoadPhotosScreenProps> = ({ navigation, 
               )
             );
           } catch (error) {
-            console.error('Error procesando imagen:', error);
+            // console.error('Error procesando imagen:', error);
             setPreviewImages(prev => 
               prev.map(p => 
                 p.id === img.id 
@@ -137,7 +135,7 @@ export const LoadPhotosScreen: React.FC<LoadPhotosScreenProps> = ({ navigation, 
         showInfo(`${newImages.length} imagen(es) agregada(s)`);
       }
     } catch (error) {
-      console.error('Error seleccionando imágenes:', error);
+      // console.error('Error seleccionando imágenes:', error);
       showError('Error al seleccionar imágenes');
       setIsProcessing(false);
     }
@@ -151,14 +149,12 @@ export const LoadPhotosScreen: React.FC<LoadPhotosScreenProps> = ({ navigation, 
   // Subir imágenes a Supabase (simulado por ahora)
   const uploadToSupabase = async (images: PreviewImage[]): Promise<string[]> => {
     // TODO: Implementar subida real a Supabase
-    console.log('📤 Subiendo imágenes a Supabase...');
     
     const uploadedUrls: string[] = [];
     
     for (const img of images) {
       if (img.processedUri) {
         // Simular subida
-        console.log(`   - Subiendo: ${img.id}`);
         // En producción:
         // const { data, error } = await supabase.storage
         //   .from('match-photos')
@@ -170,7 +166,6 @@ export const LoadPhotosScreen: React.FC<LoadPhotosScreenProps> = ({ navigation, 
       }
     }
     
-    console.log('✅ Imágenes subidas:', uploadedUrls.length);
     return uploadedUrls;
   };
 
@@ -210,17 +205,11 @@ export const LoadPhotosScreen: React.FC<LoadPhotosScreenProps> = ({ navigation, 
       //   preview_images: previewUrls,
       //   link_compra: linkCompra.trim(),
       // });
-      
-      console.log('💾 Guardando datos del partido:', {
-        id_partido: partido.id_partido,
-        preview_images: previewUrls,
-        link_compra: linkCompra.trim(),
-      });
-      
+
       showSuccess('Fotos guardadas exitosamente');
       navigation.goBack();
     } catch (error) {
-      console.error('Error guardando fotos:', error);
+      // console.error('Error guardando fotos:', error);
       showError('Error al guardar las fotos');
     } finally {
       setIsSaving(false);

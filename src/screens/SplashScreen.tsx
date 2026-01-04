@@ -33,7 +33,7 @@ export const SplashScreen = ({ navigation }: any) => {
         ]);
 
       } catch (e) {
-        console.warn('Error precargando assets:', e);
+        // console.warn('Error precargando assets:', e);
       } finally {
         setIsReady(true);
       }

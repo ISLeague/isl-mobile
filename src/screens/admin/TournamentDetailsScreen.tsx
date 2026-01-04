@@ -64,7 +64,7 @@ export const TournamentDetailsScreen = ({ navigation, route }: any) => {
         }
       }
     } catch (error) {
-      console.error('Error refreshing tournament details:', error);
+      // console.error('Error refreshing tournament details:', error);
     }
   };
 
@@ -75,16 +75,14 @@ export const TournamentDetailsScreen = ({ navigation, route }: any) => {
       } else {
         setLoading(true);
       }
-      console.log('Loading editions for tournament ID:', currentTorneo.id_torneo);
       const response = await api.ediciones.list({ id_torneo: currentTorneo.id_torneo });
       setEdiciones(response.data || []);
     } catch (error: any) {
       // Handle 404 gracefully - no editions yet
-      console.log('Error details:', error);
       if (error?.response?.status === 404) {
         setEdiciones([]);
       } else {
-        console.error('Error loading editions:', error);
+        // console.error('Error loading editions:', error);
         setEdiciones([]);
       }
     } finally {

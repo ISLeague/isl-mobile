@@ -51,7 +51,6 @@ export const SendNotificationsScreen = ({ navigation, route }: any) => {
               //   tipo,
               // });
               
-              console.log('Notificación enviada:', { titulo, mensaje, tipo });
               showSuccess('Notificación enviada correctamente');
               
               // Limpiar formulario
@@ -62,7 +61,7 @@ export const SendNotificationsScreen = ({ navigation, route }: any) => {
               // Volver atrás
               navigation.goBack();
             } catch (error) {
-              console.error('Error al enviar notificación:', error);
+              // console.error('Error al enviar notificación:', error);
               showError('Error al enviar la notificación');
             }
           },

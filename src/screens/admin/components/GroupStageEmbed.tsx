@@ -64,7 +64,6 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps & { refreshTrigger?:
   idEdicionCategoria,
   refreshTrigger
 }) => {
-  console.log('🎨 [GroupStageEmbed] Renderizado - Props recibidas:', { idFase, idEdicionCategoria, isAdmin, refreshTrigger });
 
   const [grupos, setGrupos] = useState<Grupo[]>([]);
   const [clasificaciones, setClasificaciones] = useState<{ [grupoId: number]: (Clasificacion & { equipo: Equipo })[] }>({});
@@ -103,15 +102,11 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps & { refreshTrigger?:
 
     try {
       setLoading(true);
-      console.log('📥 [GroupStageEmbed] Cargando información completa de grupos para fase:', idFase);
 
       // Usar el nuevo endpoint que trae toda la información de una vez
-      console.log('🔍 [GroupStageEmbed] Llamando a api.grupos.get con idFase:', idFase);
       const response = await api.grupos.get(idFase);
-      console.log('📥 [GroupStageEmbed] Respuesta recibida del API:', response);
 
       if (response.success && response.data) {
-        console.log('✅ [GroupStageEmbed] Datos recibidos:', response.data);
 
         // Guardar configuración de clasificación
         setConfiguracionClasificacion(response.data.configuracion_clasificacion);
@@ -165,15 +160,8 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps & { refreshTrigger?:
         });
 
         setClasificaciones(clasificacionesMap);
-
-        console.log('✅ [GroupStageEmbed] Grupos y clasificaciones cargados:', {
-          totalGrupos: gruposSimplificados.length,
-          totalEquipos: response.data.resumen.total_equipos,
-          configuracion: response.data.configuracion_clasificacion,
-        });
       }
     } catch (error) {
-      console.error('❌ [GroupStageEmbed] Error loading groups:', error);
       showError('Error al cargar los grupos');
     } finally {
       setLoading(false);
@@ -185,7 +173,6 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps & { refreshTrigger?:
   }, [loadGruposAndClasificacion, refreshTrigger]);
 
   const handleCreateGroup = () => {
-    console.log('🔍 [GroupStageEmbed] handleCreateGroup - idEdicionCategoria:', idEdicionCategoria);
 
     if (!idEdicionCategoria) {
       Alert.alert('Error', 'No se pudo obtener el ID de la edición categoría');
@@ -216,7 +203,6 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps & { refreshTrigger?:
               setDeletingGrupo(true);
               setDeletingGrupoNombre(grupo.nombre);
 
-              console.log(`🗑️ [GroupStageEmbed] Eliminando grupo "${grupo.nombre}" (ID: ${grupo.id_grupo})`);
 
               // Mostrar mensaje de que se está eliminando
               showInfo(`Eliminando grupo "${grupo.nombre}"...`, 'Eliminando');
@@ -224,7 +210,6 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps & { refreshTrigger?:
               const response = await api.grupos.delete(grupo.id_grupo);
 
               if (response.success) {
-                console.log(`✅ [GroupStageEmbed] Grupo "${grupo.nombre}" eliminado exitosamente`);
 
                 // Actualizar el estado local inmediatamente sin recargar
                 setGrupos(prevGrupos => prevGrupos.filter(g => g.id_grupo !== grupo.id_grupo));
@@ -242,7 +227,6 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps & { refreshTrigger?:
                 showError('No se pudo eliminar el grupo. Intenta nuevamente.', 'Error');
               }
             } catch (error: any) {
-              console.error('❌ [GroupStageEmbed] Error eliminando grupo:', error);
               const errorMessage = error?.response?.data?.message || 'Ocurrió un error al eliminar el grupo. Por favor intenta nuevamente.';
               showError(errorMessage, 'Error al eliminar');
             } finally {
@@ -293,7 +277,6 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps & { refreshTrigger?:
         descripcion: descripcionReglas.trim() || undefined,
       };
 
-      console.log('🔧 Actualizando reglas:', updateData);
 
       const response = await api.grupos.updateReglas(idFase, updateData);
 
@@ -303,7 +286,6 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps & { refreshTrigger?:
         loadGruposAndClasificacion(); // Recargar datos
       }
     } catch (error) {
-      console.error('Error actualizando reglas:', error);
       showError('Error al actualizar las reglas de clasificación');
     } finally {
       setSavingReglas(false);
@@ -327,7 +309,6 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps & { refreshTrigger?:
           text: 'Eliminar',
           style: 'destructive',
           onPress: () => {
-            console.log('Remover equipo del grupo:', clasificacionId);
             // TODO: Llamar a la API para remover el equipo del grupo
             // await api.groups.removeTeamFromGroup(clasificacionId);
             showSuccess('Equipo removido del grupo');
@@ -355,7 +336,6 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps & { refreshTrigger?:
         {
           text: 'Mover',
           onPress: () => {
-            console.log('Mover equipo', selectedClasificacion.id_equipo, 'al grupo', targetGrupoId);
             // TODO: Llamar a la API para mover el equipo
             // await api.groups.moveTeamToGroup(selectedClasificacion.id_clasificacion, targetGrupoId);
             showSuccess(`Equipo movido a ${targetGrupo?.nombre}`);
@@ -370,7 +350,6 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps & { refreshTrigger?:
   const handleAddTeam = (equipoId: number) => {
     if (!selectedGrupoId) return;
 
-    console.log('Agregar equipo', equipoId, 'al grupo', selectedGrupoId);
     // TODO: Llamar a la API para agregar el equipo al grupo
     // await api.groups.addTeamToGroup(selectedGrupoId, equipoId);
   };
@@ -405,11 +384,10 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps & { refreshTrigger?:
   };
 
   const handleTeamPress = (equipoId: number) => {
-    console.log('GroupStageEmbed - handleTeamPress called, equipoId:', equipoId);
     try {
       navigation.navigate('TeamDetail', { equipoId });
     } catch (error) {
-      console.error('GroupStageEmbed - Navigation error:', error);
+      // Navigation error - silently ignore
     }
   };
 

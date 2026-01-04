@@ -39,11 +39,7 @@ export const CreateTournamentScreen = ({ navigation, route }: any) => {
 
     const result = await safeAsync(
       async () => {
-        console.log('📊 [CreateTournament] Creando torneo:', {
-          nombre,
-          temporada: edicion,
-          id_pais: pais.id_pais,
-        });
+       
 
         const response = await api.torneos.create({
           nombre: nombre.trim(),
@@ -51,7 +47,7 @@ export const CreateTournamentScreen = ({ navigation, route }: any) => {
           id_pais: pais.id_pais,
         });
 
-        console.log('✅ [CreateTournament] Torneo creado:', response);
+        // console.log('✅ [CreateTournament] Torneo creado:', response);
         return response;
       },
       'createTournament',
@@ -59,7 +55,7 @@ export const CreateTournamentScreen = ({ navigation, route }: any) => {
         severity: 'high',
         fallbackValue: null,
         onError: (error) => {
-          console.error('❌ [CreateTournament] Error:', error);
+          // console.error('❌ [CreateTournament] Error:', error);
           showError(getUserFriendlyMessage(error), 'Error al crear torneo');
         }
       }

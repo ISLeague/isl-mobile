@@ -136,8 +136,6 @@ export const CreateTournamentAdminScreen: React.FC<CreateTournamentAdminScreenPr
         mockUsuarios.push(nuevoAdmin);
 
         // En desarrollo mostramos la contraseña, en producción solo se envía por email
-        console.log('🔐 Contraseña generada para', email, ':', passwordGenerada);
-        console.log('📧 En producción se enviaría por email al admin');
 
         showSuccess(
           `Admin "${nombre}" creado exitosamente\nEmail: ${email}\nTorneo: ${torneo.nombre}\n\n✉️ Se ha enviado un correo con la contraseña temporal\n🔒 Deberá cambiarla en el primer inicio de sesión`,

@@ -106,11 +106,6 @@ export const PlayerFormScreen: React.FC<PlayerFormScreenProps> = ({ navigation, 
     setLoading(true);
     setSavingStatus(mode === 'edit' ? 'Actualizando jugador...' : 'Guardando jugador...');
 
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log(`📝 [PlayerForm] ${mode === 'edit' ? 'ACTUALIZANDO' : 'CREANDO'} JUGADOR`);
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('👤 [PlayerForm] Nombre:', nombreCompleto);
-    console.log('🏆 [PlayerForm] Equipo ID:', equipoId);
 
     // Convert DD/MM/YYYY to YYYY-MM-DD for API
     const [dia, mes, anio] = fechaNacimiento.split('/').map(Number);
@@ -137,11 +132,9 @@ export const PlayerFormScreen: React.FC<PlayerFormScreenProps> = ({ navigation, 
       async () => {
         if (mode === 'create') {
           const response = await api.jugadores.create(jugadorData);
-          console.log('✅ [PlayerForm] Jugador creado exitosamente');
           return response;
         } else {
           // TODO: Implementar edición de jugador
-          console.log('✅ [PlayerForm] Jugador actualizado exitosamente');
           return { success: true };
         }
       },
@@ -149,7 +142,7 @@ export const PlayerFormScreen: React.FC<PlayerFormScreenProps> = ({ navigation, 
       {
         fallbackValue: null,
         onError: (error) => {
-          console.error('❌ [PlayerForm] Error al guardar:', error);
+          // console.error('❌ [PlayerForm] Error al guardar:', error);
           setLoading(false);
           setSavingStatus('');
           showError(error.message || 'No se pudo guardar el jugador', 'Error');
@@ -161,8 +154,6 @@ export const PlayerFormScreen: React.FC<PlayerFormScreenProps> = ({ navigation, 
     setSavingStatus('');
 
     if (success) {
-      console.log('🎉 [PlayerForm] Proceso completado - Regresando');
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       showSuccess(
         `Jugador ${mode === 'edit' ? 'actualizado' : 'creado'} correctamente`,
         '¡Éxito!'

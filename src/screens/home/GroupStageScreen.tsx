@@ -79,12 +79,10 @@ export const GroupStageScreen: React.FC<GroupStageScreenProps> = ({ navigation, 
 
   const handleImportCSV = () => {
     // TODO: Implementar importación CSV
-    console.log('Importar CSV');
   };
 
   const handleExportCSV = () => {
     // TODO: Implementar exportación CSV
-    console.log('Exportar CSV');
   };
 
   const renderClasificacionIndicator = (posicion: number, tipo_clasificacion?: string) => {

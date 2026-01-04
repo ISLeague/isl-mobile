@@ -79,7 +79,7 @@ export const PrivacySettingsScreen: React.FC<PrivacySettingsScreenProps> = ({ na
 
       showSuccess('Datos preparados para exportar', 'Exportación');
     } catch (error) {
-      console.error('Error al exportar datos:', error);
+      // console.error('Error al exportar datos:', error);
       showError('No se pudieron exportar los datos', 'Error');
     } finally {
       setLoading(false);
@@ -144,7 +144,7 @@ export const PrivacySettingsScreen: React.FC<PrivacySettingsScreenProps> = ({ na
         { cancelable: false }
       );
     } catch (error) {
-      console.error('Error al eliminar cuenta:', error);
+      // console.error('Error al eliminar cuenta:', error);
       showError('No se pudo eliminar la cuenta. Intenta más tarde.', 'Error');
     } finally {
       setLoading(false);

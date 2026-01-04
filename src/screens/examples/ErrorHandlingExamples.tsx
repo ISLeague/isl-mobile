@@ -225,7 +225,7 @@ export const ExampleManualErrorHandling = () => {
       );
       
       // Opcional: loggear para debugging
-      console.error('Error details:', error);
+      // console.error('Error details:', error);
     }
   };
 
@@ -257,7 +257,6 @@ export const ExampleWithErrorBoundary = () => {
         fallback={
           <View style={styles.errorContainer}>
             <Text>No se pudieron cargar los datos</Text>
-            <Button title="Reintentar" onPress={() => console.log('Reintentar')} />
           </View>
         }
       >

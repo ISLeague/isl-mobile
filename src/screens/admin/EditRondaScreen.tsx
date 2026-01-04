@@ -58,7 +58,6 @@ export const EditRondaScreen = ({ navigation, route }: any) => {
             try {
               // TODO: Llamar API
               // await api.rounds.updateRound(ronda.id_ronda, { nombre, fecha, orden, tipo, subtipo_eliminatoria: subtipoEliminatoria, aplicar_fecha_automatica: aplicarFechaAutomatica });
-              console.log('Actualizar ronda:', { nombre, fecha, orden, tipo, subtipoEliminatoria, aplicarFechaAutomatica });
               showSuccess('Ronda actualizada exitosamente');
               navigation.goBack();
             } catch (error) {
@@ -148,7 +147,6 @@ export const EditRondaScreen = ({ navigation, route }: any) => {
             try {
               // TODO: Llamar API
               // await api.rounds.deleteRound(ronda.id_ronda);
-              console.log('Eliminar ronda:', ronda.id_ronda);
               showSuccess('Ronda eliminada exitosamente');
               navigation.goBack();
             } catch (error) {
@@ -177,7 +175,6 @@ export const EditRondaScreen = ({ navigation, route }: any) => {
             try {
               // TODO: Llamar API
               // await api.rounds.applyDateToAllMatches(ronda.id_ronda, fecha);
-              console.log('Aplicar fecha a todos los partidos:', fecha);
               showSuccess('Fecha aplicada a todos los partidos');
             } catch (error) {
               showError('Error al aplicar la fecha');

@@ -179,7 +179,7 @@ export const ManageTeamsScreen = ({ navigation, route }: any) => {
                           // (Optional: you might want to navigate to team details to see the new players)
                         }
                       } catch (error) {
-                        console.error('Error uploading CSV:', error);
+                        // console.error('Error uploading CSV:', error);
                         showError('Error al importar el archivo', 'Error');
                       }
                     }
@@ -187,7 +187,7 @@ export const ManageTeamsScreen = ({ navigation, route }: any) => {
                 ]
               );
             } catch (error) {
-              console.error('Error picking CSV:', error);
+              // console.error('Error picking CSV:', error);
               showError('Error al seleccionar el archivo', 'Error');
             }
           }

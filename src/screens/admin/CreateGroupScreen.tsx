@@ -58,8 +58,6 @@ export const CreateGroupScreen: React.FC<CreateGroupScreenProps> = ({ navigation
       equipos_pasan_plata: plata,
     };
 
-    console.log('Crear grupo:', grupoData);
-    console.log('Reglas de clasificación auto-generadas:', tipoClasificacion);
 
     // TODO: Llamar a la API para crear el grupo
     // await api.groups.createGroup(grupoData);

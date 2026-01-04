@@ -90,7 +90,6 @@ export const CreatePartidoScreen = ({ navigation, route }: any) => {
   };
 
   const loadFixturesSinPartido = async () => {
-    console.log('📋 [CreatePartido] Loading fixtures sin partido for ronda:', ronda.id_ronda);
     setLoadingFixtures(true);
 
     const result = await safeAsync(
@@ -107,7 +106,6 @@ export const CreatePartidoScreen = ({ navigation, route }: any) => {
   };
 
   const loadGrupos = async () => {
-    console.log('🏆 [CreatePartido] Loading grupos for fase:', idFase);
 
     const result = await safeAsync(
       async () => {
@@ -122,7 +120,6 @@ export const CreatePartidoScreen = ({ navigation, route }: any) => {
   };
 
   const loadLocales = async () => {
-    console.log('📍 [CreatePartido] Loading locales for edicion:', idEdicionCategoria);
 
     const result = await safeAsync(
       async () => {
@@ -137,7 +134,6 @@ export const CreatePartidoScreen = ({ navigation, route }: any) => {
   };
 
   const loadCanchasForLocal = async (localIdParam: number) => {
-    console.log('⚽ [CreatePartido] Loading canchas for local:', localIdParam);
 
     const result = await safeAsync(
       async () => {
@@ -152,7 +148,6 @@ export const CreatePartidoScreen = ({ navigation, route }: any) => {
   };
 
   const loadAllCanchas = async () => {
-    console.log('⚽ [CreatePartido] Loading all canchas for edicion:', idEdicionCategoria);
 
     const result = await safeAsync(
       async () => {
@@ -193,7 +188,6 @@ export const CreatePartidoScreen = ({ navigation, route }: any) => {
       if (grupo && grupo.equipos) {
         const equiposDelGrupo = grupo.equipos.map((eg: EquipoGrupo) => eg.equipo);
         setEquipos(equiposDelGrupo);
-        console.log('👥 [CreatePartido] Loaded equipos for grupo:', grupoId, equiposDelGrupo.length);
       }
     } else {
       setEquipos([]);
@@ -337,7 +331,6 @@ export const CreatePartidoScreen = ({ navigation, route }: any) => {
 
             try {
               // Paso 1: Crear fixture
-              console.log('📝 [CreatePartido] Creating fixture...');
               const fixtureData: CreateFixtureRequest = {
                 id_ronda: ronda.id_ronda,
                 id_grupo: grupoId!,
@@ -364,7 +357,6 @@ export const CreatePartidoScreen = ({ navigation, route }: any) => {
               }
 
               const idFixture = fixtureResult.data.id_fixture;
-              console.log('✅ [CreatePartido] Fixture created:', idFixture);
               showInfo('Fixture creado, ahora creando partido...');
 
               // Paso 2: Crear partido desde el fixture
@@ -416,7 +408,7 @@ export const CreatePartidoScreen = ({ navigation, route }: any) => {
             } catch (error) {
               setCreating(false);
               showError('Error en el proceso de creación');
-              console.error('❌ [CreatePartido] Error:', error);
+              // console.error('❌ [CreatePartido] Error:', error);
             }
           },
         },

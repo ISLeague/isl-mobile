@@ -152,7 +152,6 @@ export const RondaDetailScreen: React.FC<RondaDetailScreenProps> = ({ navigation
   };
 
   const handleCreatePartidos = async () => {
-    console.log('🎯 [RondaDetail] Iniciando creación de partidos...');
 
     // Validate all fixtures have required data
     const missingData = fixturesSinPartido.some((fixture) => {
@@ -193,19 +192,17 @@ export const RondaDetailScreen: React.FC<RondaDetailScreenProps> = ({ navigation
           : `Partido de ${ronda.tipo === 'amistosa' ? 'amistoso' : ronda.tipo}`,
       };
 
-      console.log('📡 [RondaDetail] Creando partido:', partidoData);
 
       const result = await safeAsync(
         async () => {
           const response = await api.partidos.createFromFixture(partidoData);
-          console.log('📥 [RondaDetail] Respuesta de crear partido:', response);
           return response;
         },
         'RondaDetail - createPartido',
         {
           fallbackValue: null,
           onError: (error) => {
-            console.error('❌ [RondaDetail] Error al crear partido:', error);
+            // console.error('❌ [RondaDetail] Error al crear partido:', error);
             errorCount++;
           },
         }
@@ -217,7 +214,6 @@ export const RondaDetailScreen: React.FC<RondaDetailScreenProps> = ({ navigation
     }
 
     setCreatingPartidos(false);
-    console.log(`✅ [RondaDetail] Partidos creados: ${createdCount}/${fixturesSinPartido.length}`);
 
     if (errorCount > 0) {
       showError(`Se crearon ${createdCount} partidos con ${errorCount} errores`);

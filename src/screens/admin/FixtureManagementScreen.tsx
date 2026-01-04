@@ -43,7 +43,7 @@ export const FixtureManagementScreen: React.FC<FixtureManagementScreenProps> = (
     const result = await safeAsync(
       async () => {
         const [rondasResponse, partidosResponse, equiposResponse] = await Promise.all([
-          api.rondas.list(),
+          api.rondas.list({ id_edicion_categoria: idEdicionCategoria }),
           api.partidos.list(),
           idEdicionCategoria ? api.equipos.list(idEdicionCategoria) : Promise.resolve({ success: true, data: [] }),
         ]);
@@ -143,12 +143,10 @@ export const FixtureManagementScreen: React.FC<FixtureManagementScreenProps> = (
   }, [partidos, searchQuery, equipos]);
 
   const handleCreateRonda = useCallback(() => {
-    console.log('Crear nueva ronda');
     navigation.navigate('CreateRonda', { idEdicionCategoria });
   }, [navigation, idEdicionCategoria]);
 
   const handleCreateRondaAmistosa = useCallback(() => {
-    console.log('Crear ronda amistosa');
     navigation.navigate('CreateRondaAmistosa', { idEdicionCategoria });
   }, [navigation, idEdicionCategoria]);
 
@@ -186,7 +184,6 @@ export const FixtureManagementScreen: React.FC<FixtureManagementScreenProps> = (
         {
           text: 'Generar',
           onPress: () => {
-            console.log('Generando fixture automático...');
             // TODO: Llamar a la API para generar el fixture
             // await api.fixture.generateGroupFixture(idEdicionCategoria);
             Alert.alert('Éxito', 'Fixture generado exitosamente');
@@ -198,12 +195,10 @@ export const FixtureManagementScreen: React.FC<FixtureManagementScreenProps> = (
   };
 
   const handleEditPartido = useCallback((partido: Partido) => {
-    console.log('Editar partido:', partido);
     navigation.navigate('EditPartido', { partido });
   }, [navigation]);
 
   const handleLoadResult = useCallback((partido: Partido) => {
-    console.log('Cargar resultado:', partido);
     navigation.navigate('LoadResults', { partido });
   }, [navigation]);
 
@@ -219,7 +214,6 @@ export const FixtureManagementScreen: React.FC<FixtureManagementScreenProps> = (
           onPress: async () => {
             try {
               await api.rondas.delete(ronda.id_ronda);
-              console.log('Eliminar ronda:', ronda.id_ronda);
               setRondas(rondas.filter(r => r.id_ronda !== ronda.id_ronda));
               showSuccess('Ronda eliminada exitosamente');
             } catch (error) {

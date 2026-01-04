@@ -29,11 +29,11 @@ export const HomeScreen = ({ navigation }: any) => {
       if (Array.isArray(paisesData)) {
         setPaises(paisesData);
       } else {
-        console.warn('La respuesta de países no es un array:', paisesData);
+        // console.warn('La respuesta de países no es un array:', paisesData);
         setPaises([]);
       }
     } catch (error) {
-      console.error('Error loading data:', error);
+      // console.error('Error loading data:', error);
       setPaises([]);
     } finally {
       setLoading(false);

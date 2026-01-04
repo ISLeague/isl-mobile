@@ -191,11 +191,10 @@ export const MyTeamEmbed: React.FC<MyTeamEmbedProps> = ({ navigation, edicionCat
   }
 
   const handleTeamPress = () => {
-    console.log('MyTeamEmbed - handleTeamPress called, equipoId:', followedTeam?.id_equipo);
     try {
       navigation.navigate('TeamDetail', { equipoId: followedTeam.id_equipo });
     } catch (error) {
-      console.error('MyTeamEmbed - Navigation error:', error);
+      // console.error('MyTeamEmbed - Navigation error:', error);
     }
   };
 

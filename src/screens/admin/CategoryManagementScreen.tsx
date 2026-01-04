@@ -39,8 +39,6 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
   const tabRefs = useRef<{ [key: string]: View | null }>({});
   const { torneo, pais, categoria, edicionCategoria, edicion } = route.params;
 
-  console.log('🎯 [CategoryManagement] Route params:', { torneo, pais, categoria, edicionCategoria });
-  console.log('🎯 [CategoryManagement] idEdicionCategoria from params:', edicionCategoria?.id_edicion_categoria);
 
   const { isAdmin, isGuest } = useAuth();
   const { setColorPreset, colorPreset, logo, gradient } = useTheme();
@@ -170,32 +168,29 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
         setCategorias(categoriesArray);
       }
     } catch (error) {
-      console.error('Error loading categorias:', error);
+      // console.error('Error loading categorias:', error);
     }
   };
 
   const loadFaseGrupos = async () => {
     if (!idEdicionCategoria) {
-      console.warn('⚠️ [CategoryManagement] No idEdicionCategoria disponible para cargar fases');
+      // console.warn('⚠️ [CategoryManagement] No idEdicionCategoria disponible para cargar fases');
       return;
     }
 
     try {
-      console.log('🔄 [CategoryManagement] Cargando fase de grupos para idEdicionCategoria:', idEdicionCategoria);
 
       const fasesResponse = await api.fases.list(idEdicionCategoria);
       if (fasesResponse.success && fasesResponse.data && fasesResponse.data.length > 0) {
         // Find the first "grupo" type fase
         const faseGrupos = fasesResponse.data.find(f => f.tipo === 'grupo');
         if (faseGrupos) {
-          console.log('✅ [CategoryManagement] Fase de grupos encontrada:', faseGrupos.id_fase);
           setIdFase(faseGrupos.id_fase);
         } else {
-          console.log('ℹ️ [CategoryManagement] No se encontró fase de grupos');
         }
       }
     } catch (error) {
-      console.error('Error loading fase de grupos:', error);
+      // console.error('Error loading fase de grupos:', error);
     }
   };
 
@@ -411,13 +406,11 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
                     }
                     onEditLocal={(local) => navigation.navigate('EditLocal', { local })}
                     onDeleteLocal={(idLocal) => {
-                      console.log('Eliminar local:', idLocal);
                     }}
                     onEditCancha={(cancha, nombreLocal) =>
                       navigation.navigate('EditCancha', { cancha, nombreLocal })
                     }
                     onDeleteCancha={(idCancha, nombreLocal) => {
-                      console.log('Eliminar cancha:', idCancha, 'del local:', nombreLocal);
                     }}
                   />
                 </View>
@@ -429,7 +422,6 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
                     idEdicionCategoria={idEdicionCategoria || 1}
                     onCreateSponsor={() => navigation.navigate('CreateSponsor')}
                     onEditSponsor={(sponsor) => navigation.navigate('EditSponsor  ', { sponsor })}
-                    onDeleteSponsor={(idSponsor) => console.log('Eliminar sponsor:', idSponsor)}
                   />
                 </View>
               );

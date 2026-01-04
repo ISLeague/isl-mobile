@@ -24,6 +24,21 @@ export const fasesService = {
   },
 
   /**
+   * Obtener fases de tipo grupo para una edición categoría
+   */
+  getFaseGrupos: async (idEdicionCategoria: number): Promise<FasesListResponse> => {
+    console.log('🌐 [getFaseGrupos] Llamando a API con idEdicionCategoria:', idEdicionCategoria);
+    const response = await apiClient.get('/fases', {
+      params: { 
+        action: 'get-fase-grupos', 
+        id_edicion_categoria: idEdicionCategoria 
+      },
+    });
+    console.log('✅ [getFaseGrupos] Respuesta recibida:', response.data);
+    return response.data;
+  },
+
+  /**
    * Obtener una fase por ID
    */
   get: async (id: number): Promise<{ success: boolean; data: any; timestamp: string }> => {

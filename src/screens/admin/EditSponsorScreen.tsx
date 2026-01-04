@@ -54,7 +54,7 @@ export const EditSponsorScreen = ({ navigation, route }: any) => {
               showSuccess('Sponsor actualizado exitosamente');
               navigation.goBack();
             } catch (error) {
-              console.error('Error updating sponsor:', error);
+              // console.error('Error updating sponsor:', error);
               showError('Error al actualizar el sponsor');
             } finally {
               setLoading(false);
@@ -81,7 +81,7 @@ export const EditSponsorScreen = ({ navigation, route }: any) => {
               showSuccess('Sponsor eliminado exitosamente');
               navigation.goBack();
             } catch (error) {
-              console.error('Error deleting sponsor:', error);
+              // console.error('Error deleting sponsor:', error);
               showError('Error al eliminar el sponsor');
             } finally {
               setLoading(false);

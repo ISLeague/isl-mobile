@@ -47,11 +47,6 @@ export const MoveTeamToGroupScreen: React.FC<MoveTeamToGroupScreenProps> = ({
     setLoading(true);
 
     try {
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.log('📂 [MoveTeamToGroup] Cargando datos');
-      console.log('  - Equipo:', equipo.nombre);
-      console.log('  - ID Equipo:', equipo.id_equipo);
-      console.log('  - ID Edición Categoría:', equipo.id_edicion_categoria);
 
       // Cargar fases para obtener la fase de grupos
       const fasesResponse = await safeAsync(
@@ -86,7 +81,6 @@ export const MoveTeamToGroupScreen: React.FC<MoveTeamToGroupScreenProps> = ({
       }
 
       setFaseGrupos(faseGruposEncontrada);
-      console.log('✅ [MoveTeamToGroup] Fase de grupos encontrada:', faseGruposEncontrada.nombre);
 
       // Cargar grupos de la fase
       const gruposResponse = await safeAsync(
@@ -114,15 +108,12 @@ export const MoveTeamToGroupScreen: React.FC<MoveTeamToGroupScreenProps> = ({
 
         if (grupoActualEncontrado) {
           setGrupoActual(grupoActualEncontrado);
-          console.log('✅ [MoveTeamToGroup] Grupo actual:', grupoActualEncontrado.nombre);
         } else {
-          console.log('⚠️ [MoveTeamToGroup] Equipo no está asignado a ningún grupo');
         }
       }
 
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     } catch (error) {
-      console.error('Error loading data:', error);
+      // console.error('Error loading data:', error);
       showError('Error al cargar los datos');
     } finally {
       setLoading(false);
@@ -150,11 +141,6 @@ export const MoveTeamToGroupScreen: React.FC<MoveTeamToGroupScreenProps> = ({
       setMoving(true);
       setMovingStatus(`Moviendo "${equipo.nombre}" a "${grupoDestino.nombre}"...`);
 
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.log('🔄 [MoveTeamToGroup] INICIANDO MOVIMIENTO DE EQUIPO');
-      console.log('  - Equipo:', equipo.nombre);
-      console.log('  - Grupo actual:', grupoActual?.nombre || 'Sin grupo');
-      console.log('  - Grupo destino:', grupoDestino.nombre);
 
       // Paso 1: Si el equipo está en un grupo, obtener todos los equipos de ese grupo excepto el actual
       if (grupoActual) {
@@ -164,7 +150,6 @@ export const MoveTeamToGroupScreen: React.FC<MoveTeamToGroupScreenProps> = ({
           .filter(eq => eq.equipo.id_equipo !== equipo.id_equipo)
           .map(eq => eq.equipo.id_equipo);
 
-        console.log('📤 [MoveTeamToGroup] Equipos que quedan en grupo actual:', equiposActualesSinEsteEquipo);
 
         // Actualizar el grupo actual sin este equipo
         const removeResult = await safeAsync(
@@ -179,7 +164,7 @@ export const MoveTeamToGroupScreen: React.FC<MoveTeamToGroupScreenProps> = ({
           {
             fallbackValue: null,
             onError: (error) => {
-              console.error('Error al remover del grupo actual:', error);
+              // console.error('Error al remover del grupo actual:', error);
               throw error;
             }
           }
@@ -189,7 +174,6 @@ export const MoveTeamToGroupScreen: React.FC<MoveTeamToGroupScreenProps> = ({
           throw new Error('No se pudo remover el equipo del grupo actual');
         }
 
-        console.log('✅ [MoveTeamToGroup] Equipo removido del grupo actual');
       }
 
       // Paso 2: Agregar el equipo al grupo destino
@@ -198,7 +182,6 @@ export const MoveTeamToGroupScreen: React.FC<MoveTeamToGroupScreenProps> = ({
       const equiposDestino = grupoDestino.equipos.map(eq => eq.equipo.id_equipo);
       equiposDestino.push(equipo.id_equipo);
 
-      console.log('📥 [MoveTeamToGroup] Equipos en grupo destino:', equiposDestino);
 
       const addResult = await safeAsync(
         async () => {
@@ -212,7 +195,7 @@ export const MoveTeamToGroupScreen: React.FC<MoveTeamToGroupScreenProps> = ({
         {
           fallbackValue: null,
           onError: (error) => {
-            console.error('Error al agregar al nuevo grupo:', error);
+            // console.error('Error al agregar al nuevo grupo:', error);
             throw error;
           }
         }
@@ -222,8 +205,6 @@ export const MoveTeamToGroupScreen: React.FC<MoveTeamToGroupScreenProps> = ({
         throw new Error('No se pudo agregar el equipo al grupo destino');
       }
 
-      console.log('✅ [MoveTeamToGroup] Equipo agregado al grupo destino');
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
       showSuccess(
         `"${equipo.nombre}" movido exitosamente a "${grupoDestino.nombre}"`,
@@ -238,10 +219,10 @@ export const MoveTeamToGroupScreen: React.FC<MoveTeamToGroupScreenProps> = ({
       }, 1000);
 
     } catch (error: any) {
-      console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.error('❌ [MoveTeamToGroup] ERROR AL MOVER EQUIPO');
-      console.error('Error:', error);
-      console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      // console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      // console.error('❌ [MoveTeamToGroup] ERROR AL MOVER EQUIPO');
+      // console.error('Error:', error);
+      // console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       setMoving(false);
       setMovingStatus('');
       showError(error.message || 'Error al mover el equipo', 'Error');

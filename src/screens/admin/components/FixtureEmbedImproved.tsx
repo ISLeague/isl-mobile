@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -17,7 +17,7 @@ import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { GestureHandlerRootView, ScrollView } from 'react-native-gesture-handler';
 import { colors } from '../../../theme/colors';
 import { useToast } from '../../../contexts/ToastContext';
-import { Ronda, Partido, Equipo, Cancha, Local } from '../../../api/types';
+import { Ronda, Partido, Cancha } from '../../../api/types';
 import { FixtureSinPartido, JornadaConFixturesSinPartido } from '../../../api/types/rondas.types';
 import { SearchBar, FAB, Input } from '../../../components/common';
 import { formatDate } from '../../../utils/formatters';
@@ -36,9 +36,16 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
   idEdicionCategoria 
 }) => {
   const { showError, showInfo } = useToast();
+  const showErrorRef = useRef(showError);
+  const showInfoRef = useRef(showInfo);
+  
+  // Actualizar las refs cuando cambien las funciones
+  useEffect(() => {
+    showErrorRef.current = showError;
+    showInfoRef.current = showInfo;
+  }, [showError, showInfo]);
   const [rondas, setRondas] = useState<Ronda[]>([]);
   const [partidos, setPartidos] = useState<Partido[]>([]);
-  const [equipos, setEquipos] = useState<Equipo[]>([]);
   const [canchas, setCanchas] = useState<Cancha[]>([]);
   const [expandedRondas, setExpandedRondas] = useState<{ [key: number]: boolean }>({});
   const [loading, setLoading] = useState(true);
@@ -58,71 +65,77 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
   }>({});
 
   const loadData = useCallback(async () => {
-    console.log('🔄 [FixtureEmbed] Iniciando loadData...');
-    console.log('📊 [FixtureEmbed] idEdicionCategoria:', idEdicionCategoria);
+    console.log('🔄 loadData callback iniciado');
     setLoading(true);
     const result = await safeAsync(
       async () => {
-        // First get fases to find the id_fase for this edicion
-        console.log('📡 [FixtureEmbed] Obteniendo fases para edicion:', idEdicionCategoria || 1);
-        const fasesResponse = await api.fases.list(idEdicionCategoria || 1);
-        console.log('📥 [FixtureEmbed] Respuesta fases:', fasesResponse);
-        const allFases = fasesResponse.success && fasesResponse.data ? fasesResponse.data : [];
-        console.log('📊 [FixtureEmbed] Total fases:', allFases.length);
-
-        if (allFases.length === 0) {
-          console.warn('⚠️ [FixtureEmbed] No se encontró ninguna fase para esta edición');
-          throw new Error('No se encontró ninguna fase para esta edición');
+        if(!idEdicionCategoria) {
+          throw new Error('idEdicionCategoria es requerido para cargar el fixture');
+        }
+        
+        let currentIdFase: number;
+        try {
+          const fasesResponse = await api.fases.getFaseGrupos(idEdicionCategoria);
+          
+          const allFases = fasesResponse.success && fasesResponse.data ? fasesResponse.data : [];
+         
+          
+          if (allFases.length === 0) {
+            throw new Error('No se encontraron fases de grupo para esta edición categoría');
+          }
+          
+          currentIdFase = allFases[0].id_fase;
+          console.log('Estableciendo idFase:', currentIdFase);
+          setIdFase(currentIdFase);
+        } catch (apiError) {
+          console.log('Error en llamada a API getFaseGrupos:', apiError);
+          throw apiError;
         }
 
-        const currentIdFase = allFases[0].id_fase;
-        console.log('✅ [FixtureEmbed] Usando id_fase:', currentIdFase);
-        setIdFase(currentIdFase);
 
         // Load rondas from API with id_fase
-        console.log('📡 [FixtureEmbed] Llamando api.rondas.list(' + currentIdFase + ')...');
-        const rondasResponse = await api.rondas.list(currentIdFase);
-        console.log('📥 [FixtureEmbed] Respuesta rondas:', rondasResponse);
-        const allRondas = rondasResponse.success && rondasResponse.data ? rondasResponse.data : [];
-        console.log('📊 [FixtureEmbed] Total rondas:', allRondas.length);
+        let allRondas: Ronda[] = [];
+        try {
+          const rondasResponse = await api.rondas.list({ id_fase: currentIdFase });
+          console.log('📋 Respuesta completa de rondas:', rondasResponse);
+          console.log('🎯 Rondas extraídas:', rondasResponse.data?.rondas);
+          allRondas = rondasResponse.success && rondasResponse.data?.rondas ? rondasResponse.data.rondas : [];
+          console.log('✅ Rondas procesadas:', allRondas.length, 'rondas encontradas');
+        } catch (error) {
+          console.log('💥 Error cargando rondas:', error);
+        }
 
         // Filter only fase_grupos and amistosa (no knockout rounds)
         // Also ensure each ronda has id_fase set
+        console.log('🔍 Filtrando rondas tipo fase_grupos o amistosa...');
         const sortedRondas: Ronda[] = allRondas
-          .filter((r: Ronda) => r.tipo === 'fase_grupos' || r.tipo === 'amistosa')
+          .filter((r: Ronda) => {
+            const isValid = r.tipo === 'fase_grupos' || r.tipo === 'amistosa';
+            console.log(`🔸 Ronda "${r.nombre}" (tipo: ${r.tipo}): ${isValid ? 'incluida' : 'excluida'}`);
+            return isValid;
+          })
           .map((r: Ronda) => ({ ...r, id_fase: currentIdFase }))
           .sort((a: Ronda, b: Ronda) => b.orden - a.orden);
-        console.log('📊 [FixtureEmbed] Rondas filtradas:', sortedRondas.length);
+        
+        console.log('📊 Rondas finales después del filtro:', sortedRondas.length);
 
-        // Load partidos from API
-        console.log('📡 [FixtureEmbed] Llamando api.partidos.list() con id_edicion_categoria:', idEdicionCategoria);
+        // Load partidos from API (now with nested team, cancha, and ronda data)
+        console.log('🔄 Cargando partidos para idEdicionCategoria:', idEdicionCategoria);
         const partidosResponse = await api.partidos.list({ id_edicion_categoria: idEdicionCategoria || 1 });
-        console.log('📥 [FixtureEmbed] Respuesta partidos:', partidosResponse);
         const allPartidos = partidosResponse.success && partidosResponse.data ? partidosResponse.data : [];
-        console.log('📊 [FixtureEmbed] Total partidos:', allPartidos.length);
+        console.log('📋 Partidos cargados:', allPartidos.length);
 
-        // Load equipos from API
-        console.log('📡 [FixtureEmbed] Llamando api.equipos.list()...');
-        const equiposResponse = await api.equipos.list(idEdicionCategoria || 1);
-        console.log('📥 [FixtureEmbed] Respuesta equipos:', equiposResponse);
-        const allEquipos = equiposResponse.success && equiposResponse.data ? equiposResponse.data : [];
-        console.log('📊 [FixtureEmbed] Total equipos:', allEquipos.length);
-
-        // Load canchas from API (first get locales, then canchas from each local)
-        console.log('📡 [FixtureEmbed] Llamando api.locales.list()...');
-        const localesResponse = await api.locales.list(idEdicionCategoria || 1);
-        console.log('📥 [FixtureEmbed] Respuesta locales:', localesResponse);
-        const allLocales = localesResponse.success && localesResponse.data?.locales ? localesResponse.data.locales : [];
-        console.log('📊 [FixtureEmbed] Total locales:', allLocales.length);
-
-        // Get canchas from all locales
-        const allCanchas: Cancha[] = [];
-        for (const local of allLocales) {
-          const canchasResponse = await api.canchas.list(local.id_local);
-          const canchas = canchasResponse.success && canchasResponse.data?.canchas ? canchasResponse.data.canchas : [];
-          allCanchas.push(...canchas);
+        // Load canchas from API (optional - only needed for creating partidos from fixtures)
+        let allCanchas: Cancha[] = [];
+        try {
+          console.log('🔄 Cargando canchas para idEdicionCategoria:', idEdicionCategoria);
+          const canchasResponse = await api.canchas.listByEdicionCategoria(idEdicionCategoria || 1);
+          allCanchas = canchasResponse.success && canchasResponse.data?.canchas ? canchasResponse.data.canchas : [];
+          console.log('📋 Canchas cargadas:', allCanchas.length);
+        } catch (canchasError) {
+          console.log('⚠️ Error cargando canchas (no crítico):', canchasError);
+          // No es crítico - las canchas solo se necesitan para crear partidos desde fixtures
         }
-        console.log('📊 [FixtureEmbed] Total canchas:', allCanchas.length);
 
         const today = new Date();
         let closestRondaId: number | null = null;
@@ -137,51 +150,40 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
           }
         });
 
-        console.log('✅ [FixtureEmbed] Retornando datos:', {
-          sortedRondas: sortedRondas.length,
-          closestRondaId,
-          partidos: allPartidos.length,
-          equipos: allEquipos.length,
-          canchas: allCanchas.length,
-        });
-        return { sortedRondas, closestRondaId, partidos: allPartidos, equipos: allEquipos, canchas: allCanchas };
+        return { sortedRondas, closestRondaId, partidos: allPartidos, canchas: allCanchas };
       },
       'loadFixtureData',
       {
         severity: 'high',
-        fallbackValue: { sortedRondas: [], closestRondaId: null, partidos: [], equipos: [], canchas: [] },
+        fallbackValue: { sortedRondas: [], closestRondaId: null, partidos: [], canchas: [] },
         onError: (error) => {
-          console.error('❌ [FixtureEmbed] Error en loadData:', error);
-          console.error('❌ [FixtureEmbed] Error details:', {
-            message: error.message,
-            response: (error as any).response?.data,
-            status: (error as any).response?.status,
-          });
-          showError(getUserFriendlyMessage(error), 'Error al cargar fixture');
+          console.log('💥 Error en safeAsync:', error);
+          showErrorRef.current(getUserFriendlyMessage(error), 'Error al cargar fixture');
         }
       }
     );
 
-    console.log('📊 [FixtureEmbed] Resultado de safeAsync:', result);
-
+    console.log('📊 Resultado de safeAsync:', result ? 'success' : 'failed');
     if (result) {
-      console.log('✅ [FixtureEmbed] Estableciendo estados con resultado:', result);
+      console.log('🔧 Estableciendo estados con resultado:', {
+        rondas: result.sortedRondas.length,
+        partidos: result.partidos.length,
+        canchas: result.canchas.length
+      });
       setRondas(result.sortedRondas);
       setPartidos(result.partidos);
-      setEquipos(result.equipos);
       setCanchas(result.canchas);
 
       if (result.closestRondaId !== null) {
         setExpandedRondas({ [result.closestRondaId]: true });
       }
-    } else {
-      console.warn('⚠️ [FixtureEmbed] Result es null o undefined');
     }
+    console.log('✅ loadData completado, loading=false');
     setLoading(false);
-    console.log('✅ [FixtureEmbed] loadData completado');
-  }, [showError, idEdicionCategoria]);
+  }, [idEdicionCategoria]); // Removido showError de dependencias
 
   useEffect(() => {
+    console.log('🔄 useEffect disparado, llamando loadData...');
     loadData();
   }, [loadData]);
 
@@ -198,13 +200,13 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
       'loadFixturesSinPartido',
       {
         fallbackValue: [],
-        onError: () => showError('Error al cargar fixtures sin partido'),
+        onError: () => showErrorRef.current('Error al cargar fixtures sin partido'),
       }
     );
 
     setFixturesSinPartido(prev => ({ ...prev, [rondaId]: result || [] }));
     setLoadingFixtures(prev => ({ ...prev, [rondaId]: false }));
-  }, [isAdmin, showError]);
+  }, [isAdmin]); // Removido showError de dependencias
 
   const toggleRonda = useCallback((rondaId: number) => {
     setExpandedRondas(prev => {
@@ -222,34 +224,27 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
     });
   }, [isAdmin, fixturesSinPartido, loadFixturesSinPartido]);
 
-  const getPartidosByRonda = useCallback((rondaId: number): (Partido & { equipo_local: Equipo, equipo_visitante: Equipo })[] => {
+  const getPartidosByRonda = useCallback((rondaId: number): Partido[] => {
     return partidos
       .filter(p => {
         if (p.id_ronda !== rondaId) return false;
 
         if (!searchQuery) return true;
 
-        const equipoLocal = equipos.find(e => e.id_equipo === p.id_equipo_local);
-        const equipoVisitante = equipos.find(e => e.id_equipo === p.id_equipo_visitante);
-
+        // Use nested team data for search
         const queryLower = searchQuery.toLowerCase();
         return (
-          equipoLocal?.nombre?.toLowerCase().includes(queryLower) ||
-          equipoVisitante?.nombre?.toLowerCase().includes(queryLower)
+          p.equipo_local?.nombre?.toLowerCase().includes(queryLower) ||
+          p.equipo_visitante?.nombre?.toLowerCase().includes(queryLower)
         );
       })
-      .map(p => ({
-        ...p,
-        equipo_local: equipos.find(e => e.id_equipo === p.id_equipo_local)!,
-        equipo_visitante: equipos.find(e => e.id_equipo === p.id_equipo_visitante)!,
-        cancha: undefined, // TODO: Load cancha data from API when available
-      }))
       .sort((a, b) => {
-        const dateA = new Date(a.fecha_hora || '');
-        const dateB = new Date(b.fecha_hora || '');
-        return dateB.getTime() - dateA.getTime();
+        // Sort by date and time
+        const dateTimeA = a.fecha && a.hora ? new Date(`${a.fecha}T${a.hora}`) : new Date(a.fecha_hora || '');
+        const dateTimeB = b.fecha && b.hora ? new Date(`${b.fecha}T${b.hora}`) : new Date(b.fecha_hora || '');
+        return dateTimeB.getTime() - dateTimeA.getTime();
       });
-  }, [partidos, searchQuery, equipos]);
+  }, [partidos, searchQuery]);
 
   const handleFixtureDetailChange = (fixtureId: number, field: 'fecha' | 'hora' | 'id_cancha', value: string | number | null) => {
     setFixtureDetails(prev => ({
@@ -265,25 +260,21 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
   };
 
   const handleCreatePartidoFromFixture = async (fixture: FixtureSinPartido, ronda: Ronda) => {
-    console.log('🎯 [FixtureEmbed] Iniciando creación de partido para fixture:', fixture.id_fixture);
     const details = fixtureDetails[fixture.id_fixture];
 
     // Validate fixture has all required data
     if (!details || !details.fecha || !details.hora || !details.id_cancha) {
-      console.error('❌ [FixtureEmbed] Datos incompletos:', details);
-      showError('Por favor completa todos los campos antes de crear el partido');
+      showErrorRef.current('Por favor completa todos los campos antes de crear el partido');
       return;
     }
 
     if (!ronda.id_fase) {
-      console.error('❌ [FixtureEmbed] Ronda sin fase asignada');
-      showError('La ronda no tiene fase asignada');
+      showErrorRef.current('La ronda no tiene fase asignada');
       return;
     }
 
     // Set loading state for this fixture
     setCreatingPartido(prev => ({ ...prev, [fixture.id_fixture]: true }));
-    console.log('🔄 [FixtureEmbed] Creando partido...');
 
     const result = await safeAsync(
       async () => {
@@ -303,17 +294,14 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
             : `Partido de ${ronda.tipo}`,
         };
 
-        console.log('📡 [FixtureEmbed] Enviando datos del partido:', partidoData);
         const response = await api.partidos.createFromFixture(partidoData);
-        console.log('📥 [FixtureEmbed] Respuesta:', response);
         return response;
       },
       'createPartidoFromFixture',
       {
         fallbackValue: null,
         onError: (error) => {
-          console.error('❌ [FixtureEmbed] Error al crear partido:', error);
-          showError('Error al crear el partido');
+          showErrorRef.current('Error al crear el partido');
         },
       }
     );
@@ -322,8 +310,7 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
     setCreatingPartido(prev => ({ ...prev, [fixture.id_fixture]: false }));
 
     if (result && result.success) {
-      console.log('✅ [FixtureEmbed] Partido creado exitosamente');
-      showInfo('Partido creado exitosamente');
+      showInfoRef.current('Partido creado exitosamente');
 
       // Remove this fixture from details
       setFixtureDetails(prev => {
@@ -333,12 +320,8 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
       });
 
       // Reload data
-      console.log('🔄 [FixtureEmbed] Recargando datos...');
       await loadData();
       await loadFixturesSinPartido(ronda.id_ronda);
-      console.log('✅ [FixtureEmbed] Datos recargados');
-    } else {
-      console.error('❌ [FixtureEmbed] Falló la creación del partido');
     }
   };
 
@@ -367,7 +350,6 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
 
     // Safety check: ensure canchas is defined and is an array
     if (!canchas || !Array.isArray(canchas) || canchas.length === 0) {
-      console.warn('⚠️ [FixtureEmbed] Canchas no disponibles para fixtures');
       return null;
     }
 
@@ -501,22 +483,27 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
     );
   };
 
-  const renderPartido = (partido: Partido & { equipo_local: Equipo, equipo_visitante: Equipo }) => {
+  const renderPartido = (partido: Partido) => {
+    // Safety check: ensure team data exists
+    if (!partido.equipo_local || !partido.equipo_visitante) {
+      return null;
+    }
+
     // Determinar ganador considerando penales
-    const hasResult = partido.marcador_local !== null && partido.marcador_local !== undefined && 
+    const hasResult = partido.marcador_local !== null && partido.marcador_local !== undefined &&
                       partido.marcador_visitante !== null && partido.marcador_visitante !== undefined;
-    
-    const hayPenales = partido.penales_local !== null && partido.penales_local !== undefined && 
+
+    const hayPenales = partido.penales_local !== null && partido.penales_local !== undefined &&
                        partido.penales_visitante !== null && partido.penales_visitante !== undefined;
-    
+
     let ganador: 'local' | 'visitante' | 'empate' | null = null;
-    
+
     if (hasResult) {
       const golesLocal = partido.marcador_local!;
       const golesVisitante = partido.marcador_visitante!;
       const penalesLocal = partido.penales_local;
       const penalesVisitante = partido.penales_visitante;
-      
+
       // Si hay penales, determinar ganador por penales
       if (hayPenales) {
         ganador = penalesLocal! > penalesVisitante! ? 'local' : penalesLocal! < penalesVisitante! ? 'visitante' : 'empate';
@@ -536,7 +523,7 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
         <View style={styles.partidoHeader}>
           <View style={styles.partidoInfo}>
             <MaterialCommunityIcons name="calendar" size={14} color={colors.textSecondary} />
-            <Text style={styles.fechaText}>{formatDate(partido.fecha || partido.fecha_hora)}</Text>
+            <Text style={styles.fechaText}>{formatDate(partido.fecha || partido.fecha_hora || '')}</Text>
             {partido.hora && (
               <>
                 <MaterialCommunityIcons name="clock" size={14} color={colors.textSecondary} style={{ marginLeft: 8 }} />
@@ -551,14 +538,20 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
           )}
         </View>
 
-        {/* TODO: Show cancha info when API is available */}
+        {/* Show cancha info */}
+        {partido.cancha && (
+          <View style={styles.canchaContainer}>
+            <MaterialCommunityIcons name="soccer-field" size={14} color={colors.textSecondary} />
+            <Text style={styles.canchaText}>{partido.cancha.nombre}</Text>
+          </View>
+        )}
 
         <View style={styles.equiposContainer}>
           <View style={styles.equipoRow}>
-            <Image 
-              source={partido.equipo_local.logo ? { uri: partido.equipo_local.logo } : require('../../../assets/InterLOGO.png')} 
-              style={styles.equipoLogo} 
-              resizeMode="cover" 
+            <Image
+              source={partido.equipo_local.logo ? { uri: partido.equipo_local.logo } : require('../../../assets/InterLOGO.png')}
+              style={styles.equipoLogo}
+              resizeMode="cover"
             />
             <Text style={[
               styles.equipoNombre,
@@ -668,7 +661,6 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
             try {
               // TODO: Llamar API para generar fixture automático
               // await api.rounds.generateFixture(ronda.id_ronda);
-              console.log('Generar fixture para ronda:', ronda.id_ronda);
               showInfo('Partidos generados automáticamente');
               loadData();
             } catch (error) {
@@ -693,13 +685,14 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
           fecha_fin: ronda.fecha_fin,
         },
         partidos: partidosRonda.map(p => ({
-          equipo_local: p.equipo_local.nombre,
-          equipo_visitante: p.equipo_visitante.nombre,
+          equipo_local: p.equipo_local?.nombre || 'N/A',
+          equipo_visitante: p.equipo_visitante?.nombre || 'N/A',
           fecha: p.fecha,
           hora: p.hora,
           marcador_local: p.marcador_local,
           marcador_visitante: p.marcador_visitante,
           estado_partido: p.estado_partido,
+          cancha: p.cancha?.nombre,
         })),
       };
 
@@ -709,10 +702,9 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
         message: `Ronda: ${ronda.nombre}\n\n${jsonString}`,
         title: `Exportar ${ronda.nombre}`,
       });
-      
+
       showInfo('Ronda exportada correctamente');
     } catch (error) {
-      console.error('Error al exportar ronda:', error);
       showError('Error al exportar la ronda');
     }
   };
@@ -739,7 +731,13 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
               style={styles.gradientHeader}
             >
               <View style={styles.rondaInfo}>
-                <Text style={[styles.rondaNombre, { color: colors.white }]}>{ronda.nombre}</Text>
+                <View style={styles.rondaTitleRow}>
+                  <Text style={[styles.rondaNombre, { color: colors.white }]}>{ronda.nombre}</Text>
+                  <View style={[styles.tipoRondaBadge, { backgroundColor: 'rgba(255, 255, 255, 0.25)' }]}>
+                    <MaterialCommunityIcons name="trophy" size={12} color={colors.white} />
+                    <Text style={styles.tipoRondaText}>Eliminatoria</Text>
+                  </View>
+                </View>
                 <Text style={[styles.rondaFecha, { color: colors.white }]}>
                   {formatDate(ronda.fecha_inicio)}{ronda.fecha_fin ? ` - ${formatDate(ronda.fecha_fin)}` : ''}
                 </Text>
@@ -770,7 +768,22 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
           ) : (
             <>
               <View style={styles.rondaInfo}>
-                <Text style={styles.rondaNombre}>{ronda.nombre}</Text>
+                <View style={styles.rondaTitleRow}>
+                  <Text style={styles.rondaNombre}>{ronda.nombre}</Text>
+                  <View style={[
+                    styles.tipoRondaBadge,
+                    ronda.tipo === 'fase_grupos' ? styles.tipoRondaBadgeGrupos : styles.tipoRondaBadgeAmistosa
+                  ]}>
+                    <MaterialCommunityIcons
+                      name={ronda.tipo === 'fase_grupos' ? 'soccer' : 'trophy-outline'}
+                      size={12}
+                      color={colors.white}
+                    />
+                    <Text style={styles.tipoRondaText}>
+                      {ronda.tipo === 'fase_grupos' ? 'Fase de Grupos' : 'Amistosa'}
+                    </Text>
+                  </View>
+                </View>
                 <Text style={styles.rondaFecha}>
                   {formatDate(ronda.fecha_inicio)}{ronda.fecha_fin ? ` - ${formatDate(ronda.fecha_fin)}` : ''}
                 </Text>
@@ -890,7 +903,6 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
             try {
               // TODO: Llamar API para eliminar ronda
               // await api.rounds.deleteRound(ronda.id_ronda);
-              console.log('Eliminar ronda:', ronda.id_ronda);
               showInfo('Ronda eliminada exitosamente');
               loadData();
             } catch (error) {
@@ -1044,15 +1056,41 @@ const styles = StyleSheet.create({
   rondaInfo: {
     flex: 1,
   },
+  rondaTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+    flexWrap: 'wrap',
+  },
   rondaNombre: {
     fontSize: 16,
     fontWeight: '600',
     color: colors.textPrimary,
-    marginBottom: 4,
+  },
+  tipoRondaBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  tipoRondaBadgeGrupos: {
+    backgroundColor: colors.primary,
+  },
+  tipoRondaBadgeAmistosa: {
+    backgroundColor: colors.info,
+  },
+  tipoRondaText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: colors.white,
   },
   rondaFecha: {
     fontSize: 13,
     color: colors.textSecondary,
+    marginTop: 4,
   },
   rondaStats: {
     flexDirection: 'row',

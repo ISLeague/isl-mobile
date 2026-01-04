@@ -66,7 +66,7 @@ export const EditTeamScreen: React.FC<EditTeamScreenProps> = ({ navigation, rout
               showSuccess('Equipo actualizado exitosamente');
               navigation.goBack();
             } catch (error) {
-              console.error('Error updating team:', error);
+              // console.error('Error updating team:', error);
               showError('Error al actualizar el equipo');
             } finally {
               setLoading(false);
@@ -93,7 +93,7 @@ export const EditTeamScreen: React.FC<EditTeamScreenProps> = ({ navigation, rout
               showSuccess('Equipo eliminado exitosamente');
               navigation.navigate('AdminTournaments'); // O donde sea pertinente
             } catch (error) {
-              console.error('Error deleting team:', error);
+              // console.error('Error deleting team:', error);
               showError('Error al eliminar el equipo');
             } finally {
               setLoading(false);

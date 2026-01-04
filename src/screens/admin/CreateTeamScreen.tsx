@@ -69,7 +69,7 @@ export const CreateTeamScreen: React.FC<CreateTeamScreenProps> = ({
           };
           await api.equipos.uploadLogo(newTeamId, logoFile);
         } catch (uploadError) {
-          console.error('Error uploading team logo:', uploadError);
+          // console.error('Error uploading team logo:', uploadError);
           // No bloqueamos el éxito de la creación si falla el logo
           Alert.alert('Aviso', 'El equipo se creó pero no se pudo subir el logo.');
         }
@@ -85,7 +85,7 @@ export const CreateTeamScreen: React.FC<CreateTeamScreenProps> = ({
         },
       ]);
     } catch (error: any) {
-      console.error('Error creating team:', error);
+      // console.error('Error creating team:', error);
       const errorMessage =
         error?.response?.data?.message || 'No se pudo crear el equipo';
       Alert.alert('Error', errorMessage);

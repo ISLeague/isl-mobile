@@ -96,7 +96,7 @@ export const CreateGroupsFlowScreen: React.FC<CreateGroupsFlowScreenProps> = ({ 
           'loadGruposConfig',
           {
             fallbackValue: null,
-            onError: () => console.warn('No se pudo cargar la configuración de clasificación')
+            onError: () => {}
           }
         );
 
@@ -122,69 +122,39 @@ export const CreateGroupsFlowScreen: React.FC<CreateGroupsFlowScreenProps> = ({ 
       permite_penales: false,
     };
 
-    console.log('🚀 [CreateFaseGrupos] Iniciando creación de fase...');
-    console.log('📦 [CreateFaseGrupos] Request Data:', JSON.stringify(requestData, null, 2));
-    console.log('📍 [CreateFaseGrupos] idEdicionCategoria:', idEdicionCategoria);
-
     const result = await safeAsync(
       async () => {
-        console.log('⏳ [CreateFaseGrupos] Llamando a api.fases.create...');
         const response = await api.fases.create(requestData);
-        console.log('✅ [CreateFaseGrupos] Respuesta recibida:', JSON.stringify(response, null, 2));
         return response;
       },
       'createFaseGrupos',
       {
         fallbackValue: null,
         onError: (error) => {
-          console.error('❌ [CreateFaseGrupos] Error capturado:', error);
-          console.error('❌ [CreateFaseGrupos] Error message:', error?.message);
           showError('Error al crear la fase de grupos');
         }
       }
     );
 
-    console.log('📊 [CreateFaseGrupos] Resultado final:', result);
-
     if (result && result.success) {
-      console.log('🎉 [CreateFaseGrupos] Fase creada exitosamente');
       showSuccess('Fase de grupos creada exitosamente');
       setFaseGrupos(result.data);
-    } else {
-      console.log('⚠️ [CreateFaseGrupos] No se pudo crear la fase');
     }
 
     setCreatingFase(false);
   };
 
   const handleCreateGruposBulk = async () => {
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('🏗️ [CreateGruposBulk] INICIANDO CREACIÓN DE GRUPOS EN BULK');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
     const cantGrupos = parseInt(cantidadGrupos) || 0;
     const cantEquipos = parseInt(cantidadEquiposPorGrupo) || 0;
 
-    console.log('📊 [CreateGruposBulk] Valores del formulario:');
-    console.log('  - Cantidad de grupos:', cantidadGrupos, '→', cantGrupos);
-    console.log('  - Equipos por grupo:', cantidadEquiposPorGrupo, '→', cantEquipos);
-
-    console.log('🎯 [CreateGruposBulk] Estado de fase de grupos:');
-    console.log('  - faseGrupos:', faseGrupos);
-    if (faseGrupos) {
-      console.log('  - ID Fase:', faseGrupos.id_fase);
-      console.log('  - Nombre:', faseGrupos.nombre);
-      console.log('  - Tipo:', faseGrupos.tipo);
-    }
-
     if (!faseGrupos) {
-      console.warn('⚠️ [CreateGruposBulk] Validación fallida: no hay fase de grupos');
       showError('No hay una fase de grupos creada', 'Error');
       return;
     }
 
     if (cantGrupos <= 0 || cantEquipos <= 0) {
-      console.warn('⚠️ [CreateGruposBulk] Validación fallida: cantidad inválida');
       showError('La cantidad de grupos y equipos debe ser mayor a 0', 'Datos inválidos');
       return;
     }
@@ -202,18 +172,10 @@ export const CreateGroupsFlowScreen: React.FC<CreateGroupsFlowScreenProps> = ({ 
       const plata = parseInt(equiposPasanPlata) || 0;
       const bronce = parseInt(equiposPasanBronce) || 0;
 
-      console.log('  ⚙️ Primera configuración - Equipos a Oro:', equiposPasanOro, '→', oro);
-      console.log('  ⚙️ Primera configuración - Equipos a Plata:', equiposPasanPlata, '→', plata);
-      console.log('  ⚙️ Primera configuración - Equipos a Bronce:', equiposPasanBronce, '→', bronce);
-      console.log('  ⚙️ Primera configuración - Posiciones Oro:', posicionesOro);
-      console.log('  ⚙️ Primera configuración - Posiciones Plata:', posicionesPlata);
-      console.log('  ⚙️ Primera configuración - Posiciones Bronce:', posicionesBronce);
-      console.log('  ⚙️ Primera configuración - Descripción:', descripcionClasificacion);
 
       // Validar que haya al menos un equipo más que los que clasifican
       const totalEquiposClasifican = oro + plata + bronce;
       if (cantEquipos <= totalEquiposClasifican) {
-        console.warn('⚠️ [CreateGruposBulk] Validación fallida: no hay suficientes equipos');
         showError(
           `Debe haber al menos ${totalEquiposClasifican + 1} equipos por grupo.\n\nActualmente ${totalEquiposClasifican} equipos clasifican (${oro} oro, ${plata} plata, ${bronce} bronce).\n\nNecesitas al menos 1 equipo que no clasifique.`,
           'Equipos insuficientes'
@@ -233,13 +195,11 @@ export const CreateGroupsFlowScreen: React.FC<CreateGroupsFlowScreenProps> = ({ 
       };
     } else {
       // Ya existe configuración - validar con la configuración existente
-      console.log('⚙️ [CreateGruposBulk] Usando configuración existente');
       const totalEquiposClasifican = configuracionClasificacion.equipos_oro +
         configuracionClasificacion.equipos_plata +
         configuracionClasificacion.equipos_bronce;
 
       if (cantEquipos <= totalEquiposClasifican) {
-        console.warn('⚠️ [CreateGruposBulk] Validación fallida: no cumple con configuración existente');
         showError(
           `Debe haber al menos ${totalEquiposClasifican + 1} equipos por grupo.\n\nSegún la configuración del torneo:\n• ${configuracionClasificacion.equipos_oro} clasifican a Oro\n• ${configuracionClasificacion.equipos_plata} clasifican a Plata\n• ${configuracionClasificacion.equipos_bronce} clasifican a Bronce`,
           'No cumple con configuración'
@@ -248,10 +208,6 @@ export const CreateGroupsFlowScreen: React.FC<CreateGroupsFlowScreenProps> = ({ 
       }
     }
 
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('📤 [CreateGruposBulk] REQUEST DATA:');
-    console.log(JSON.stringify(requestData, null, 2));
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
     try {
       // Mostrar loading ANTES de cerrar el modal
@@ -265,16 +221,9 @@ export const CreateGroupsFlowScreen: React.FC<CreateGroupsFlowScreenProps> = ({ 
 
       const result = await safeAsync(
         async () => {
-          console.log('⏳ [CreateGruposBulk] Llamando a api.grupos.createBulk...');
-          console.log('⏳ [CreateGruposBulk] Endpoint: POST /grupos-create-bulk');
 
           const response = await api.grupos.createBulk(requestData);
 
-          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-          console.log('✅ [CreateGruposBulk] RESPUESTA EXITOSA:');
-          console.log('✅ [CreateGruposBulk] Status:', response.success);
-          console.log('✅ [CreateGruposBulk] Data:', JSON.stringify(response, null, 2));
-          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
           return response;
         },
@@ -282,60 +231,23 @@ export const CreateGroupsFlowScreen: React.FC<CreateGroupsFlowScreenProps> = ({ 
         {
           fallbackValue: null,
           onError: (error: any) => {
-            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-            console.error('❌ [CreateGruposBulk] ERROR CAPTURADO:');
-            console.error('❌ [CreateGruposBulk] Error completo:', error);
-            console.error('❌ [CreateGruposBulk] Error message:', error?.message);
-            console.error('❌ [CreateGruposBulk] Error name:', error?.name);
-
             // Información detallada de la respuesta HTTP
             if (error?.response) {
-              console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-              console.error('📡 [CreateGruposBulk] HTTP RESPONSE ERROR:');
-              console.error('  - Status:', error.response.status);
-              console.error('  - Status Text:', error.response.statusText);
-              console.error('  - Headers:', JSON.stringify(error.response.headers, null, 2));
-              console.error('  - Data:', JSON.stringify(error.response.data, null, 2));
-              console.error('  - Config:', JSON.stringify({
-                url: error.response.config?.url,
-                method: error.response.config?.method,
-                baseURL: error.response.config?.baseURL,
-                headers: error.response.config?.headers,
-                data: error.response.config?.data,
-              }, null, 2));
-              console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-
               // Mostrar mensaje de error específico según el código
               if (error.response.status === 409) {
                 const errorMsg = error.response.data?.message || 'Conflicto al crear los grupos';
-                console.error('⚠️ [CreateGruposBulk] ERROR 409 - CONFLICTO:', errorMsg);
                 showError(errorMsg, 'Conflicto (409)');
                 return;
               }
-            } else if (error?.request) {
-              console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-              console.error('📡 [CreateGruposBulk] REQUEST ERROR (Sin respuesta):');
-              console.error('  - Request:', error.request);
-              console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
             }
-
-            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
             showError(error?.response?.data?.message || 'Error al crear los grupos', 'Error');
           }
         }
       );
 
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.log('📊 [CreateGruposBulk] RESULTADO FINAL:');
-      console.log('  - Result:', result);
-      console.log('  - Success:', result?.success);
-      console.log('  - Data:', result?.data);
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
       if (result && result.success) {
-        console.log('🎉 [CreateGruposBulk] Grupos creados exitosamente');
-        console.log('🎉 [CreateGruposBulk] Grupos creados:', result.data.grupos_creados);
         setCreationStatus('');
 
         showSuccess(
@@ -345,43 +257,26 @@ export const CreateGroupsFlowScreen: React.FC<CreateGroupsFlowScreenProps> = ({ 
 
         // Esperar 1.5 segundos para que el usuario vea el toast de éxito
         setTimeout(() => {
-          console.log('🔄 [CreateGruposBulk] Limpiando estado y volviendo...');
           setCreatingGroups(false);
 
           // Si hay callback, llamarlo
           if (onGroupsCreated) {
-            console.log('🔄 [CreateGruposBulk] Llamando callback onGroupsCreated');
             onGroupsCreated();
           }
 
           // Volver a la pantalla anterior
-          console.log('🔙 [CreateGruposBulk] Navegando de vuelta');
           navigation.goBack();
         }, 1500);
       } else {
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.warn('⚠️ [CreateGruposBulk] No se pudieron crear los grupos');
-        console.warn('⚠️ [CreateGruposBulk] Result:', result);
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         setCreatingGroups(false);
         setCreationStatus('');
       }
     } catch (error) {
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.error('❌ [CreateGruposBulk] ERROR INESPERADO EN TRY/CATCH:');
-      console.error('❌ [CreateGruposBulk] Error:', error);
-      console.error('❌ [CreateGruposBulk] Error type:', typeof error);
-      console.error('❌ [CreateGruposBulk] Error message:', (error as any)?.message);
-      console.error('❌ [CreateGruposBulk] Stack:', (error as any)?.stack);
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       setCreatingGroups(false);
       setCreationStatus('');
       showError('Error inesperado al crear los grupos', 'Error');
     }
 
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('🏁 [CreateGruposBulk] FIN DEL PROCESO');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   };
 
   const validateCantidadEquipos = (value: string) => {
@@ -404,47 +299,20 @@ export const CreateGroupsFlowScreen: React.FC<CreateGroupsFlowScreenProps> = ({ 
   };
 
   const handleCreateGrupoIndividual = async () => {
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('🏗️ [CreateGrupoIndividual] INICIANDO CREACIÓN DE GRUPO INDIVIDUAL');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-
-    console.log('📊 [CreateGrupoIndividual] Valores del formulario:');
-    console.log('  - Nombre grupo:', nombreGrupo);
-    console.log('  - Cantidad equipos:', cantidadEquipos);
-
-    console.log('🎯 [CreateGrupoIndividual] Estado de fase de grupos:');
-    console.log('  - faseGrupos:', faseGrupos);
-    if (faseGrupos) {
-      console.log('  - ID Fase:', faseGrupos.id_fase);
-      console.log('  - Nombre:', faseGrupos.nombre);
-    }
-
-    console.log('⚙️ [CreateGrupoIndividual] Configuración de clasificación:');
-    console.log('  - configuracionClasificacion:', configuracionClasificacion);
-    if (configuracionClasificacion) {
-      console.log('  - Equipos Oro:', configuracionClasificacion.equipos_oro);
-      console.log('  - Equipos Plata:', configuracionClasificacion.equipos_plata);
-      console.log('  - Equipos Bronce:', configuracionClasificacion.equipos_bronce);
-    }
-
     if (!nombreGrupo.trim()) {
-      console.warn('⚠️ [CreateGrupoIndividual] Validación fallida: nombre vacío');
       showError('El nombre del grupo es requerido', 'Dato requerido');
       return;
     }
 
     if (!faseGrupos) {
-      console.warn('⚠️ [CreateGrupoIndividual] Validación fallida: no hay fase de grupos');
       showError('No hay una fase de grupos creada', 'Error');
       return;
     }
 
     // Validar cantidad de equipos
     const cantEquipos = parseInt(cantidadEquipos) || 0;
-    console.log('📊 [CreateGrupoIndividual] Cantidad equipos parseada:', cantEquipos);
 
     if (cantEquipos <= 0) {
-      console.warn('⚠️ [CreateGrupoIndividual] Validación fallida: cantidad inválida');
       showError('La cantidad de equipos debe ser mayor a 0', 'Datos inválidos');
       return;
     }
@@ -462,18 +330,10 @@ export const CreateGroupsFlowScreen: React.FC<CreateGroupsFlowScreenProps> = ({ 
       const plata = parseInt(equiposPasanPlata) || 0;
       const bronce = parseInt(equiposPasanBronce) || 0;
 
-      console.log('  ⚙️ Primera configuración - Equipos a Oro:', equiposPasanOro, '→', oro);
-      console.log('  ⚙️ Primera configuración - Equipos a Plata:', equiposPasanPlata, '→', plata);
-      console.log('  ⚙️ Primera configuración - Equipos a Bronce:', equiposPasanBronce, '→', bronce);
 
       const totalEquiposClasifican = oro + plata + bronce;
-      console.log('📊 [CreateGrupoIndividual] Total equipos que clasifican:', totalEquiposClasifican);
-      console.log('📊 [CreateGrupoIndividual] Mínimo requerido:', totalEquiposClasifican + 1);
 
       if (cantEquipos <= totalEquiposClasifican) {
-        console.warn('⚠️ [CreateGrupoIndividual] Validación fallida: no cumple con nueva configuración');
-        console.warn(`  - Equipos ingresados: ${cantEquipos}`);
-        console.warn(`  - Mínimo requerido: ${totalEquiposClasifican + 1}`);
         showError(
           `Debe haber al menos ${totalEquiposClasifican + 1} equipos en el grupo.\n\nSegún tu configuración:\n• ${oro} clasifican a Oro\n• ${plata} clasifican a Plata\n• ${bronce} clasifican a Bronce\n\nNecesitas al menos 1 equipo que no clasifique.`,
           'Equipos insuficientes'
@@ -495,13 +355,8 @@ export const CreateGroupsFlowScreen: React.FC<CreateGroupsFlowScreenProps> = ({ 
       // Ya existe configuración - validar contra ella
       const { equipos_oro, equipos_plata, equipos_bronce } = configuracionClasificacion;
       const totalEquiposClasifican = equipos_oro + equipos_plata + equipos_bronce;
-      console.log('📊 [CreateGrupoIndividual] Total equipos que clasifican:', totalEquiposClasifican);
-      console.log('📊 [CreateGrupoIndividual] Mínimo requerido:', totalEquiposClasifican + 1);
 
       if (cantEquipos <= totalEquiposClasifican) {
-        console.warn('⚠️ [CreateGrupoIndividual] Validación fallida: no cumple con reglas del torneo');
-        console.warn(`  - Equipos ingresados: ${cantEquipos}`);
-        console.warn(`  - Mínimo requerido: ${totalEquiposClasifican + 1}`);
         showError(
           `Debe haber al menos ${totalEquiposClasifican + 1} equipos en el grupo.\n\nSegún las reglas del torneo:\n• ${equipos_oro} clasifican a Oro\n• ${equipos_plata} clasifican a Plata\n• ${equipos_bronce} clasifican a Bronce\n\nNecesitas al menos 1 equipo que no clasifique.`,
           'No cumple reglas del torneo'
@@ -520,23 +375,12 @@ export const CreateGroupsFlowScreen: React.FC<CreateGroupsFlowScreenProps> = ({ 
       // Cerrar modal DESPUÉS de iniciar el proceso
       setShowIndividualModal(false);
 
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.log('📤 [CreateGrupoIndividual] REQUEST DATA:');
-      console.log(JSON.stringify(requestData, null, 2));
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
       const result = await safeAsync(
         async () => {
-          console.log('⏳ [CreateGrupoIndividual] Llamando a api.grupos.create...');
-          console.log('⏳ [CreateGrupoIndividual] Endpoint: POST /grupos-create');
 
           const response = await api.grupos.create(requestData);
 
-          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-          console.log('✅ [CreateGrupoIndividual] RESPUESTA EXITOSA:');
-          console.log('✅ [CreateGrupoIndividual] Status:', response.success);
-          console.log('✅ [CreateGrupoIndividual] Data:', JSON.stringify(response, null, 2));
-          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
           return response;
         },
@@ -544,59 +388,23 @@ export const CreateGroupsFlowScreen: React.FC<CreateGroupsFlowScreenProps> = ({ 
         {
           fallbackValue: null,
           onError: (error: any) => {
-            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-            console.error('❌ [CreateGrupoIndividual] ERROR CAPTURADO:');
-            console.error('❌ [CreateGrupoIndividual] Error completo:', error);
-            console.error('❌ [CreateGrupoIndividual] Error message:', error?.message);
-            console.error('❌ [CreateGrupoIndividual] Error name:', error?.name);
-
             // Información detallada de la respuesta HTTP
             if (error?.response) {
-              console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-              console.error('📡 [CreateGrupoIndividual] HTTP RESPONSE ERROR:');
-              console.error('  - Status:', error.response.status);
-              console.error('  - Status Text:', error.response.statusText);
-              console.error('  - Headers:', JSON.stringify(error.response.headers, null, 2));
-              console.error('  - Data:', JSON.stringify(error.response.data, null, 2));
-              console.error('  - Config:', JSON.stringify({
-                url: error.response.config?.url,
-                method: error.response.config?.method,
-                baseURL: error.response.config?.baseURL,
-                headers: error.response.config?.headers,
-                data: error.response.config?.data,
-              }, null, 2));
-              console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-
               // Mostrar mensaje de error específico según el código
               if (error.response.status === 409) {
                 const errorMsg = error.response.data?.message || 'Conflicto al crear el grupo';
-                console.error('⚠️ [CreateGrupoIndividual] ERROR 409 - CONFLICTO:', errorMsg);
                 showError(errorMsg, 'Conflicto (409)');
                 return;
               }
-            } else if (error?.request) {
-              console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-              console.error('📡 [CreateGrupoIndividual] REQUEST ERROR (Sin respuesta):');
-              console.error('  - Request:', error.request);
-              console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
             }
-
-            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
             showError(error?.response?.data?.message || 'Error al crear el grupo', 'Error');
           }
         }
       );
 
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.log('📊 [CreateGrupoIndividual] RESULTADO FINAL:');
-      console.log('  - Result:', result);
-      console.log('  - Success:', result?.success);
-      console.log('  - Data:', result?.data);
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
       if (result && result.success) {
-        console.log('🎉 [CreateGrupoIndividual] Grupo creado exitosamente');
         setCreationStatus('¡Grupo creado exitosamente!');
 
         showSuccess(
@@ -606,7 +414,6 @@ export const CreateGroupsFlowScreen: React.FC<CreateGroupsFlowScreenProps> = ({ 
 
         // Esperar 1.5 segundos para que el usuario vea el toast de éxito
         setTimeout(() => {
-          console.log('🔄 [CreateGrupoIndividual] Limpiando estado y volviendo...');
           setCreatingGroups(false);
           setCreationStatus('');
 
@@ -616,38 +423,22 @@ export const CreateGroupsFlowScreen: React.FC<CreateGroupsFlowScreenProps> = ({ 
 
           // Si hay callback, llamarlo
           if (onGroupsCreated) {
-            console.log('🔄 [CreateGrupoIndividual] Llamando callback onGroupsCreated');
             onGroupsCreated();
           }
 
           // Volver a la pantalla anterior
-          console.log('🔙 [CreateGrupoIndividual] Navegando de vuelta');
           navigation.goBack();
         }, 1500);
       } else {
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.warn('⚠️ [CreateGrupoIndividual] No se pudo crear el grupo');
-        console.warn('⚠️ [CreateGrupoIndividual] Result:', result);
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         setCreatingGroups(false);
         setCreationStatus('');
       }
     } catch (error) {
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.error('❌ [CreateGrupoIndividual] ERROR INESPERADO EN TRY/CATCH:');
-      console.error('❌ [CreateGrupoIndividual] Error:', error);
-      console.error('❌ [CreateGrupoIndividual] Error type:', typeof error);
-      console.error('❌ [CreateGrupoIndividual] Error message:', (error as any)?.message);
-      console.error('❌ [CreateGrupoIndividual] Stack:', (error as any)?.stack);
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       setCreatingGroups(false);
       setCreationStatus('');
       showError('Error inesperado al crear el grupo', 'Error');
     }
 
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('🏁 [CreateGrupoIndividual] FIN DEL PROCESO');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   };
 
   if (loading) {

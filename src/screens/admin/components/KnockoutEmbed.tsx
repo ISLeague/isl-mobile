@@ -92,12 +92,12 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
     setLoading(true);
     const result = await safeAsync(
       async () => {
-        // Load rondas from API
-        const rondasResponse = await api.rondas.list();
-        const allRondas = rondasResponse.success && rondasResponse.data ? rondasResponse.data : [];
-
-        // Filter only eliminatorias rounds
-        const eliminatoriasRondas: Ronda[] = allRondas.filter((r: Ronda) => r.tipo === 'eliminatorias');
+        // Load rondas from API - only eliminatorias type
+        const rondasResponse = await api.rondas.list({
+          id_edicion_categoria: idEdicionCategoria,
+          tipo_ronda: 'eliminatorias'
+        });
+        const eliminatoriasRondas: Ronda[] = rondasResponse.success && rondasResponse.data ? rondasResponse.data : [];
 
         // Load partidos from API
         const partidosResponse = await api.partidos.list();
@@ -290,7 +290,6 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
       setIdFaseGrupos(null);
 
     } catch (error: any) {
-      console.error('Error generando knockout:', error);
       showError(getUserFriendlyMessage(error), 'Error al generar knockout');
     } finally {
       setGeneratingKnockout(false);
@@ -406,10 +405,9 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
         message: `Ronda: ${ronda.nombre}\n\n${jsonString}`,
         title: `Exportar ${ronda.nombre}`,
       });
-      
+
       showInfo('Ronda exportada correctamente');
     } catch (error) {
-      console.error('Error al exportar ronda:', error);
       showError('Error al exportar la ronda');
     }
   };
@@ -427,7 +425,6 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
             try {
               // TODO: Llamar API para eliminar ronda
               // await api.rounds.deleteRound(ronda.id_ronda);
-              console.log('Eliminar ronda:', ronda.id_ronda);
               showInfo('Ronda eliminada exitosamente');
               loadData();
             } catch (error) {

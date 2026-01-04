@@ -33,7 +33,7 @@ export const CountrySelectionScreen = ({ navigation }: any) => {
       const data = await api.paises.list();
       setPaises(data);
     } catch (error) {
-      console.error('Error loading countries:', error);
+      // console.error('Error loading countries:', error);
     } finally {
       setLoading(false);
     }

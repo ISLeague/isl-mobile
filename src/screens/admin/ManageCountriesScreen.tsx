@@ -40,11 +40,11 @@ export const ManageCountriesScreen = ({ navigation }: any) => {
       if (Array.isArray(paisesData)) {
         setPaises(paisesData);
       } else {
-        console.warn('La respuesta de países no es un array:', paisesData);
+        // console.warn('La respuesta de países no es un array:', paisesData);
         setPaises([]);
       }
     } catch (error) {
-      console.error('Error cargando países:', error);
+      // console.error('Error cargando países:', error);
       setPaises([]);
       Alert.alert('Error', 'No se pudieron cargar los países. Intenta de nuevo.');
     } finally {
@@ -82,7 +82,7 @@ export const ManageCountriesScreen = ({ navigation }: any) => {
       setIsCreating(false);
       Alert.alert('¡Éxito!', `País "${nuevoNombre}" creado correctamente`);
     } catch (error) {
-      console.error('Error creando país:', error);
+      // console.error('Error creando país:', error);
       Alert.alert('Error', 'No se pudo crear el país. Intenta de nuevo.');
     } finally {
       setLoading(false);

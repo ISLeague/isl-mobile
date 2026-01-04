@@ -143,7 +143,7 @@ export const CreateRondaAmistosaScreen: React.FC<CreateRondaAmistosaScreenProps>
               setPartidos(partidosAmistosos);
               showSuccess(`Se generaron ${partidosAmistosos.length} partidos automáticamente`);
             } catch (error) {
-              console.error('Error generando partidos:', error);
+              // console.error('Error generando partidos:', error);
               showError('Error al generar partidos automáticamente');
             }
           },
@@ -250,7 +250,6 @@ export const CreateRondaAmistosaScreen: React.FC<CreateRondaAmistosaScreenProps>
       partidos: partidos,
     };
 
-    console.log('Crear ronda amistosa:', rondaData);
     
     // TODO: Llamar a la API para crear la ronda y los partidos
     // await api.fixture.createRondaAmistosa(rondaData);

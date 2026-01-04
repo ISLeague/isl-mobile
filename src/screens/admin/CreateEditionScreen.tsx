@@ -95,7 +95,7 @@ export const CreateEditionScreen = ({ navigation, route }: any) => {
         },
       ]);
     } catch (error: any) {
-      console.error('Error creating edition:', error);
+      // console.error('Error creating edition:', error);
       const errorMessage = error?.response?.data?.message || 'No se pudo crear la edición';
       Alert.alert('Error', errorMessage);
     } finally {

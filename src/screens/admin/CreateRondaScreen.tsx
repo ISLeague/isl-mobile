@@ -63,7 +63,6 @@ export const CreateRondaScreen: React.FC<CreateRondaScreenProps> = ({ navigation
       es_amistosa: tipo === 'amistosa',
     };
 
-    console.log('Crear ronda:', rondaData);
     
     // TODO: Llamar a la API para crear la ronda
     // await api.fixture.createRonda(rondaData);
@@ -152,7 +151,6 @@ export const CreateRondaScreen: React.FC<CreateRondaScreenProps> = ({ navigation
         {
           text: 'Aplicar',
           onPress: () => {
-            console.log('Aplicar fecha a todos los partidos sin fecha:', fecha);
             // TODO: Llamar a la API para aplicar fecha a todos los partidos sin fecha
             // await api.fixture.applyDateToMatches(rondaId, fecha);
             Alert.alert('Éxito', 'Fecha aplicada a todos los partidos sin fecha');

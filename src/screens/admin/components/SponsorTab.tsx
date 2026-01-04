@@ -44,7 +44,7 @@ export const SponsorTab: React.FC<SponsorTabProps> = ({
         setSponsors(response.data);
       }
     } catch (error) {
-      console.error('Error cargando sponsors:', error);
+      // console.error('Error cargando sponsors:', error);
     } finally {
       setLoading(false);
     }

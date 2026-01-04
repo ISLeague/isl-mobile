@@ -48,9 +48,9 @@ class ErrorHandler {
 
     // Loggear en consola según severidad
     if (severity === 'critical' || severity === 'high') {
-      console.error(`[${severity.toUpperCase()}] ${context}:`, error, metadata);
+      // console.error(`[${severity.toUpperCase()}] ${context}:`, error, metadata);
     } else {
-      console.warn(`[${severity.toUpperCase()}] ${context}:`, error);
+      // console.warn(`[${severity.toUpperCase()}] ${context}:`, error);
     }
 
     // TODO: Enviar a servicio de tracking (Sentry, Firebase, etc.)
@@ -283,7 +283,6 @@ const loadData = async () => {
       severity: 'high',
       fallbackValue: [],
       onError: (error) => {
-        console.log('Error específico:', error);
       }
     }
   );
@@ -313,7 +312,6 @@ const fetchWithRetry = async () => {
       maxAttempts: 3,
       delay: 1000,
       onRetry: (attempt, error) => {
-        console.log(`Reintento ${attempt}:`, error.message);
       }
     }
   );

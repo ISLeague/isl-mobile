@@ -5,7 +5,7 @@ export const localesService = {
   list: async (idEdicionCategoria: number) => {
     const response = await apiClient.get('/locales', {
       params: { id_edicion_categoria: idEdicionCategoria, action: 'list' }
-    });
+    }); 
     return response.data;
   },
 
@@ -67,6 +67,13 @@ export const canchasService = {
   list: async (idLocal: number) => {
     const response = await apiClient.get('/canchas', {
       params: { id_local: idLocal, action: 'list' }
+    });
+    return response.data;
+  },
+
+  listByEdicionCategoria: async (idEdicionCategoria: number) => {
+    const response = await apiClient.get('/canchas', {
+      params: { id_edicion_categoria: idEdicionCategoria, action: 'list' }
     });
     return response.data;
   },

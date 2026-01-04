@@ -41,7 +41,6 @@ export const jugadoresService = {
    */
   create: async (data: CreateJugadorRequest) => {
     const response = await apiClient.post('/jugadores', data);
-    console.log("respuesta create individual ", response.data)
     return response.data;
   },
 
@@ -58,7 +57,6 @@ export const jugadoresService = {
         'Content-Type': 'multipart/form-data',
       },
     });
-    console.log("respuesta bulk ", response.data)
     return response.data;
   },
 

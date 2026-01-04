@@ -55,7 +55,6 @@ export const EditGroupScreen: React.FC<EditGroupScreenProps> = ({ navigation, ro
       equipos_pasan_plata: plata,
     };
 
-    console.log('Actualizar grupo:', grupoData);
 
     // TODO: Llamar a la API para actualizar el grupo
     // await api.groups.updateGroup(grupo.id_grupo, grupoData);
@@ -75,7 +74,6 @@ export const EditGroupScreen: React.FC<EditGroupScreenProps> = ({ navigation, ro
           text: 'Eliminar',
           style: 'destructive',
           onPress: () => {
-            console.log('Eliminar grupo:', grupo.id_grupo);
             // TODO: Llamar a la API para eliminar el grupo
             // await api.groups.deleteGroup(grupo.id_grupo);
             Alert.alert('Éxito', 'Grupo eliminado exitosamente', [
