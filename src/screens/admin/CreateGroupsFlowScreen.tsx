@@ -164,20 +164,10 @@ export const CreateGroupsFlowScreen: React.FC<CreateGroupsFlowScreenProps> = ({ 
 
     const cantGrupos = parseInt(cantidadGrupos) || 0;
     const cantEquipos = parseInt(cantidadEquiposPorGrupo) || 0;
-    const oro = parseInt(equiposPasanOro) || 0;
-    const plata = parseInt(equiposPasanPlata) || 0;
-    const bronce = parseInt(equiposPasanBronce) || 0;
 
     console.log('📊 [CreateGruposBulk] Valores del formulario:');
     console.log('  - Cantidad de grupos:', cantidadGrupos, '→', cantGrupos);
     console.log('  - Equipos por grupo:', cantidadEquiposPorGrupo, '→', cantEquipos);
-    console.log('  - Equipos a Oro:', equiposPasanOro, '→', oro);
-    console.log('  - Equipos a Plata:', equiposPasanPlata, '→', plata);
-    console.log('  - Equipos a Bronce:', equiposPasanBronce, '→', bronce);
-    console.log('  - Posiciones Oro:', posicionesOro);
-    console.log('  - Posiciones Plata:', posicionesPlata);
-    console.log('  - Posiciones Bronce:', posicionesBronce);
-    console.log('  - Descripción:', descripcionClasificacion);
 
     console.log('🎯 [CreateGruposBulk] Estado de fase de grupos:');
     console.log('  - faseGrupos:', faseGrupos);
@@ -187,41 +177,76 @@ export const CreateGroupsFlowScreen: React.FC<CreateGroupsFlowScreenProps> = ({ 
       console.log('  - Tipo:', faseGrupos.tipo);
     }
 
-    if (cantGrupos <= 0 || cantEquipos <= 0) {
-      console.warn('⚠️ [CreateGruposBulk] Validación fallida: cantidad inválida');
-      showError('La cantidad de grupos y equipos debe ser mayor a 0', 'Datos inválidos');
-      return;
-    }
-
-    // Validar que haya al menos un equipo más que los que clasifican
-    const totalEquiposClasifican = oro + plata + bronce;
-    if (cantEquipos <= totalEquiposClasifican) {
-      console.warn('⚠️ [CreateGruposBulk] Validación fallida: no hay suficientes equipos');
-      showError(
-        `Debe haber al menos ${totalEquiposClasifican + 1} equipos por grupo.\n\nActualmente ${totalEquiposClasifican} equipos clasifican (${oro} oro, ${plata} plata, ${bronce} bronce).\n\nNecesitas al menos 1 equipo que no clasifique.`,
-        'Equipos insuficientes'
-      );
-      return;
-    }
-
     if (!faseGrupos) {
       console.warn('⚠️ [CreateGruposBulk] Validación fallida: no hay fase de grupos');
       showError('No hay una fase de grupos creada', 'Error');
       return;
     }
 
-    const requestData = {
+    if (cantGrupos <= 0 || cantEquipos <= 0) {
+      console.warn('⚠️ [CreateGruposBulk] Validación fallida: cantidad inválida');
+      showError('La cantidad de grupos y equipos debe ser mayor a 0', 'Datos inválidos');
+      return;
+    }
+
+    // Si NO hay configuración existente, se deben enviar los datos de configuración
+    let requestData: any = {
       id_fase: faseGrupos.id_fase,
       cantidad_grupos: cantGrupos,
       cantidad_equipos_por_grupo: cantEquipos,
-      equipos_oro: oro,
-      equipos_plata: plata,
-      equipos_bronce: bronce,
-      posiciones_oro: posicionesOro.trim() || undefined,
-      posiciones_plata: posicionesPlata.trim() || undefined,
-      posiciones_bronce: posicionesBronce.trim() || undefined,
-      descripcion_clasificacion: descripcionClasificacion.trim() || undefined,
     };
+
+    if (!configuracionClasificacion) {
+      // Primera vez - configurar clasificación
+      const oro = parseInt(equiposPasanOro) || 0;
+      const plata = parseInt(equiposPasanPlata) || 0;
+      const bronce = parseInt(equiposPasanBronce) || 0;
+
+      console.log('  ⚙️ Primera configuración - Equipos a Oro:', equiposPasanOro, '→', oro);
+      console.log('  ⚙️ Primera configuración - Equipos a Plata:', equiposPasanPlata, '→', plata);
+      console.log('  ⚙️ Primera configuración - Equipos a Bronce:', equiposPasanBronce, '→', bronce);
+      console.log('  ⚙️ Primera configuración - Posiciones Oro:', posicionesOro);
+      console.log('  ⚙️ Primera configuración - Posiciones Plata:', posicionesPlata);
+      console.log('  ⚙️ Primera configuración - Posiciones Bronce:', posicionesBronce);
+      console.log('  ⚙️ Primera configuración - Descripción:', descripcionClasificacion);
+
+      // Validar que haya al menos un equipo más que los que clasifican
+      const totalEquiposClasifican = oro + plata + bronce;
+      if (cantEquipos <= totalEquiposClasifican) {
+        console.warn('⚠️ [CreateGruposBulk] Validación fallida: no hay suficientes equipos');
+        showError(
+          `Debe haber al menos ${totalEquiposClasifican + 1} equipos por grupo.\n\nActualmente ${totalEquiposClasifican} equipos clasifican (${oro} oro, ${plata} plata, ${bronce} bronce).\n\nNecesitas al menos 1 equipo que no clasifique.`,
+          'Equipos insuficientes'
+        );
+        return;
+      }
+
+      requestData = {
+        ...requestData,
+        equipos_oro: oro,
+        equipos_plata: plata,
+        equipos_bronce: bronce,
+        posiciones_oro: posicionesOro.trim() || undefined,
+        posiciones_plata: posicionesPlata.trim() || undefined,
+        posiciones_bronce: posicionesBronce.trim() || undefined,
+        descripcion_clasificacion: descripcionClasificacion.trim() || undefined,
+      };
+    } else {
+      // Ya existe configuración - validar con la configuración existente
+      console.log('⚙️ [CreateGruposBulk] Usando configuración existente');
+      const totalEquiposClasifican = configuracionClasificacion.equipos_oro +
+        configuracionClasificacion.equipos_plata +
+        configuracionClasificacion.equipos_bronce;
+
+      if (cantEquipos <= totalEquiposClasifican) {
+        console.warn('⚠️ [CreateGruposBulk] Validación fallida: no cumple con configuración existente');
+        showError(
+          `Debe haber al menos ${totalEquiposClasifican + 1} equipos por grupo.\n\nSegún la configuración del torneo:\n• ${configuracionClasificacion.equipos_oro} clasifican a Oro\n• ${configuracionClasificacion.equipos_plata} clasifican a Plata\n• ${configuracionClasificacion.equipos_bronce} clasifican a Bronce`,
+          'No cumple con configuración'
+        );
+        return;
+      }
+    }
 
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('📤 [CreateGruposBulk] REQUEST DATA:');
@@ -414,14 +439,7 @@ export const CreateGroupsFlowScreen: React.FC<CreateGroupsFlowScreenProps> = ({ 
       return;
     }
 
-    // Validar que haya configuración de clasificación
-    if (!configuracionClasificacion) {
-      console.warn('⚠️ [CreateGrupoIndividual] Validación fallida: no hay configuración de clasificación');
-      showError('No se ha configurado la clasificación del torneo.\nCrea grupos en modo bulk primero para configurar las reglas.', 'Sin configuración');
-      return;
-    }
-
-    // Validar cantidad de equipos según la configuración del torneo
+    // Validar cantidad de equipos
     const cantEquipos = parseInt(cantidadEquipos) || 0;
     console.log('📊 [CreateGrupoIndividual] Cantidad equipos parseada:', cantEquipos);
 
@@ -431,20 +449,65 @@ export const CreateGroupsFlowScreen: React.FC<CreateGroupsFlowScreenProps> = ({ 
       return;
     }
 
-    const { equipos_oro, equipos_plata, equipos_bronce } = configuracionClasificacion;
-    const totalEquiposClasifican = equipos_oro + equipos_plata + equipos_bronce;
-    console.log('📊 [CreateGrupoIndividual] Total equipos que clasifican:', totalEquiposClasifican);
-    console.log('📊 [CreateGrupoIndividual] Mínimo requerido:', totalEquiposClasifican + 1);
+    // Preparar request data base
+    let requestData: any = {
+      id_fase: faseGrupos.id_fase,
+      nombre: nombreGrupo.trim(),
+      cantidad_equipos: cantEquipos,
+    };
 
-    if (cantEquipos <= totalEquiposClasifican) {
-      console.warn('⚠️ [CreateGrupoIndividual] Validación fallida: no cumple con reglas del torneo');
-      console.warn(`  - Equipos ingresados: ${cantEquipos}`);
-      console.warn(`  - Mínimo requerido: ${totalEquiposClasifican + 1}`);
-      showError(
-        `Debe haber al menos ${totalEquiposClasifican + 1} equipos en el grupo.\n\nSegún las reglas del torneo:\n• ${equipos_oro} clasifican a Oro\n• ${equipos_plata} clasifican a Plata\n• ${equipos_bronce} clasifican a Bronce\n\nNecesitas al menos 1 equipo que no clasifique.`,
-        'No cumple reglas del torneo'
-      );
-      return;
+    // Si NO hay configuración existente, incluir configuración
+    if (!configuracionClasificacion) {
+      const oro = parseInt(equiposPasanOro) || 0;
+      const plata = parseInt(equiposPasanPlata) || 0;
+      const bronce = parseInt(equiposPasanBronce) || 0;
+
+      console.log('  ⚙️ Primera configuración - Equipos a Oro:', equiposPasanOro, '→', oro);
+      console.log('  ⚙️ Primera configuración - Equipos a Plata:', equiposPasanPlata, '→', plata);
+      console.log('  ⚙️ Primera configuración - Equipos a Bronce:', equiposPasanBronce, '→', bronce);
+
+      const totalEquiposClasifican = oro + plata + bronce;
+      console.log('📊 [CreateGrupoIndividual] Total equipos que clasifican:', totalEquiposClasifican);
+      console.log('📊 [CreateGrupoIndividual] Mínimo requerido:', totalEquiposClasifican + 1);
+
+      if (cantEquipos <= totalEquiposClasifican) {
+        console.warn('⚠️ [CreateGrupoIndividual] Validación fallida: no cumple con nueva configuración');
+        console.warn(`  - Equipos ingresados: ${cantEquipos}`);
+        console.warn(`  - Mínimo requerido: ${totalEquiposClasifican + 1}`);
+        showError(
+          `Debe haber al menos ${totalEquiposClasifican + 1} equipos en el grupo.\n\nSegún tu configuración:\n• ${oro} clasifican a Oro\n• ${plata} clasifican a Plata\n• ${bronce} clasifican a Bronce\n\nNecesitas al menos 1 equipo que no clasifique.`,
+          'Equipos insuficientes'
+        );
+        return;
+      }
+
+      requestData = {
+        ...requestData,
+        equipos_oro: oro,
+        equipos_plata: plata,
+        equipos_bronce: bronce,
+        posiciones_oro: posicionesOro.trim() || undefined,
+        posiciones_plata: posicionesPlata.trim() || undefined,
+        posiciones_bronce: posicionesBronce.trim() || undefined,
+        descripcion_clasificacion: descripcionClasificacion.trim() || undefined,
+      };
+    } else {
+      // Ya existe configuración - validar contra ella
+      const { equipos_oro, equipos_plata, equipos_bronce } = configuracionClasificacion;
+      const totalEquiposClasifican = equipos_oro + equipos_plata + equipos_bronce;
+      console.log('📊 [CreateGrupoIndividual] Total equipos que clasifican:', totalEquiposClasifican);
+      console.log('📊 [CreateGrupoIndividual] Mínimo requerido:', totalEquiposClasifican + 1);
+
+      if (cantEquipos <= totalEquiposClasifican) {
+        console.warn('⚠️ [CreateGrupoIndividual] Validación fallida: no cumple con reglas del torneo');
+        console.warn(`  - Equipos ingresados: ${cantEquipos}`);
+        console.warn(`  - Mínimo requerido: ${totalEquiposClasifican + 1}`);
+        showError(
+          `Debe haber al menos ${totalEquiposClasifican + 1} equipos en el grupo.\n\nSegún las reglas del torneo:\n• ${equipos_oro} clasifican a Oro\n• ${equipos_plata} clasifican a Plata\n• ${equipos_bronce} clasifican a Bronce\n\nNecesitas al menos 1 equipo que no clasifique.`,
+          'No cumple reglas del torneo'
+        );
+        return;
+      }
     }
 
     try {
@@ -456,12 +519,6 @@ export const CreateGroupsFlowScreen: React.FC<CreateGroupsFlowScreenProps> = ({ 
 
       // Cerrar modal DESPUÉS de iniciar el proceso
       setShowIndividualModal(false);
-
-      const requestData = {
-        id_fase: faseGrupos.id_fase,
-        nombre: nombreGrupo.trim(),
-        cantidad_equipos: cantEquipos,
-      };
 
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       console.log('📤 [CreateGrupoIndividual] REQUEST DATA:');
@@ -721,112 +778,162 @@ export const CreateGroupsFlowScreen: React.FC<CreateGroupsFlowScreenProps> = ({ 
             </View>
 
             <ScrollView style={styles.modalContent}>
+              {/* Información de Configuración Existente */}
+              {configuracionClasificacion && (
+                <View style={styles.configInfo}>
+                  <View style={styles.configHeader}>
+                    <MaterialCommunityIcons name="information" size={20} color={colors.info} />
+                    <Text style={styles.configTitle}>Reglas de Clasificación del Torneo</Text>
+                  </View>
+                  <View style={styles.configDetails}>
+                    <Text style={styles.configText}>
+                      • {configuracionClasificacion.equipos_oro} equipos clasifican a Oro (posiciones: {configuracionClasificacion.posiciones_oro})
+                    </Text>
+                    <Text style={styles.configText}>
+                      • {configuracionClasificacion.equipos_plata} equipos clasifican a Plata (posiciones: {configuracionClasificacion.posiciones_plata})
+                    </Text>
+                    <Text style={styles.configText}>
+                      • {configuracionClasificacion.equipos_bronce} equipos clasifican a Bronce (posiciones: {configuracionClasificacion.posiciones_bronce})
+                    </Text>
+                    {configuracionClasificacion.descripcion && (
+                      <Text style={styles.configDescription}>
+                        {configuracionClasificacion.descripcion}
+                      </Text>
+                    )}
+                  </View>
+                </View>
+              )}
+
               {/* Cantidad de Grupos */}
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Cantidad de Grupos</Text>
+                <Text style={styles.label}>Cantidad de Grupos *</Text>
                 <TextInput
                   style={styles.input}
                   value={cantidadGrupos}
                   onChangeText={setCantidadGrupos}
                   keyboardType="number-pad"
                   placeholder="Ej: 4"
+                  placeholderTextColor={colors.textLight}
                 />
               </View>
 
               {/* Cantidad de Equipos por Grupo */}
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Equipos por Grupo</Text>
+                <Text style={styles.label}>Equipos por Grupo *</Text>
                 <TextInput
                   style={styles.input}
                   value={cantidadEquiposPorGrupo}
                   onChangeText={setCantidadEquiposPorGrupo}
                   keyboardType="number-pad"
                   placeholder="Ej: 4"
+                  placeholderTextColor={colors.textLight}
                 />
+                {configuracionClasificacion && (
+                  <Text style={styles.helperText}>
+                    Mínimo: {configuracionClasificacion.equipos_oro + configuracionClasificacion.equipos_plata + configuracionClasificacion.equipos_bronce + 1} equipos por grupo
+                  </Text>
+                )}
               </View>
 
-              {/* Equipos que Pasan a Oro */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Equipos que pasan a Oro</Text>
-                <TextInput
-                  style={styles.input}
-                  value={equiposPasanOro}
-                  onChangeText={setEquiposPasanOro}
-                  keyboardType="number-pad"
-                  placeholder="Ej: 2"
-                />
-              </View>
+              {/* Campos de Configuración (solo si NO existe configuración) */}
+              {!configuracionClasificacion && (
+                <>
+                  <View style={styles.configSectionHeader}>
+                    <MaterialCommunityIcons name="cog" size={20} color={colors.primary} />
+                    <Text style={styles.configSectionTitle}>Configurar Reglas de Clasificación</Text>
+                  </View>
 
-              {/* Equipos que Pasan a Plata */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Equipos que pasan a Plata</Text>
-                <TextInput
-                  style={styles.input}
-                  value={equiposPasanPlata}
-                  onChangeText={setEquiposPasanPlata}
-                  keyboardType="number-pad"
-                  placeholder="Ej: 1"
-                />
-              </View>
+                  {/* Equipos que Pasan a Oro */}
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Equipos que pasan a Oro *</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={equiposPasanOro}
+                      onChangeText={setEquiposPasanOro}
+                      keyboardType="number-pad"
+                      placeholder="Ej: 2"
+                      placeholderTextColor={colors.textLight}
+                    />
+                  </View>
 
-              {/* Equipos que Pasan a Bronce */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Equipos que pasan a Bronce</Text>
-                <TextInput
-                  style={styles.input}
-                  value={equiposPasanBronce}
-                  onChangeText={setEquiposPasanBronce}
-                  keyboardType="number-pad"
-                  placeholder="Ej: 0"
-                />
-              </View>
+                  {/* Equipos que Pasan a Plata */}
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Equipos que pasan a Plata *</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={equiposPasanPlata}
+                      onChangeText={setEquiposPasanPlata}
+                      keyboardType="number-pad"
+                      placeholder="Ej: 1"
+                      placeholderTextColor={colors.textLight}
+                    />
+                  </View>
 
-              {/* Posiciones Oro */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Posiciones Oro (separadas por coma)</Text>
-                <TextInput
-                  style={styles.input}
-                  value={posicionesOro}
-                  onChangeText={setPosicionesOro}
-                  placeholder="Ej: 1,2"
-                />
-              </View>
+                  {/* Equipos que Pasan a Bronce */}
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Equipos que pasan a Bronce *</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={equiposPasanBronce}
+                      onChangeText={setEquiposPasanBronce}
+                      keyboardType="number-pad"
+                      placeholder="Ej: 0"
+                      placeholderTextColor={colors.textLight}
+                    />
+                  </View>
 
-              {/* Posiciones Plata */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Posiciones Plata (separadas por coma)</Text>
-                <TextInput
-                  style={styles.input}
-                  value={posicionesPlata}
-                  onChangeText={setPosicionesPlata}
-                  placeholder="Ej: 3"
-                />
-              </View>
+                  {/* Posiciones Oro */}
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Posiciones Oro (separadas por coma) *</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={posicionesOro}
+                      onChangeText={setPosicionesOro}
+                      placeholder="Ej: 1,2"
+                      placeholderTextColor={colors.textLight}
+                    />
+                  </View>
 
-              {/* Posiciones Bronce */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Posiciones Bronce (separadas por coma)</Text>
-                <TextInput
-                  style={styles.input}
-                  value={posicionesBronce}
-                  onChangeText={setPosicionesBronce}
-                  placeholder="Ej: 4"
-                />
-              </View>
+                  {/* Posiciones Plata */}
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Posiciones Plata (separadas por coma) *</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={posicionesPlata}
+                      onChangeText={setPosicionesPlata}
+                      placeholder="Ej: 3"
+                      placeholderTextColor={colors.textLight}
+                    />
+                  </View>
 
-              {/* Descripción de Clasificación */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Descripción de Clasificación (opcional)</Text>
-                <TextInput
-                  style={[styles.input, styles.textArea]}
-                  value={descripcionClasificacion}
-                  onChangeText={setDescripcionClasificacion}
-                  placeholder="Ej: Los primeros 2 clasifican a oro, el 3ro a plata..."
-                  multiline
-                  numberOfLines={4}
-                  textAlignVertical="top"
-                />
-              </View>
+                  {/* Posiciones Bronce */}
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Posiciones Bronce (separadas por coma)</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={posicionesBronce}
+                      onChangeText={setPosicionesBronce}
+                      placeholder="Ej: 4"
+                      placeholderTextColor={colors.textLight}
+                    />
+                  </View>
+
+                  {/* Descripción de Clasificación */}
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Descripción de Clasificación (opcional)</Text>
+                    <TextInput
+                      style={[styles.input, styles.textArea]}
+                      value={descripcionClasificacion}
+                      onChangeText={setDescripcionClasificacion}
+                      placeholder="Ej: Los primeros 2 clasifican a oro, el 3ro a plata..."
+                      placeholderTextColor={colors.textLight}
+                      multiline
+                      numberOfLines={4}
+                      textAlignVertical="top"
+                    />
+                  </View>
+                </>
+              )}
             </ScrollView>
 
             <View style={styles.modalFooter}>
@@ -924,6 +1031,106 @@ export const CreateGroupsFlowScreen: React.FC<CreateGroupsFlowScreenProps> = ({ 
                   </Text>
                 ) : null}
               </View>
+
+              {/* Campos de Configuración (solo si NO existe configuración) */}
+              {!configuracionClasificacion && (
+                <>
+                  <View style={styles.configSectionHeader}>
+                    <MaterialCommunityIcons name="cog" size={20} color={colors.primary} />
+                    <Text style={styles.configSectionTitle}>Configurar Reglas de Clasificación</Text>
+                  </View>
+
+                  {/* Equipos que Pasan a Oro */}
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Equipos que pasan a Oro *</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={equiposPasanOro}
+                      onChangeText={setEquiposPasanOro}
+                      keyboardType="number-pad"
+                      placeholder="Ej: 2"
+                      placeholderTextColor={colors.textLight}
+                    />
+                  </View>
+
+                  {/* Equipos que Pasan a Plata */}
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Equipos que pasan a Plata *</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={equiposPasanPlata}
+                      onChangeText={setEquiposPasanPlata}
+                      keyboardType="number-pad"
+                      placeholder="Ej: 1"
+                      placeholderTextColor={colors.textLight}
+                    />
+                  </View>
+
+                  {/* Equipos que Pasan a Bronce */}
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Equipos que pasan a Bronce *</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={equiposPasanBronce}
+                      onChangeText={setEquiposPasanBronce}
+                      keyboardType="number-pad"
+                      placeholder="Ej: 0"
+                      placeholderTextColor={colors.textLight}
+                    />
+                  </View>
+
+                  {/* Posiciones Oro */}
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Posiciones Oro (separadas por coma) *</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={posicionesOro}
+                      onChangeText={setPosicionesOro}
+                      placeholder="Ej: 1,2"
+                      placeholderTextColor={colors.textLight}
+                    />
+                  </View>
+
+                  {/* Posiciones Plata */}
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Posiciones Plata (separadas por coma) *</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={posicionesPlata}
+                      onChangeText={setPosicionesPlata}
+                      placeholder="Ej: 3"
+                      placeholderTextColor={colors.textLight}
+                    />
+                  </View>
+
+                  {/* Posiciones Bronce */}
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Posiciones Bronce (separadas por coma)</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={posicionesBronce}
+                      onChangeText={setPosicionesBronce}
+                      placeholder="Ej: 4"
+                      placeholderTextColor={colors.textLight}
+                    />
+                  </View>
+
+                  {/* Descripción de Clasificación */}
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Descripción de Clasificación (opcional)</Text>
+                    <TextInput
+                      style={[styles.input, styles.textArea]}
+                      value={descripcionClasificacion}
+                      onChangeText={setDescripcionClasificacion}
+                      placeholder="Ej: Los primeros 2 clasifican a oro, el 3ro a plata..."
+                      placeholderTextColor={colors.textLight}
+                      multiline
+                      numberOfLines={4}
+                      textAlignVertical="top"
+                    />
+                  </View>
+                </>
+              )}
             </ScrollView>
 
             <View style={styles.modalFooter}>
@@ -1211,5 +1418,17 @@ const styles = StyleSheet.create({
     color: colors.error,
     marginTop: 6,
     fontWeight: '500',
+  },
+  configSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+    marginTop: 8,
+  },
+  configSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.primary,
   },
 });

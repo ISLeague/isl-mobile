@@ -245,9 +245,9 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
             />
           </TouchableOpacity>
           <View style={styles.headerInfo}>
-            <Text style={styles.tournamentName}>{torneo.nombre}</Text>
+            <Text style={styles.tournamentName}>{torneo?.nombre || 'Torneo'}</Text>
             <TouchableOpacity style={styles.categorySelector} onPress={() => setShowCategoryPicker(!showCategoryPicker)}>
-              <Text style={styles.categoryName}>{selectedCategoria.nombre}</Text>
+              <Text style={styles.categoryName}>{selectedCategoria?.nombre || 'Categoría'}</Text>
               <Ionicons
                 name={showCategoryPicker ? 'chevron-up' : 'chevron-down'}
                 size={16}
@@ -387,6 +387,7 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
                 <View key={tab.id} style={styles.pageWrapper}>
                   <TeamsTab
                     idEdicionCategoria={idEdicionCategoria || 1}
+                    maxEquipos={edicionCategoria?.max_equipos}
                     onCreateTeam={() => navigation.navigate('CreateTeam', {
                       idEdicionCategoria: idEdicionCategoria || 1,
                     })}

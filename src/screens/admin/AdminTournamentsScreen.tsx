@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -29,22 +29,16 @@ export const AdminTournamentsScreen = ({ navigation, route }: any) => {
   const { pais } = route.params as { pais: Pais };
   const [torneos, setTorneos] = useState<TorneoConEstado[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   // Estados de búsqueda y filtros
   const [searchQuery, setSearchQuery] = useState('');
   const [filtroActivo, setFiltroActivo] = useState<boolean | undefined>(true);
 
-  // Estados de paginación
-  const [currentPage, setCurrentPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
+  // Ref para trackear si es la primera carga
+  const isFirstLoad = useRef(true);
 
-  useEffect(() => {
-    loadTorneos(true);
-  }, []);
-
-  // Recargar cuando cambian los filtros
+  // Cargar torneos cuando cambian los filtros o al montar el componente
   useEffect(() => {
     // Solo buscar si:
     // 1. No hay búsqueda (searchQuery vacío), O
@@ -55,47 +49,49 @@ export const AdminTournamentsScreen = ({ navigation, route }: any) => {
       return; // No hacer nada si tiene 1-2 caracteres
     }
 
+    // Si es la carga inicial (sin búsqueda), cargar inmediatamente
+    // Si hay búsqueda, aplicar debounce
+    if (isFirstLoad.current) {
+      isFirstLoad.current = false;
+      loadTorneos();
+      return;
+    }
+
     const delaySearch = setTimeout(() => {
-      loadTorneos(true);
+      loadTorneos();
     }, 800); // Debounce de 800ms para búsqueda
 
     return () => clearTimeout(delaySearch);
   }, [searchQuery, filtroActivo]);
 
-  const loadTorneos = async (reset: boolean = false, isRefreshing: boolean = false) => {
+  const loadTorneos = async (isRefreshing: boolean = false) => {
     try {
-      if (reset) {
-        setCurrentPage(1);
-        setHasMore(true);
-        if (isRefreshing) {
-          setRefreshing(true);
-        } else {
-          setLoading(true);
-        }
+      console.log('🔄 [AdminTournaments] Iniciando carga de torneos...', { isRefreshing });
+
+      if (isRefreshing) {
+        setRefreshing(true);
       } else {
-        setLoadingMore(true);
+        setLoading(true);
       }
 
-      const pageToLoad = reset ? 1 : currentPage;
-
+      console.log('📡 [AdminTournaments] Llamando a api.torneos.getByCountry...');
       const response = await api.torneos.getByCountry(pais.id_pais, {
-        page: pageToLoad,
-        limit: 10,
         activo: filtroActivo,
         q: searchQuery.trim() || undefined,
       });
+      console.log('✅ [AdminTournaments] Torneos obtenidos exitosamente:', response.data?.length);
 
-      const { data, pagination } = response;
+      const data = response.data || [];
 
       // Validar que data sea un array
       if (!Array.isArray(data)) {
         console.warn('La respuesta de torneos no es un array:', data);
-        if (reset) setTorneos([]);
-        setHasMore(false);
+        setTorneos([]);
         return;
       }
 
       // Para cada torneo, verificar si tiene una edición activa
+      console.log('🔍 [AdminTournaments] Obteniendo ediciones para cada torneo...');
       const torneosConEstado = await Promise.all(
         data.map(async (torneo) => {
           try {
@@ -119,7 +115,7 @@ export const AdminTournamentsScreen = ({ navigation, route }: any) => {
             }
 
             // Solo loguear errores que NO sean 404
-            console.error(`Error loading editions for tournament ${torneo.id_torneo}:`, error);
+            console.error(`❌ [AdminTournaments] Error loading editions for tournament ${torneo.id_torneo}:`, error);
             return {
               ...torneo,
               tieneEdicionActiva: false,
@@ -128,39 +124,28 @@ export const AdminTournamentsScreen = ({ navigation, route }: any) => {
           }
         })
       );
+      console.log('✅ [AdminTournaments] Ediciones procesadas exitosamente');
 
-      if (reset) {
-        setTorneos(torneosConEstado);
-      } else {
-        setTorneos(prev => [...prev, ...torneosConEstado]);
-      }
+      setTorneos(torneosConEstado);
 
-      setHasMore(pagination.hasNext);
-      if (pagination.hasNext) {
-        setCurrentPage(pageToLoad + 1);
-      }
-
-    } catch (error) {
-      console.error('Error loading tournaments:', error);
-      if (reset) {
-        setTorneos([]);
-      }
+    } catch (error: any) {
+      console.error('❌❌❌ [AdminTournaments] Error en loadTorneos - ESTE ES EL ERROR QUE CAUSA EL ALERT:', error);
+      console.error('❌ [AdminTournaments] Error details:', {
+        message: error?.message,
+        response: error?.response,
+        stack: error?.stack,
+      });
+      setTorneos([]);
       Alert.alert('Error', 'No se pudieron cargar los torneos. Intenta de nuevo.');
     } finally {
+      console.log('🏁 [AdminTournaments] Finalizando carga de torneos');
       setLoading(false);
-      setLoadingMore(false);
       setRefreshing(false);
     }
   };
 
-  const handleLoadMore = useCallback(() => {
-    if (!loadingMore && hasMore && !loading) {
-      loadTorneos(false);
-    }
-  }, [loadingMore, hasMore, loading]);
-
   const handleRefresh = useCallback(() => {
-    loadTorneos(true, true);
+    loadTorneos(true);
   }, []);
 
   const handleCreateTournament = () => {
@@ -310,30 +295,31 @@ export const AdminTournamentsScreen = ({ navigation, route }: any) => {
     </>
   ), [searchQuery, filtroActivo, pais.emoji, pais.nombre, navigation, isSuperAdmin, handleManageCategories]);
 
-  const renderFooter = useMemo(() => {
-    if (!loadingMore) return null;
+  const renderEmpty = useMemo(() => {
+    let title = 'No hay torneos creados';
+    let subtitle = isSuperAdmin
+      ? 'Presiona el botón + para crear el primer torneo'
+      : 'Aún no hay torneos disponibles para este país';
+
+    if (searchQuery) {
+      title = 'No se encontraron torneos';
+      subtitle = `No hay resultados para "${searchQuery}"`;
+    } else if (filtroActivo === false) {
+      title = 'No hay torneos inactivos';
+      subtitle = '';
+    } else if (filtroActivo === true) {
+      title = 'No hay torneos activos';
+      subtitle = '';
+    }
+
     return (
-      <View style={styles.footerLoader}>
-        <ActivityIndicator size="small" color={colors.primary} />
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyEmoji}>🏆</Text>
+        <Text style={styles.emptyTitle}>{title}</Text>
+        {subtitle ? <Text style={styles.emptySubtitle}>{subtitle}</Text> : null}
       </View>
     );
-  }, [loadingMore]);
-
-  const renderEmpty = useMemo(() => (
-    <View style={styles.emptyContainer}>
-      <Text style={styles.emptyEmoji}>🏆</Text>
-      <Text style={styles.emptyTitle}>
-        {searchQuery ? 'No se encontraron torneos' : 'No hay torneos creados'}
-      </Text>
-      <Text style={styles.emptySubtitle}>
-        {searchQuery
-          ? `No hay resultados para "${searchQuery}"`
-          : isSuperAdmin
-            ? 'Presiona el botón + para crear el primer torneo'
-            : 'Aún no hay torneos disponibles para este país'}
-      </Text>
-    </View>
-  ), [searchQuery, isSuperAdmin]);
+  }, [searchQuery, isSuperAdmin, filtroActivo]);
 
   const renderTorneoItem = ({ item: torneo }: { item: TorneoConEstado }) => {
     const content = (
@@ -479,10 +465,7 @@ export const AdminTournamentsScreen = ({ navigation, route }: any) => {
           renderItem={renderTorneoItem}
           keyExtractor={(item) => item.id_torneo.toString()}
           ListHeaderComponent={renderHeader}
-          ListFooterComponent={renderFooter}
           ListEmptyComponent={!loading ? renderEmpty : null}
-          onEndReached={handleLoadMore}
-          onEndReachedThreshold={0.5}
           refreshing={refreshing}
           onRefresh={handleRefresh}
           showsVerticalScrollIndicator={false}
@@ -572,10 +555,6 @@ const styles = StyleSheet.create({
   },
   filterButtonTextActive: {
     color: colors.white,
-  },
-  footerLoader: {
-    paddingVertical: 20,
-    alignItems: 'center',
   },
   header: {
     flexDirection: 'row',

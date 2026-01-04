@@ -18,6 +18,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 
 interface TeamsTabProps {
   idEdicionCategoria: number;
+  maxEquipos?: number;
   onCreateTeam?: () => void;
   onBulkCreateTeams?: () => void;
   onTeamPress?: (equipo: Equipo) => void;
@@ -25,6 +26,7 @@ interface TeamsTabProps {
 
 export const TeamsTab: React.FC<TeamsTabProps> = ({
   idEdicionCategoria,
+  maxEquipos,
   onCreateTeam,
   onBulkCreateTeams,
   onTeamPress,
@@ -66,6 +68,9 @@ export const TeamsTab: React.FC<TeamsTabProps> = ({
     loadEquipos(true);
   };
 
+  // Verificar si se alcanzó el máximo de equipos
+  const maxEquiposAlcanzado = maxEquipos ? equipos.length >= maxEquipos : false;
+
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>
       <MaterialCommunityIcons
@@ -75,9 +80,11 @@ export const TeamsTab: React.FC<TeamsTabProps> = ({
       />
       <Text style={styles.emptyTitle}>No hay equipos registrados</Text>
       <Text style={styles.emptySubtitle}>
-        Crea equipos individualmente o importa múltiples equipos desde un archivo CSV
+        {maxEquiposAlcanzado
+          ? `Se alcanzó el máximo de ${maxEquipos} equipos permitidos`
+          : 'Crea equipos individualmente o importa múltiples equipos desde un archivo CSV'}
       </Text>
-      {isAdmin && (
+      {isAdmin && !maxEquiposAlcanzado && (
         <View style={styles.emptyActions}>
           {onCreateTeam && (
             <TouchableOpacity
@@ -122,7 +129,7 @@ export const TeamsTab: React.FC<TeamsTabProps> = ({
       }
     >
       {/* Botones de acción - Solo para admins */}
-      {isAdmin && equipos.length > 0 && (
+      {isAdmin && equipos.length > 0 && !maxEquiposAlcanzado && (
         <View style={styles.actionButtonsContainer}>
           {onCreateTeam && (
             <TouchableOpacity style={styles.createButton} onPress={onCreateTeam}>
@@ -139,6 +146,16 @@ export const TeamsTab: React.FC<TeamsTabProps> = ({
               <Text style={styles.createButtonText}>Importar CSV</Text>
             </TouchableOpacity>
           )}
+        </View>
+      )}
+
+      {/* Mensaje cuando se alcanza el máximo */}
+      {isAdmin && equipos.length > 0 && maxEquiposAlcanzado && (
+        <View style={styles.maxReachedContainer}>
+          <MaterialCommunityIcons name="information" size={20} color={colors.primary} />
+          <Text style={styles.maxReachedText}>
+            Se alcanzó el máximo de {maxEquipos} equipos permitidos
+          </Text>
         </View>
       )}
 
@@ -368,6 +385,22 @@ const styles = StyleSheet.create({
     color: colors.white,
   },
   emptyActionButtonSecondaryText: {
+    color: colors.primary,
+  },
+  maxReachedContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#E3F2FD',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  maxReachedText: {
+    fontSize: 14,
+    fontWeight: '600',
     color: colors.primary,
   },
 });

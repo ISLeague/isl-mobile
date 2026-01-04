@@ -19,9 +19,9 @@ export const partidosService = {
   /**
    * Listar todos los partidos
    */
-  list: async (id_ronda?: number) => {
+  list: async (params?: { id_ronda?: number; id_edicion_categoria?: number }) => {
     const response = await apiClient.get('/partidos', {
-      params: { id_ronda, action: 'list' },
+      params: { ...params, action: 'list' },
     });
     return response.data;
   },

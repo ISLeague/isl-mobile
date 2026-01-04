@@ -12,7 +12,6 @@ export const authService = {
    */
   login: async (data: LoginRequest): Promise<AuthResponse> => {
     const response = await apiClient.post('/auth', data, { params: { action: 'login' } });
-
     // Transformar la respuesta del backend al formato esperado
     const backendData = response.data.data || response.data;
     const token = backendData.session?.access_token || backendData.token;

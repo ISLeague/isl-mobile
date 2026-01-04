@@ -25,15 +25,6 @@ export const jugadoresService = {
     return response.data;
   },
 
-  /**
-   * Obtener un jugador por DNI
-   */
-  getByDNI: async (dni: string) => {
-    const response = await apiClient.get('/jugadores', {
-      params: { dni },
-    });
-    return response.data;
-  },
 
   /**
    * Obtener detalle completo de un jugador
@@ -50,6 +41,7 @@ export const jugadoresService = {
    */
   create: async (data: CreateJugadorRequest) => {
     const response = await apiClient.post('/jugadores', data);
+    console.log("respuesta create individual ", response.data)
     return response.data;
   },
 
@@ -66,6 +58,7 @@ export const jugadoresService = {
         'Content-Type': 'multipart/form-data',
       },
     });
+    console.log("respuesta bulk ", response.data)
     return response.data;
   },
 

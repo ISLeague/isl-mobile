@@ -95,8 +95,8 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
         console.log('📊 [FixtureEmbed] Rondas filtradas:', sortedRondas.length);
 
         // Load partidos from API
-        console.log('📡 [FixtureEmbed] Llamando api.partidos.list()...');
-        const partidosResponse = await api.partidos.list();
+        console.log('📡 [FixtureEmbed] Llamando api.partidos.list() con id_edicion_categoria:', idEdicionCategoria);
+        const partidosResponse = await api.partidos.list({ id_edicion_categoria: idEdicionCategoria || 1 });
         console.log('📥 [FixtureEmbed] Respuesta partidos:', partidosResponse);
         const allPartidos = partidosResponse.success && partidosResponse.data ? partidosResponse.data : [];
         console.log('📊 [FixtureEmbed] Total partidos:', allPartidos.length);

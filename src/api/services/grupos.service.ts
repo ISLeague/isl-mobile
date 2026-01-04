@@ -10,11 +10,6 @@ import {
   AsignarEquiposResponse,
   AssignTeamsRequest,
   AssignTeamsResponse,
-  SorteoRequest,
-  SorteoResponse,
-  GenerarFixtureRequest,
-  GenerarFixtureApiResponse,
-  ClasificacionApiResponse,
   UpdateReglasRequest,
   UpdateReglasResponse,
   DeleteGrupoRequest,
@@ -40,8 +35,31 @@ export const gruposService = {
    * Incluye: fase, configuración de clasificación, grupos con equipos, y resumen
    */
   get: async (idFase: number): Promise<GruposGetResponse> => {
+    console.log("entrando a obtener grupos ", idFase)
     const response = await apiClient.get('/grupos', {
-      params: { id_fase: idFase, action: 'get' },
+      params: { id_fase: idFase, action: 'list' },
+    });
+    console.log("respuesta get grupos ", response)
+    return response.data;
+  },
+
+  /**
+   * Obtener información completa de un grupo específico con equipos y clasificación
+   */
+  getGrupo: async (idGrupo: number): Promise<any> => {
+    const response = await apiClient.get('/grupos', {
+      params: { id_grupo: idGrupo, action: 'get' },
+    });
+    return response.data;
+  },
+
+  /**
+   * Obtener clasificación específica de un grupo
+   * Usa vista vista_clasificacion_grupos
+   */
+  getClasificacion: async (idGrupo: number): Promise<any> => {
+    const response = await apiClient.get('/grupos', {
+      params: { id_grupo: idGrupo, action: 'clasificacion' },
     });
     return response.data;
   },
@@ -61,7 +79,7 @@ export const gruposService = {
    */
   createBulk: async (data: CreateGruposRequest): Promise<CreateGruposResponse> => {
     const response = await apiClient.post('/grupos', data, {
-      params: { action: 'create' } // router handles bulk if data is array or just loops
+      params: { action: 'bulk' }
     });
     return response.data;
   },
@@ -91,7 +109,7 @@ export const gruposService = {
    * Actualizar reglas de clasificación de una fase (requiere autorización)
    */
   updateReglas: async (idFase: number, data: UpdateReglasRequest): Promise<UpdateReglasResponse> => {
-    const response = await apiClient.put('/grupos', data, {
+    const response = await apiClient.patch('/grupos', data, {
       params: { id_fase: idFase, action: 'update-reglas' },
     });
     return response.data;
@@ -100,12 +118,13 @@ export const gruposService = {
   /**
    * Eliminar un grupo (requiere autorización)
    * @param idGrupo - ID del grupo a eliminar
-   * @param forceDelete - Si es true, elimina el grupo aunque tenga equipos asignados
    */
-  delete: async (idGrupo: number, forceDelete: boolean = false): Promise<DeleteGrupoResponse> => {
+  delete: async (idGrupo: number): Promise<DeleteGrupoResponse> => {
+    console.log("eliminando... ", idGrupo)
     const response = await apiClient.delete('/grupos', {
-      params: { id: idGrupo, force_delete: forceDelete, action: 'delete' },
+      params: { id: idGrupo },
     });
+    console.log("respuestaaa ", response.data)
     return response.data;
   },
 };

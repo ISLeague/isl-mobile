@@ -12,6 +12,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -41,6 +42,8 @@ export const TournamentCategoriesScreen = ({ navigation, route }: any) => {
   const [maxEquipos, setMaxEquipos] = useState('16');
   const [maxJugadores, setMaxJugadores] = useState('18');
   const [minJugadores, setMinJugadores] = useState('11');
+  const [permiteRefuerzos, setPermiteRefuerzos] = useState(false);
+  const [maxRefuerzos, setMaxRefuerzos] = useState('3');
   const [isSaving, setIsSaving] = useState(false);
 
   useFocusEffect(
@@ -115,6 +118,15 @@ export const TournamentCategoriesScreen = ({ navigation, route }: any) => {
       return;
     }
 
+    // Validar max refuerzos si está habilitado
+    if (permiteRefuerzos) {
+      const maxRefuerzosNum = parseInt(maxRefuerzos);
+      if (isNaN(maxRefuerzosNum) || maxRefuerzosNum < 0) {
+        Alert.alert('Error', 'El máximo de refuerzos debe ser un número válido');
+        return;
+      }
+    }
+
     try {
       setIsSaving(true);
       await api.edicionCategorias.create({
@@ -123,6 +135,8 @@ export const TournamentCategoriesScreen = ({ navigation, route }: any) => {
         max_equipos: maxEquiposNum,
         max_jugadores_por_equipo: maxJugadoresNum,
         min_jugadores_por_equipo: minJugadoresNum,
+        permite_refuerzos_override: permiteRefuerzos,
+        max_refuerzos_override: permiteRefuerzos ? parseInt(maxRefuerzos) : undefined,
       });
 
       setShowFormModal(false);
@@ -130,6 +144,8 @@ export const TournamentCategoriesScreen = ({ navigation, route }: any) => {
       setMaxEquipos('16');
       setMaxJugadores('18');
       setMinJugadores('11');
+      setPermiteRefuerzos(false);
+      setMaxRefuerzos('3');
       Alert.alert('Éxito', `Categoría "${selectedCategoria.nombre}" asignada correctamente`);
       loadCategorias();
     } catch (error) {
@@ -520,6 +536,41 @@ export const TournamentCategoriesScreen = ({ navigation, route }: any) => {
                   />
                 </View>
 
+                {/* Sección de Refuerzos */}
+                <View style={styles.divider} />
+
+                <View style={styles.switchGroup}>
+                  <View style={styles.switchInfo}>
+                    <Text style={styles.label}>Permitir Refuerzos</Text>
+                    <Text style={styles.switchDescription}>
+                      Habilita la posibilidad de agregar jugadores de refuerzo
+                    </Text>
+                  </View>
+                  <Switch
+                    value={permiteRefuerzos}
+                    onValueChange={setPermiteRefuerzos}
+                    trackColor={{ false: colors.borderLight, true: colors.primary + '40' }}
+                    thumbColor={permiteRefuerzos ? colors.primary : colors.textSecondary}
+                  />
+                </View>
+
+                {permiteRefuerzos && (
+                  <View style={styles.formGroup}>
+                    <Text style={styles.label}>Máximo de Refuerzos</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={maxRefuerzos}
+                      onChangeText={setMaxRefuerzos}
+                      placeholder="3"
+                      keyboardType="numeric"
+                      placeholderTextColor={colors.textSecondary}
+                    />
+                    <Text style={styles.hint}>
+                      Cantidad máxima de jugadores de refuerzo permitidos
+                    </Text>
+                  </View>
+                )}
+
                 <View style={styles.formActions}>
                   <TouchableOpacity
                     style={styles.cancelButton}
@@ -807,6 +858,33 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     borderWidth: 1,
     borderColor: colors.border,
+  },
+  hint: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 4,
+    fontStyle: 'italic',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: colors.borderLight,
+    marginVertical: 20,
+  },
+  switchGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    paddingVertical: 8,
+  },
+  switchInfo: {
+    flex: 1,
+    marginRight: 12,
+  },
+  switchDescription: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 2,
   },
   formActions: {
     flexDirection: 'row',

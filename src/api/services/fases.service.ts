@@ -36,11 +36,13 @@ export const fasesService = {
    */
   create: async (data: CreateFaseRequest): Promise<CreateFaseResponse> => {
     const response = await apiClient.post('/fases', data, {
-      params: { action: 'create' },
+      params: { 
+        action: 'create',
+        id_edicion_categoria: data.id_edicion_categoria 
+      },
     });
     return response.data;
   },
-
   /**
    * Avanzar equipos a siguiente fase según reglas de clasificación
    */

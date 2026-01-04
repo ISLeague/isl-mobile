@@ -21,9 +21,11 @@ export interface EdicionCategoria {
 export interface CreateEdicionCategoriaRequest {
   id_edicion: number;
   id_categoria: number;
-  max_equipos: number;
-  max_jugadores_por_equipo: number;
-  min_jugadores_por_equipo: number;
+  max_equipos?: number;
+  max_jugadores_por_equipo?: number;
+  min_jugadores_por_equipo?: number;
+  permite_refuerzos_override?: boolean;
+  max_refuerzos_override?: number;
 }
 
 export interface EdicionCategoriaListParams {

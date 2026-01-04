@@ -106,6 +106,7 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps & { refreshTrigger?:
       console.log('📥 [GroupStageEmbed] Cargando información completa de grupos para fase:', idFase);
 
       // Usar el nuevo endpoint que trae toda la información de una vez
+      console.log('🔍 [GroupStageEmbed] Llamando a api.grupos.get con idFase:', idFase);
       const response = await api.grupos.get(idFase);
       console.log('📥 [GroupStageEmbed] Respuesta recibida del API:', response);
 
@@ -198,17 +199,17 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps & { refreshTrigger?:
     const equiposEnGrupo = clasificaciones[grupo.id_grupo]?.length || 0;
 
     Alert.alert(
-      '¿Eliminar Grupo?',
+      'Confirmar Eliminación',
       equiposEnGrupo > 0
-        ? `¿Estás seguro de eliminar el grupo "${grupo.nombre}"?\n\nTiene ${equiposEnGrupo} ${equiposEnGrupo === 1 ? 'equipo asignado' : 'equipos asignados'} que también ${equiposEnGrupo === 1 ? 'será removido' : 'serán removidos'}.`
-        : `¿Estás seguro de eliminar el grupo "${grupo.nombre}"?`,
+        ? `¿Estás seguro de que deseas eliminar el grupo "${grupo.nombre}"?\n\n⚠️ Este grupo tiene ${equiposEnGrupo} ${equiposEnGrupo === 1 ? 'equipo asignado' : 'equipos asignados'} que también ${equiposEnGrupo === 1 ? 'será removido' : 'serán removidos'} del grupo.\n\nEsta acción no se puede deshacer.`
+        : `¿Estás seguro de que deseas eliminar el grupo "${grupo.nombre}"?\n\nEsta acción no se puede deshacer.`,
       [
         {
           text: 'Cancelar',
           style: 'cancel'
         },
         {
-          text: 'Sí, Eliminar',
+          text: 'Eliminar',
           style: 'destructive',
           onPress: async () => {
             try {
@@ -216,9 +217,11 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps & { refreshTrigger?:
               setDeletingGrupoNombre(grupo.nombre);
 
               console.log(`🗑️ [GroupStageEmbed] Eliminando grupo "${grupo.nombre}" (ID: ${grupo.id_grupo})`);
-              showInfo(`Eliminando grupo "${grupo.nombre}"...`, 'Procesando');
 
-              const response = await api.grupos.delete(grupo.id_grupo, equiposEnGrupo > 0);
+              // Mostrar mensaje de que se está eliminando
+              showInfo(`Eliminando grupo "${grupo.nombre}"...`, 'Eliminando');
+
+              const response = await api.grupos.delete(grupo.id_grupo);
 
               if (response.success) {
                 console.log(`✅ [GroupStageEmbed] Grupo "${grupo.nombre}" eliminado exitosamente`);
@@ -232,15 +235,15 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps & { refreshTrigger?:
                 });
 
                 showSuccess(
-                  `Grupo "${grupo.nombre}" eliminado exitosamente`,
-                  '¡Grupo eliminado!'
+                  `El grupo "${grupo.nombre}" ha sido eliminado exitosamente`,
+                  'Grupo eliminado'
                 );
               } else {
-                showError('No se pudo eliminar el grupo', 'Error');
+                showError('No se pudo eliminar el grupo. Intenta nuevamente.', 'Error');
               }
             } catch (error: any) {
               console.error('❌ [GroupStageEmbed] Error eliminando grupo:', error);
-              const errorMessage = error?.response?.data?.message || 'Error al eliminar el grupo';
+              const errorMessage = error?.response?.data?.message || 'Ocurrió un error al eliminar el grupo. Por favor intenta nuevamente.';
               showError(errorMessage, 'Error al eliminar');
             } finally {
               setDeletingGrupo(false);

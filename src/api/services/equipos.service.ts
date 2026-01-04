@@ -32,6 +32,7 @@ export const equiposService = {
       params.grupos = 'true';
     }
     const response = await apiClient.get('/equipos', { params });
+    
     return response.data;
   },
 
@@ -56,6 +57,7 @@ export const equiposService = {
         'Content-Type': 'multipart/form-data',
       },
     });
+    console.log("respuesta dek servidor al bulk ", response.data)
     return response.data;
   },
 

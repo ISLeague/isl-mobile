@@ -3,8 +3,8 @@ import {
   View,
   Text,
   StyleSheet,
+  ScrollView,
   TouchableOpacity,
-  FlatList,
   Image,
   Alert,
   ActivityIndicator,
@@ -258,36 +258,36 @@ export const AsignarEquiposModal: React.FC<AsignarEquiposModalProps> = ({
               <ActivityIndicator size="large" color={colors.primary} />
               <Text style={styles.loadingText}>Cargando equipos...</Text>
             </View>
+          ) : filteredEquipos.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <MaterialCommunityIcons
+                name="alert-circle-outline"
+                size={64}
+                color={colors.textLight}
+              />
+              <Text style={styles.emptyTitle}>
+                {searchQuery ? 'No se encontraron equipos' : 'No hay equipos para asignar'}
+              </Text>
+              <Text style={styles.emptySubtitle}>
+                {searchQuery
+                  ? 'Intenta con otro término de búsqueda'
+                  : 'Todos los equipos ya están asignados a grupos'
+                }
+              </Text>
+            </View>
           ) : (
-            <FlatList
-              data={filteredEquipos}
-              keyExtractor={(item) => item.id_equipo.toString()}
-              renderItem={renderEquipoItem}
-              showsVerticalScrollIndicator={true}
+            <ScrollView 
+              style={styles.scrollableList}
               contentContainerStyle={styles.listContent}
-              ListEmptyComponent={
-                <View style={styles.emptyContainer}>
-                  <MaterialCommunityIcons
-                    name="alert-circle-outline"
-                    size={64}
-                    color={colors.textLight}
-                  />
-                  <Text style={styles.emptyTitle}>
-                    {searchQuery ? 'No se encontraron equipos' : 'No hay equipos para asignar'}
-                  </Text>
-                  <Text style={styles.emptySubtitle}>
-                    {searchQuery
-                      ? 'Intenta con otro término de búsqueda'
-                      : 'Todos los equipos ya están asignados a grupos'
-                    }
-                  </Text>
-                </View>
-              }
-            />
+              showsVerticalScrollIndicator={true}
+              nestedScrollEnabled={true}
+            >
+              {filteredEquipos.map((item) => renderEquipoItem({ item }))}
+            </ScrollView>
           )}
         </View>
 
-        {/* Footer Section - Fixed */}
+        {/* Footer Section - Fixed at bottom */}
         <View style={styles.footerSection}>
           <Button
             title="Cancelar"
@@ -310,13 +310,17 @@ export const AsignarEquiposModal: React.FC<AsignarEquiposModalProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    height: 600,
+    flex: 1,
+    maxHeight: 700,
+    minHeight: 500,
+    flexDirection: 'column',
   },
   headerSection: {
-    paddingBottom: 12,
+    paddingBottom: 8,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
-    marginBottom: 12,
+    marginBottom: 8,
+    flexShrink: 0,
   },
   selectedCountContainer: {
     flexDirection: 'row',
@@ -348,9 +352,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#E8F4FD',
-    padding: 10,
+    padding: 8,
     borderRadius: 8,
-    marginTop: 12,
+    marginTop: 8,
     gap: 8,
   },
   infoText: {
@@ -361,18 +365,21 @@ const styles = StyleSheet.create({
   },
   bodySection: {
     flex: 1,
-    minHeight: 300,
+    minHeight: 200,
+  },
+  scrollableList: {
+    flex: 1,
   },
   listContent: {
-    paddingBottom: 16,
+    paddingBottom: 8,
   },
   equipoItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
+    padding: 10,
     backgroundColor: colors.white,
     borderRadius: 8,
-    marginBottom: 8,
+    marginBottom: 6,
     borderWidth: 2,
     borderColor: colors.border,
   },
@@ -455,10 +462,14 @@ const styles = StyleSheet.create({
   footerSection: {
     flexDirection: 'row',
     gap: 12,
-    paddingTop: 16,
+    paddingTop: 2,
+    paddingBottom: 20,
+    marginTop: 8,
+    marginBottom: 40,
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    marginTop: 12,
+    backgroundColor: colors.white,
+    flexShrink: 0,
   },
   button: {
     flex: 1,
