@@ -33,6 +33,23 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
+    // Log detallado del error
+    console.log('💥 [Axios Error] Detalles completos del error:', {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      url: error.config?.url,
+      method: error.config?.method,
+      params: error.config?.params,
+      data: error.config?.data,
+      responseData: error.response?.data,
+      headers: error.response?.headers,
+      message: error.message
+    });
+
+    if (error.response?.status === 400) {
+      console.log('🔴 [400 Error] Error de validación del servidor:', error.response?.data);
+    }
+
     if (error.response?.status === 401) {
       // Token expirado o inválido
       await AsyncStorage.removeItem(TOKEN_KEY);

@@ -40,8 +40,9 @@ export const partidosService = {
    * Obtener resultado completo de un partido con estadísticas
    */
   getResultado: async (id: number) => {
+    console.log("id del partido ", id)
     const response = await apiClient.get('/partidos', {
-      params: { id, action: 'get' } // consolidated
+      params: { id, action: 'resultado' } // consolidated
     });
     return response.data;
   },
@@ -92,6 +93,7 @@ export const partidosService = {
   registrarResultado: async (
     data: RegistrarResultadoRequest
   ): Promise<RegistrarResultadoResponse> => {
+    console.log("data esta entrando a registro ", data)
     const response = await apiClient.post('/partidos', data, {
       params: { action: 'resultado' }
     });

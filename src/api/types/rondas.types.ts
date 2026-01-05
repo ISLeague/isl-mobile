@@ -28,7 +28,7 @@ export interface CreateRondaRequest {
 
 export interface FixtureGenerateRequest {
   id_ronda: number;
-  tipo_generacion: 'round_robin' | 'amistoso_aleatorio';
+  tipo_generacion: 'round_robin' | 'amistoso_aleatorio' | 'amistoso_intergrupos';
   ida_vuelta?: boolean;
   cantidad_partidos?: number; // Solo para amistosos
 }

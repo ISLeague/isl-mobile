@@ -1,0 +1,239 @@
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Platform,
+  Modal,
+  Pressable,
+} from 'react-native';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { colors } from '../../theme/colors';
+
+interface DatePickerInputProps {
+  label?: string;
+  value: string; // Format: YYYY-MM-DD
+  onChangeDate: (date: string) => void;
+  placeholder?: string;
+  error?: string;
+  minimumDate?: Date;
+  maximumDate?: Date;
+}
+
+export const DatePickerInput: React.FC<DatePickerInputProps> = ({
+  label,
+  value,
+  onChangeDate,
+  placeholder = 'Seleccionar fecha',
+  error,
+  minimumDate,
+  maximumDate,
+}) => {
+  const [showPicker, setShowPicker] = useState(false);
+  const [tempDate, setTempDate] = useState<Date | null>(null);
+
+  // Parse date from string (YYYY-MM-DD) or use today
+  const parseDate = (dateString: string): Date => {
+    if (!dateString) return new Date();
+    const parts = dateString.split('-');
+    if (parts.length === 3) {
+      return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+    }
+    return new Date();
+  };
+
+  // Format date to YYYY-MM-DD
+  const formatDate = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // Format date for display (DD/MM/YYYY)
+  const formatDisplayDate = (dateString: string): string => {
+    if (!dateString) return '';
+    const parts = dateString.split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    return dateString;
+  };
+
+  const handleDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
+    // En Android el picker se cierra automáticamente
+    if (Platform.OS === 'android') {
+      setShowPicker(false);
+      if (event.type === 'set' && selectedDate) {
+        const formattedDate = formatDate(selectedDate);
+        onChangeDate(formattedDate);
+      }
+    } else {
+      // En iOS guardamos temporalmente la fecha
+      if (selectedDate) {
+        setTempDate(selectedDate);
+      }
+    }
+  };
+
+  const handleConfirm = () => {
+    if (tempDate) {
+      const formattedDate = formatDate(tempDate);
+      onChangeDate(formattedDate);
+    }
+    setShowPicker(false);
+    setTempDate(null);
+  };
+
+  const handleCancel = () => {
+    setShowPicker(false);
+    setTempDate(null);
+  };
+
+  const handleOpen = () => {
+    setTempDate(parseDate(value));
+    setShowPicker(true);
+  };
+
+  return (
+    <View style={styles.container}>
+      {label && <Text style={styles.label}>{label}</Text>}
+
+      <TouchableOpacity
+        style={[styles.inputContainer, error && styles.inputContainerError]}
+        onPress={handleOpen}
+        activeOpacity={0.7}
+      >
+        <MaterialCommunityIcons name="calendar" size={20} color={colors.textLight} />
+        <Text style={[styles.inputText, !value && styles.placeholderText]}>
+          {value ? formatDisplayDate(value) : placeholder}
+        </Text>
+        <MaterialCommunityIcons name="chevron-down" size={20} color={colors.textLight} />
+      </TouchableOpacity>
+
+      {error && <Text style={styles.errorText}>{error}</Text>}
+
+      {/* Android: Picker directo */}
+      {Platform.OS === 'android' && showPicker && (
+        <DateTimePicker
+          value={parseDate(value)}
+          mode="date"
+          display="default"
+          onChange={handleDateChange}
+          minimumDate={minimumDate}
+          maximumDate={maximumDate}
+        />
+      )}
+
+      {/* iOS: Modal con picker */}
+      {Platform.OS === 'ios' && (
+        <Modal
+          visible={showPicker}
+          transparent={true}
+          animationType="slide"
+        >
+          <Pressable style={styles.modalOverlay} onPress={handleCancel}>
+            <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
+              <View style={styles.modalHeader}>
+                <TouchableOpacity onPress={handleCancel}>
+                  <Text style={styles.modalButtonCancel}>Cancelar</Text>
+                </TouchableOpacity>
+                <Text style={styles.modalTitle}>Seleccionar Fecha</Text>
+                <TouchableOpacity onPress={handleConfirm}>
+                  <Text style={styles.modalButtonConfirm}>Confirmar</Text>
+                </TouchableOpacity>
+              </View>
+              <DateTimePicker
+                value={tempDate || parseDate(value)}
+                mode="date"
+                display="spinner"
+                onChange={handleDateChange}
+                minimumDate={minimumDate}
+                maximumDate={maximumDate}
+                style={styles.picker}
+              />
+            </Pressable>
+          </Pressable>
+        </Modal>
+      )}
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: 8,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    gap: 10,
+  },
+  inputContainerError: {
+    borderColor: colors.error,
+  },
+  inputText: {
+    flex: 1,
+    fontSize: 15,
+    color: colors.textPrimary,
+  },
+  placeholderText: {
+    color: colors.textLight,
+  },
+  errorText: {
+    fontSize: 12,
+    color: colors.error,
+    marginTop: 4,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: colors.white,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 34,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  modalTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  modalButtonCancel: {
+    fontSize: 17,
+    color: colors.error,
+  },
+  modalButtonConfirm: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  picker: {
+    height: 200,
+  },
+});

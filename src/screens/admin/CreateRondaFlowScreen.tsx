@@ -11,7 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
-import { Input, Button } from '../../components/common';
+import { Input, Button, DatePickerInput, TimePickerInput } from '../../components/common';
 import { useToast } from '../../contexts/ToastContext';
 import { safeAsync } from '../../utils/errorHandling';
 import { Partido, Cancha } from '../../api/types';
@@ -26,11 +26,17 @@ interface CreateRondaFlowScreenProps {
 type FlowStep = 'create' | 'generate' | 'assign';
 
 export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ navigation, route }) => {
-  const { idEdicionCategoria } = route.params || {};
+  const { idEdicionCategoria, step, rondaData } = route.params || {};
   const { showSuccess, showError } = useToast();
 
-  // Flow control
-  const [currentStep, setCurrentStep] = useState<FlowStep>('create');
+  // Flow control - inicializar según el paso proporcionado
+  const getInitialStep = (): FlowStep => {
+    if (step === 2 && rondaData) return 'generate';
+    if (step === 3 && rondaData) return 'assign';
+    return 'create';
+  };
+
+  const [currentStep, setCurrentStep] = useState<FlowStep>(getInitialStep());
   const [loading, setLoading] = useState(false);
 
   // Step 1: Create Ronda
@@ -58,6 +64,27 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
       id_cancha: number | null;
     };
   }>({});
+
+  // Inicializar con datos de ronda existente si se proporciona
+  useEffect(() => {
+    if (rondaData && step === 2) {
+      // Configurar datos de la ronda existente
+      setCreatedRondaId(rondaData.id_ronda);
+      setCreatedFaseId(rondaData.id_fase);
+      setNombre(rondaData.nombre);
+      setTipo(rondaData.tipo);
+      setFechaInicio(rondaData.fecha_inicio);
+      setFechaFin(rondaData.fecha_fin);
+      setOrden(rondaData.orden?.toString() || '1');
+      
+      console.log('🔧 Inicializando con ronda existente:', {
+        id_ronda: rondaData.id_ronda,
+        nombre: rondaData.nombre,
+        tipo: rondaData.tipo,
+        step: step
+      });
+    }
+  }, [rondaData, step]);
 
   useEffect(() => {
     if (currentStep === 'assign') {
@@ -103,7 +130,7 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
         // Then get all canchas for each local
         const allCanchas: Cancha[] = [];
         for (const local of localesResponse.data.locales) {
-          const canchasResponse = await api.canchas.list(local.id_local);
+          const canchasResponse = await api.canchas.listByEdicionCategoria(idEdicionCategoria);
           if (canchasResponse.success && canchasResponse.data?.canchas) {
             allCanchas.push(...canchasResponse.data.canchas);
           }
@@ -218,11 +245,23 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
   };
 
   const handleGenerateFixture = async () => {
+    console.log('🔍 [handleGenerateFixture] Validando datos iniciales...');
+    console.log('📊 [handleGenerateFixture] Estado actual:', {
+      createdRondaId,
+      tipo,
+      tipoGeneracion,
+      idaVuelta,
+      cantidadPartidos
+    });
+
     if (!createdRondaId) {
+      console.log('❌ [handleGenerateFixture] Error: createdRondaId es nulo');
+      Alert.alert('Error', 'No se encontró la ronda creada');
       return;
     }
 
     if (tipo === 'amistosa' && (!cantidadPartidos || parseInt(cantidadPartidos) <= 0)) {
+      console.log('❌ [handleGenerateFixture] Error: cantidad de partidos inválida para amistosos');
       Alert.alert('Error', 'Para amistosos, especifica la cantidad de partidos');
       return;
     }
@@ -240,10 +279,33 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
       fixtureData.cantidad_partidos = parseInt(cantidadPartidos);
     }
 
+    console.log('🔍 [handleGenerateFixture] Validando fixtureData antes de enviar...');
+    console.log('📋 [handleGenerateFixture] fixtureData completo:', JSON.stringify(fixtureData, null, 2));
+
+    // Validaciones adicionales
+    if (!fixtureData.id_ronda || !fixtureData.tipo_generacion) {
+      console.log('❌ [handleGenerateFixture] Error: campos requeridos faltantes');
+      Alert.alert('Error', 'Datos incompletos para generar fixture');
+      setLoading(false);
+      return;
+    }
+
     const result = await safeAsync(
       async () => {
-        const response = await api.rondas.generarFixture(fixtureData);
-        return response;
+        try {
+          console.log('🚀 [generateFixture] Enviando request con datos:', JSON.stringify(fixtureData, null, 2));
+          const response = await api.rondas.generarFixture(fixtureData);
+          console.log('✅ [generateFixture] Respuesta recibida:', JSON.stringify(response, null, 2));
+          return response;
+        } catch (error) {
+          console.log('💥 [generateFixture] Error capturado:', error);
+          if (error instanceof Error) {
+            console.log('💥 [generateFixture] Error message:', error.message);
+            console.log('💥 [generateFixture] Error stack:', error.stack);
+          }
+          // Re-throw el error para que safeAsync lo maneje
+          throw error;
+        }
       },
       'CreateRondaFlow - generateFixture',
       {
@@ -285,7 +347,7 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
       return;
     }
 
-    // Validate all fixtures have required data
+    // Get all fixtures
     const allFixtures: any[] = [];
     fixtureResponse.data.jornadas.forEach((jornada) => {
       jornada.enfrentamientos.forEach((enfrentamiento) => {
@@ -293,14 +355,19 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
       });
     });
 
-    // Check if all fixtures have fecha, hora, and cancha assigned
-    const missingData = allFixtures.some((fixture) => {
+    // Separate fixtures into complete and incomplete
+    const completeFixtures = allFixtures.filter((fixture) => {
+      const details = fixtureDetails[fixture.fixture_id];
+      return details && details.fecha && details.hora && details.id_cancha;
+    });
+
+    const incompleteFixtures = allFixtures.filter((fixture) => {
       const details = fixtureDetails[fixture.fixture_id];
       return !details || !details.fecha || !details.hora || !details.id_cancha;
     });
 
-    if (missingData) {
-      Alert.alert('Error', 'Por favor asigna fecha, hora y cancha a todos los partidos');
+    if (completeFixtures.length === 0) {
+      Alert.alert('Error', 'No hay partidos con fecha, hora y cancha asignados');
       return;
     }
 
@@ -309,8 +376,8 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
     let createdCount = 0;
     let errorCount = 0;
 
-    // Create partidos one by one
-    for (const fixture of allFixtures) {
+    // Create partidos only for complete fixtures
+    for (const fixture of completeFixtures) {
       const details = fixtureDetails[fixture.fixture_id];
 
       const tipoPartido: 'clasificacion' | 'eliminatoria' | 'amistoso' =
@@ -353,10 +420,53 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
 
     setLoading(false);
 
+    // Remove created fixtures from the response and fixtureDetails
+    const createdFixtureIds = completeFixtures.map(f => f.fixture_id);
+    const updatedJornadas = fixtureResponse.data.jornadas.map(jornada => ({
+      ...jornada,
+      enfrentamientos: jornada.enfrentamientos.filter(
+        enf => !createdFixtureIds.includes(enf.fixture_id)
+      )
+    })).filter(jornada => jornada.enfrentamientos.length > 0);
+
+    const updatedFixtureDetails = { ...fixtureDetails };
+    createdFixtureIds.forEach(id => delete updatedFixtureDetails[id]);
+
     if (errorCount > 0) {
       showError(`Se crearon ${createdCount} partidos con ${errorCount} errores`);
+      return;
+    }
+
+    showSuccess(`${createdCount} partidos creados exitosamente`);
+
+    // If there are still incomplete fixtures, ask what to do
+    if (incompleteFixtures.length > 0) {
+      Alert.alert(
+        'Partidos creados',
+        `Se crearon ${createdCount} partidos. Quedan ${incompleteFixtures.length} fixtures pendientes.\n\n¿Qué deseas hacer?`,
+        [
+          {
+            text: 'Continuar asignando',
+            onPress: () => {
+              // Update fixture response with remaining fixtures
+              setFixtureResponse({
+                ...fixtureResponse,
+                data: {
+                  ...fixtureResponse.data,
+                  jornadas: updatedJornadas
+                }
+              });
+              setFixtureDetails(updatedFixtureDetails);
+            },
+          },
+          {
+            text: 'Volver',
+            onPress: () => navigation.goBack(),
+          },
+        ]
+      );
     } else {
-      showSuccess(`${createdCount} partidos creados exitosamente`);
+      // All fixtures were created, go back
       navigation.goBack();
     }
   };
@@ -479,20 +589,19 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
         </>
       )}
 
-      <Input
+      <DatePickerInput
         label="Fecha de Inicio"
-        placeholder="YYYY-MM-DD"
         value={fechaInicio}
-        onChangeText={setFechaInicio}
-        leftIcon={<MaterialCommunityIcons name="calendar" size={20} color={colors.textLight} />}
+        onChangeDate={setFechaInicio}
+        placeholder="Seleccionar fecha de inicio"
       />
 
-      <Input
+      <DatePickerInput
         label="Fecha de Fin"
-        placeholder="YYYY-MM-DD"
         value={fechaFin}
-        onChangeText={setFechaFin}
-        leftIcon={<MaterialCommunityIcons name="calendar-end" size={20} color={colors.textLight} />}
+        onChangeDate={setFechaFin}
+        placeholder="Seleccionar fecha de fin"
+        minimumDate={fechaInicio ? new Date(fechaInicio) : undefined}
       />
 
       <Input
@@ -520,12 +629,17 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
       contentContainerStyle={styles.scrollContent}
       showsVerticalScrollIndicator={true}
     >
-      <Text style={styles.sectionTitle}>Generar Fixture</Text>
+      <Text style={styles.sectionTitle}>
+        {rondaData ? `Generar Fixtures - ${nombre}` : 'Generar Fixture'}
+      </Text>
 
       <View style={styles.infoBox}>
         <MaterialCommunityIcons name="information" size={24} color={colors.info} />
         <Text style={styles.infoText}>
-          Selecciona cómo quieres generar los partidos de esta ronda
+          {rondaData 
+            ? `Genera automáticamente los fixtures para la ronda "${nombre}"`
+            : 'Selecciona cómo quieres generar los partidos de esta ronda'
+          }
         </Text>
       </View>
 
@@ -744,38 +858,36 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
                   <View style={styles.fixtureInputs}>
                     <View style={styles.inputRow}>
                       <View style={styles.inputHalf}>
-                        <Text style={styles.inputLabel}>Fecha *</Text>
-                        <Input
-                          placeholder="YYYY-MM-DD"
+                        <DatePickerInput
+                          label="Fecha *"
                           value={details.fecha}
-                          onChangeText={(text) => {
+                          onChangeDate={(date) => {
                             setFixtureDetails({
                               ...fixtureDetails,
                               [fixture.fixture_id]: {
                                 ...details,
-                                fecha: text,
+                                fecha: date,
                               },
                             });
                           }}
-                          leftIcon={<MaterialCommunityIcons name="calendar" size={18} color={colors.textLight} />}
+                          placeholder="Seleccionar fecha"
                         />
                       </View>
 
                       <View style={styles.inputHalf}>
-                        <Text style={styles.inputLabel}>Hora *</Text>
-                        <Input
-                          placeholder="HH:MM"
+                        <TimePickerInput
+                          label="Hora *"
                           value={details.hora}
-                          onChangeText={(text) => {
+                          onChangeTime={(time) => {
                             setFixtureDetails({
                               ...fixtureDetails,
                               [fixture.fixture_id]: {
                                 ...details,
-                                hora: text,
+                                hora: time,
                               },
                             });
                           }}
-                          leftIcon={<MaterialCommunityIcons name="clock-outline" size={18} color={colors.textLight} />}
+                          placeholder="Seleccionar hora"
                         />
                       </View>
                     </View>

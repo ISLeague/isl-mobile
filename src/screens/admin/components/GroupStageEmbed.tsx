@@ -130,7 +130,8 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps & { refreshTrigger?:
         response.data.grupos.forEach((grupoDetallado: GrupoDetallado) => {
           // Mapear equipos asignados a clasificaciones
           const clasificacionesGrupo = grupoDetallado.equipos.map(equipoGrupo => {
-            const clasificacion = equipoGrupo.clasificacion[0] || {
+            // La API devuelve clasificacion como objeto directo
+            const clasificacion = equipoGrupo.clasificacion || {
               // Valores por defecto si no hay clasificación
               id_clasificacion: 0,
               id_equipo: equipoGrupo.equipo.id_equipo,

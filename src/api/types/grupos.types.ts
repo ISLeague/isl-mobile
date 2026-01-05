@@ -230,7 +230,7 @@ export interface EquipoGrupo {
   fecha_asignacion: string;
   posicion_sorteo: number | null;
   equipo: Equipo;
-  clasificacion: Clasificacion[];
+  clasificacion: Clasificacion; // La API devuelve un objeto, no un array
 }
 
 // Grupo con equipos asignados

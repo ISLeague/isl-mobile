@@ -41,10 +41,19 @@ export const rondasService = {
   },
 
   generarFixture: async (data: FixtureGenerateRequest): Promise<FixtureGenerateResponse> => {
-    const response = await apiClient.post('/rondas', data, {
-      params: { action: 'generar-fixtures' }
-    });
-    return response.data;
+    console.log('🌐 [generarFixture] Enviando POST a /rondas con action=generar-fixtures');
+    console.log('📋 [generarFixture] Datos enviados:', JSON.stringify(data, null, 2));
+    
+    try {
+      const response = await apiClient.post('/rondas', data, {
+        params: { action: 'generar-fixtures' }
+      });
+      console.log('✅ [generarFixture] Respuesta exitosa:', response.data);
+      return response.data;
+    } catch (error) {
+      console.log('💥 [generarFixture] Error en la llamada:', error);
+      throw error;
+    }
   },
 
   fixturesSinPartido: async (id_ronda: number): Promise<FixturesSinPartidoResponse> => {

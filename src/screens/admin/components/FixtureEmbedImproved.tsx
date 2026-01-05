@@ -19,7 +19,7 @@ import { colors } from '../../../theme/colors';
 import { useToast } from '../../../contexts/ToastContext';
 import { Ronda, Partido, Cancha } from '../../../api/types';
 import { FixtureSinPartido, JornadaConFixturesSinPartido } from '../../../api/types/rondas.types';
-import { SearchBar, FAB, Input } from '../../../components/common';
+import { SearchBar, FAB, DatePickerInput, TimePickerInput } from '../../../components/common';
 import { formatDate } from '../../../utils/formatters';
 import { safeAsync, getUserFriendlyMessage } from '../../../utils/errorHandling';
 import api from '../../../api';
@@ -396,22 +396,20 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
                   {/* Date and Time Inputs */}
                   <View style={styles.fixtureInputRow}>
                     <View style={styles.inputHalf}>
-                      <Text style={styles.fixtureInputLabel}>Fecha *</Text>
-                      <Input
-                        placeholder="YYYY-MM-DD"
+                      <DatePickerInput
+                        label="Fecha *"
                         value={details.fecha}
-                        onChangeText={(text) => handleFixtureDetailChange(fixture.id_fixture, 'fecha', text)}
-                        leftIcon={<MaterialCommunityIcons name="calendar" size={18} color={colors.textLight} />}
+                        onChangeDate={(date) => handleFixtureDetailChange(fixture.id_fixture, 'fecha', date)}
+                        placeholder="Seleccionar fecha"
                       />
                     </View>
 
                     <View style={styles.inputHalf}>
-                      <Text style={styles.fixtureInputLabel}>Hora *</Text>
-                      <Input
-                        placeholder="HH:MM"
+                      <TimePickerInput
+                        label="Hora *"
                         value={details.hora}
-                        onChangeText={(text) => handleFixtureDetailChange(fixture.id_fixture, 'hora', text)}
-                        leftIcon={<MaterialCommunityIcons name="clock-outline" size={18} color={colors.textLight} />}
+                        onChangeTime={(time) => handleFixtureDetailChange(fixture.id_fixture, 'hora', time)}
+                        placeholder="Seleccionar hora"
                       />
                     </View>
                   </View>
@@ -826,13 +824,39 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
                   <MaterialCommunityIcons name="pencil" size={18} color={colors.primary} />
                   <Text style={styles.rondaActionText}>Editar</Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.rondaActionButton}
-                  onPress={(e) => handleAddPartido(e, ronda)}
-                >
-                  <MaterialCommunityIcons name="plus-circle" size={18} color={colors.success} />
-                  <Text style={styles.rondaActionText}>Agregar </Text>
-                </TouchableOpacity>
+                
+                {/* Mostrar botón de generar fixtures si no tiene fixtures */}
+                {(() => {
+                  const fixtures = fixturesSinPartido[ronda.id_ronda] || [];
+                  const hasFixtures = fixtures.some(j => j.fixtures.length > 0);
+                  const hasPartidos = getPartidosByRonda(ronda.id_ronda).length > 0;
+                  
+                  if (!hasFixtures && !hasPartidos) {
+                    return (
+                      <TouchableOpacity
+                        style={[styles.rondaActionButton, styles.rondaActionButtonHighlight]}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          handleGenerateFixtures(ronda);
+                        }}
+                      >
+                        <MaterialCommunityIcons name="auto-fix" size={18} color={colors.warning} />
+                        <Text style={[styles.rondaActionText, { color: colors.warning }]}>Fixtures</Text>
+                      </TouchableOpacity>
+                    );
+                  }
+                  
+                  return (
+                    <TouchableOpacity
+                      style={styles.rondaActionButton}
+                      onPress={(e) => handleAddPartido(e, ronda)}
+                    >
+                      <MaterialCommunityIcons name="plus-circle" size={18} color={colors.success} />
+                      <Text style={styles.rondaActionText}>Agregar</Text>
+                    </TouchableOpacity>
+                  );
+                })()}
+                
                 <TouchableOpacity
                   style={styles.rondaActionButton}
                   onPress={(e) => handleExportRonda(e, ronda)}
@@ -860,17 +884,31 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
                     return (
                       <View style={styles.emptyStateContainer}>
                         <MaterialCommunityIcons name="calendar-plus" size={48} color={colors.textLight} />
-                        <Text style={styles.emptyStateTitle}>No hay fixtures ni partidos</Text>
+                        <Text style={styles.emptyStateTitle}>Esta ronda no tiene fixtures</Text>
                         <Text style={styles.emptyStateSubtitle}>
-                          Crea fixtures para esta ronda para poder generar partidos
+                          Genera fixtures para poder crear partidos en esta ronda
                         </Text>
-                        <TouchableOpacity
-                          style={styles.emptyStateButton}
-                          onPress={() => navigation.navigate('CreateRondaFlow', { idEdicionCategoria })}
-                        >
-                          <MaterialCommunityIcons name="plus-circle" size={20} color={colors.white} />
-                          <Text style={styles.emptyStateButtonText}>Crear Fixtures</Text>
-                        </TouchableOpacity>
+                        
+                        <View style={styles.emptyStateActions}>
+                          <TouchableOpacity
+                            style={[styles.emptyStateButton, styles.emptyStateButtonPrimary]}
+                            onPress={() => handleGenerateFixtures(ronda)}
+                          >
+                            <MaterialCommunityIcons name="auto-fix" size={20} color={colors.white} />
+                            <Text style={styles.emptyStateButtonText}>Generar Automáticamente</Text>
+                          </TouchableOpacity>
+                          
+                          <TouchableOpacity
+                            style={[styles.emptyStateButton, styles.emptyStateButtonSecondary]}
+                            onPress={() => navigation.navigate('ManageFixture', { 
+                              ronda, 
+                              idEdicionCategoria 
+                            })}
+                          >
+                            <MaterialCommunityIcons name="pencil-plus" size={20} color={colors.primary} />
+                            <Text style={[styles.emptyStateButtonText, { color: colors.primary }]}>Crear Manualmente</Text>
+                          </TouchableOpacity>
+                        </View>
                       </View>
                     );
                   }
@@ -888,6 +926,36 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
 
   const handleCreateRonda = () => {
     navigation.navigate('CreateRonda', { idEdicionCategoria });
+  };
+
+  const handleGenerateFixtures = (ronda: Ronda) => {
+    // Navegar al paso 2 del flujo de creación de rondas (generación de fixtures)
+    console.log('🚀 Navegando a generación de fixtures con parámetros:', {
+      idEdicionCategoria,
+      step: 2,
+      rondaData: {
+        id_ronda: ronda.id_ronda,
+        nombre: ronda.nombre,
+        tipo: ronda.tipo,
+        fecha_inicio: ronda.fecha_inicio,
+        fecha_fin: ronda.fecha_fin,
+        id_fase: ronda.id_fase
+      }
+    });
+    
+    navigation.navigate('CreateRondaFlow', { 
+      idEdicionCategoria,
+      step: 2, // Ir directamente al paso 2 (generación de fixtures)
+      rondaData: {
+        id_ronda: ronda.id_ronda,
+        nombre: ronda.nombre,
+        tipo: ronda.tipo,
+        fecha_inicio: ronda.fecha_inicio,
+        fecha_fin: ronda.fecha_fin,
+        id_fase: ronda.id_fase,
+        orden: ronda.orden
+      }
+    });
   };
 
   const handleDeleteRonda = (ronda: Ronda) => {
@@ -1144,6 +1212,11 @@ const styles = StyleSheet.create({
     gap: 4,
     flex: 1,
     minWidth: 0,
+  },
+  rondaActionButtonHighlight: {
+    backgroundColor: colors.backgroundGray,
+    borderColor: colors.warning,
+    borderWidth: 2,
   },
   rondaActionText: {
     fontSize: 11,
@@ -1512,16 +1585,28 @@ const styles = StyleSheet.create({
     marginTop: 8,
     textAlign: 'center',
     paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  emptyStateActions: {
+    width: '100%',
+    gap: 12,
   },
   emptyStateButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 8,
-    backgroundColor: colors.primary,
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 12,
-    marginTop: 20,
+  },
+  emptyStateButtonPrimary: {
+    backgroundColor: colors.primary,
+  },
+  emptyStateButtonSecondary: {
+    backgroundColor: colors.white,
+    borderWidth: 2,
+    borderColor: colors.primary,
   },
   emptyStateButtonText: {
     fontSize: 15,

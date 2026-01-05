@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import { GradientHeader, Input, Button } from '../../components/common';
+import { GradientHeader, Input, Button, DatePickerInput } from '../../components/common';
 import { colors } from '../../theme/colors';
 import { Jugador } from '../../api/types/jugadores.types';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
@@ -35,15 +35,7 @@ export const PlayerFormScreen: React.FC<PlayerFormScreenProps> = ({ navigation, 
   const [loading, setLoading] = useState(false);
   const [savingStatus, setSavingStatus] = useState<string>('');
   const [showPieDominante, setShowPieDominante] = useState(false);
-  const [fechaNacimiento, setFechaNacimiento] = useState(
-    jugador?.fecha_nacimiento ? (() => {
-      const fecha = new Date(jugador.fecha_nacimiento);
-      const dia = fecha.getDate().toString().padStart(2, '0');
-      const mes = (fecha.getMonth() + 1).toString().padStart(2, '0');
-      const anio = fecha.getFullYear();
-      return `${dia}/${mes}/${anio}`;
-    })() : ''
-  );
+  const [fechaNacimiento, setFechaNacimiento] = useState(jugador?.fecha_nacimiento || '');
 
   const validateForm = (): boolean => {
     if (!nombreCompleto.trim()) {
@@ -74,17 +66,9 @@ export const PlayerFormScreen: React.FC<PlayerFormScreenProps> = ({ navigation, 
       return false;
     }
 
-    // Validar formato de fecha DD/MM/YYYY
-    const fechaRegex = /^\d{2}\/\d{2}\/\d{4}$/;
-    if (!fechaRegex.test(fechaNacimiento)) {
-      Alert.alert('Error', 'La fecha debe estar en formato DD/MM/YYYY (ej: 15/05/2000)');
-      return false;
-    }
-
-    // Validar que la fecha sea válida (convertir DD/MM/YYYY a objeto Date)
-    const [dia, mes, anio] = fechaNacimiento.split('/').map(Number);
-    const fecha = new Date(anio, mes - 1, dia);
-    if (isNaN(fecha.getTime()) || fecha.getDate() !== dia || fecha.getMonth() !== mes - 1 || fecha.getFullYear() !== anio) {
+    // Validar que la fecha sea válida (formato YYYY-MM-DD)
+    const fecha = new Date(fechaNacimiento);
+    if (isNaN(fecha.getTime())) {
       Alert.alert('Error', 'La fecha ingresada no es válida');
       return false;
     }
@@ -106,16 +90,11 @@ export const PlayerFormScreen: React.FC<PlayerFormScreenProps> = ({ navigation, 
     setLoading(true);
     setSavingStatus(mode === 'edit' ? 'Actualizando jugador...' : 'Guardando jugador...');
 
-
-    // Convert DD/MM/YYYY to YYYY-MM-DD for API
-    const [dia, mes, anio] = fechaNacimiento.split('/').map(Number);
-    const fechaISO = `${anio}-${mes.toString().padStart(2, '0')}-${dia.toString().padStart(2, '0')}`;
-
     const jugadorData = {
       id_equipo: equipoId,
       nombre_completo: nombreCompleto.trim(),
       dni: dni.trim(),
-      fecha_nacimiento: fechaISO,
+      fecha_nacimiento: fechaNacimiento, // Ya está en formato YYYY-MM-DD
       numero_camiseta: numeroCamiseta ? parseInt(numeroCamiseta) : undefined,
       pie_dominante: pieDominante,
       altura_cm: altura ? parseInt(altura) : undefined,
@@ -198,12 +177,12 @@ export const PlayerFormScreen: React.FC<PlayerFormScreenProps> = ({ navigation, 
           style={styles.input}
         />
 
-        <Text style={styles.label}>Fecha de Nacimiento *</Text>
-        <Input
+        <DatePickerInput
+          label="Fecha de Nacimiento *"
           value={fechaNacimiento}
-          onChangeText={setFechaNacimiento}
-          placeholder="DD/MM/YYYY (Ej: 15/05/2000)"
-          style={styles.input}
+          onChangeDate={setFechaNacimiento}
+          placeholder="Seleccionar fecha de nacimiento"
+          maximumDate={new Date()} // No puede ser mayor a hoy
         />
 
         {/* Removed Position Field
@@ -337,7 +316,7 @@ export const PlayerFormScreen: React.FC<PlayerFormScreenProps> = ({ navigation, 
             • DNI sin puntos ni guiones
           </Text>
           <Text style={styles.helpText}>
-            • Fecha en formato DD/MM/YYYY
+            • Fecha de nacimiento desde el calendario
           </Text>
         </View>
 
