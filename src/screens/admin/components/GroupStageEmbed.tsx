@@ -103,7 +103,6 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps & { refreshTrigger?:
     try {
       setLoading(true);
 
-      // Usar el nuevo endpoint que trae toda la información de una vez
       const response = await api.grupos.get(idFase);
 
       if (response.success && response.data) {
