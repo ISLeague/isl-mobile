@@ -16,6 +16,7 @@ export { edicionesService } from './services/ediciones.service';
 export { equiposService } from './services/equipos.service';
 export { estadisticasService } from './services/estadisticas.service';
 export { fasesService } from './services/fases.service';
+export { eliminatoriasService } from './services/eliminatorias.service';
 export { gruposService } from './services/grupos.service';
 export { jugadoresService } from './services/jugadores.service';
 export { localesService, canchasService } from './services/locales.service';
@@ -43,6 +44,7 @@ import { edicionesService } from './services/ediciones.service';
 import { equiposService } from './services/equipos.service';
 import { estadisticasService } from './services/estadisticas.service';
 import { fasesService } from './services/fases.service';
+import { eliminatoriasService } from './services/eliminatorias.service';
 import { gruposService } from './services/grupos.service';
 import { jugadoresService } from './services/jugadores.service';
 import { localesService, canchasService } from './services/locales.service';
@@ -80,6 +82,7 @@ export const api = {
   equipos: equiposService,
   estadisticas: estadisticasService,
   fases: fasesService,
+  eliminatorias: eliminatoriasService,
   grupos: gruposService,
   jugadores: jugadoresService,
   locales: localesService,

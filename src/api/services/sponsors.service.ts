@@ -1,10 +1,10 @@
 import { apiClient } from '../client/axiosClient';
 import {
-    Sponsor,
     CreateSponsorRequest,
     UpdateSponsorRequest,
     SponsorResponse,
-    SponsorsListResponse
+    SponsorsListResponse,
+    TipoSponsor
 } from '../types/sponsors.types';
 
 /**
@@ -12,10 +12,26 @@ import {
  */
 export const sponsorsService = {
     /**
-     * Listar todos los sponsors, opcionalmente filtrados por edición categoría
+     * Obtener un sponsor específico por ID
      */
-    list: async (idEdicionCategoria?: number): Promise<SponsorsListResponse> => {
-        const params = idEdicionCategoria ? { id_edicion_categoria: idEdicionCategoria } : {};
+    get: async (id: number): Promise<SponsorResponse> => {
+        const response = await apiClient.get('/sponsors', {
+            params: { action: 'get', id }
+        });
+        return response.data;
+    },
+
+    /**
+     * Listar sponsors con filtros opcionales
+     */
+    list: async (idEdicionCategoria?: number, tipo?: TipoSponsor): Promise<SponsorsListResponse> => {
+        const params: any = { action: 'list' };
+        if (idEdicionCategoria) {
+            params.id_edicion_categoria = idEdicionCategoria;
+        }
+        if (tipo) {
+            params.tipo = tipo;
+        }
         const response = await apiClient.get('/sponsors', { params });
         return response.data;
     },
@@ -24,23 +40,29 @@ export const sponsorsService = {
      * Crear un nuevo sponsor
      */
     create: async (data: CreateSponsorRequest): Promise<SponsorResponse> => {
-        const response = await apiClient.post('/sponsors', data);
+        const response = await apiClient.post('/sponsors', data, {
+            params: { action: 'create' }
+        });
         return response.data;
     },
 
     /**
      * Actualizar un sponsor existente
      */
-    update: async (data: UpdateSponsorRequest): Promise<SponsorResponse> => {
-        const response = await apiClient.patch('/sponsors', data);
+    update: async (id: number, data: UpdateSponsorRequest): Promise<SponsorResponse> => {
+        const response = await apiClient.patch('/sponsors', data, {
+            params: { action: 'update', id }
+        });
         return response.data;
     },
 
     /**
      * Eliminar un sponsor (soft delete)
      */
-    delete: async (idSponsor: number): Promise<{ success: boolean; message: string }> => {
-        const response = await apiClient.delete('/sponsors', { params: { id_sponsor: idSponsor } });
+    delete: async (id: number): Promise<{ success: boolean; message: string; timestamp: string }> => {
+        const response = await apiClient.delete('/sponsors', {
+            params: { action: 'delete', id }
+        });
         return response.data;
     },
 };

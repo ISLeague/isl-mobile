@@ -18,6 +18,9 @@ export * from './equipos.types';
 // Fases
 export * from './fases.types';
 
+// Eliminatorias
+export * from './eliminatorias.types';
+
 // Grupos
 export * from './grupos.types';
 

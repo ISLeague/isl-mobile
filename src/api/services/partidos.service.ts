@@ -44,6 +44,7 @@ export const partidosService = {
     const response = await apiClient.get('/partidos', {
       params: { id, action: 'resultado' } // consolidated
     });
+    console.log("respuuetssa ", response.data)
     return response.data;
   },
 

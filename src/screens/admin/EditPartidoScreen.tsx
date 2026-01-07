@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  TextInput,
   Image,
   Alert,
   Modal,
@@ -14,8 +13,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import { useToast } from '../../contexts/ToastContext';
-import { Button } from '../../components/common';
-import { Partido, Equipo, Local, Cancha } from '../../api/types';
+import { Button, DatePickerInput, TimePickerInput } from '../../components/common';
+import { Partido, Local, Cancha } from '../../api/types';
 import { safeAsync, getUserFriendlyMessage } from '../../utils/errorHandling';
 import api from '../../api';
 
@@ -29,56 +28,96 @@ export const EditPartidoScreen: React.FC<EditPartidoScreenProps> = ({ navigation
   const { showSuccess, showError, showWarning } = useToast();
 
   // Estados para datos de API
-  const [equipos, setEquipos] = useState<Equipo[]>([]);
   const [locales, setLocales] = useState<Local[]>([]);
   const [canchas, setCanchas] = useState<Cancha[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
 
-  const [equipoLocalId, setEquipoLocalId] = useState(partido.id_equipo_local);
-  const [equipoVisitanteId, setEquipoVisitanteId] = useState(partido.id_equipo_visitante);
-  const [fecha, setFecha] = useState(partido.fecha || '');
-  const [hora, setHora] = useState(partido.hora || '');
+  // Datos del partido cargados desde la API (solo lectura)
+  const [equipoLocal, setEquipoLocal] = useState<any>(null);
+  const [equipoVisitante, setEquipoVisitante] = useState<any>(null);
+
+  // Campos editables
+  const [fecha, setFecha] = useState('');
+  const [hora, setHora] = useState('');
   const [localId, setLocalId] = useState<number | null>(null);
-  const [canchaId, setCanchaId] = useState<number | null>(partido.id_cancha || null);
+  const [canchaId, setCanchaId] = useState<number | null>(null);
+
   const [loading, setLoading] = useState(false);
-  const [showEquipoLocalModal, setShowEquipoLocalModal] = useState(false);
-  const [showEquipoVisitanteModal, setShowEquipoVisitanteModal] = useState(false);
   const [showLocalModal, setShowLocalModal] = useState(false);
   const [showCanchaModal, setShowCanchaModal] = useState(false);
-  const [searchLocal, setSearchLocal] = useState('');
-  const [searchVisitante, setSearchVisitante] = useState('');
 
   // Load data from API
   useEffect(() => {
     const loadData = async () => {
       const result = await safeAsync(
         async () => {
-          // Get edicionCategoriaId from route params
           const edicionCategoriaId = route.params?.idEdicionCategoria;
 
-          const [equiposResponse, localesResponse] = await Promise.all([
-            edicionCategoriaId ? api.equipos.list(edicionCategoriaId) : Promise.resolve({ success: true, data: [] }),
-            edicionCategoriaId ? api.locales.list(edicionCategoriaId) : Promise.resolve({ success: true, data: { locales: [] } }),
+          // Cargar información completa del partido y locales
+          const [partidoResponse, localesResponse] = await Promise.all([
+            api.partidos.getResultado(partido.id_partido),
+            api.locales.list(edicionCategoriaId)
           ]);
 
-          const equiposData = equiposResponse.success && equiposResponse.data ? equiposResponse.data : [];
+          const partidoData = partidoResponse.success && partidoResponse.data ? partidoResponse.data : null;
           const localesData = localesResponse.success && localesResponse.data?.locales ? localesResponse.data.locales : [];
 
-          return { equipos: equiposData, locales: localesData };
+          // Si hay una cancha, obtener sus detalles para el id_local
+          let localIdFromCancha: number | null = null;
+          if (partidoData?.cancha?.id_cancha) {
+            const canchaResponse = await api.canchas.get(partidoData.cancha.id_cancha);
+            if (canchaResponse.success && canchaResponse.data?.cancha?.id_local) {
+              localIdFromCancha = canchaResponse.data.cancha.id_local;
+            }
+          }
+
+          return { locales: localesData, partidoInfo: partidoData, localId: localIdFromCancha };
         },
         'EditPartidoScreen - loadData',
-        { fallbackValue: { equipos: [], locales: [] } }
+        { fallbackValue: { locales: [], partidoInfo: null, localId: null } }
       );
 
       if (result) {
-        setEquipos(result.equipos);
         setLocales(result.locales);
+
+        // Inicializar estados con la información del partido
+        if (result.partidoInfo) {
+          const { partido: partidoData, equipo_local, equipo_visitante, cancha } = result.partidoInfo;
+
+          // Establecer fecha (formato YYYY-MM-DD)
+          if (partidoData.fecha) {
+            setFecha(partidoData.fecha);
+          }
+
+          // Establecer hora
+          if (partidoData.hora) {
+            setHora(partidoData.hora);
+          }
+
+          // Establecer equipos (solo lectura - para mostrar)
+          if (equipo_local) {
+            setEquipoLocal(equipo_local);
+          }
+          if (equipo_visitante) {
+            setEquipoVisitante(equipo_visitante);
+          }
+
+          // Establecer cancha
+          if (cancha?.id_cancha) {
+            setCanchaId(cancha.id_cancha);
+          }
+        }
+
+        // Establecer local si se obtuvo
+        if (result.localId) {
+          setLocalId(result.localId);
+        }
       }
       setDataLoading(false);
     };
 
     loadData();
-  }, [route.params?.idEdicionCategoria]);
+  }, [partido.id_partido]);
 
   // Load canchas when local changes
   useEffect(() => {
@@ -101,22 +140,6 @@ export const EditPartidoScreen: React.FC<EditPartidoScreenProps> = ({ navigation
       setCanchas([]);
     }
   }, [localId]);
-
-  const equipoLocal = equipoLocalId ? equipos.find(e => e.id_equipo === equipoLocalId) : null;
-  const equipoVisitante = equipoVisitanteId ? equipos.find(e => e.id_equipo === equipoVisitanteId) : null;
-
-  // Equipos ordenados alfabéticamente
-  const equiposOrdenados = [...equipos].sort((a, b) => a.nombre.localeCompare(b.nombre));
-
-  // Equipos para modal local (filtrados y con búsqueda)
-  const equiposLocalesFiltrados = equiposOrdenados
-    .filter(e => e.id_equipo !== equipoVisitanteId)
-    .filter(e => e.nombre.toLowerCase().includes(searchLocal.toLowerCase()));
-
-  // Equipos para modal visitante (filtrados y con búsqueda)
-  const equiposVisitantesFiltrados = equiposOrdenados
-    .filter(e => e.id_equipo !== equipoLocalId)
-    .filter(e => e.nombre.toLowerCase().includes(searchVisitante.toLowerCase()));
 
   // Canchas filtradas por local seleccionado
   const canchasDelLocal = localId
@@ -148,32 +171,26 @@ export const EditPartidoScreen: React.FC<EditPartidoScreenProps> = ({ navigation
       return;
     }
 
-    if (equipoLocalId === equipoVisitanteId) {
-      showError('El equipo local y visitante no pueden ser el mismo', 'Equipos inválidos');
-      return;
-    }
-
-    // Validar formato de fecha
-    const dateRegex = /^\d{2}\/\d{2}\/\d{4}$/;
-    if (!dateRegex.test(fecha)) {
-      showError('El formato de la fecha debe ser DD/MM/YYYY (ej: 25/12/2025)', 'Formato incorrecto');
-      return;
-    }
-
-    // Validar formato de hora
-    const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
-    if (!timeRegex.test(hora)) {
-      showError('El formato de la hora debe ser HH:MM (ej: 15:00)', 'Formato incorrecto');
-      return;
-    }
-
     setLoading(true);
 
     const success = await safeAsync(
       async () => {
-        // TODO: Llamar a la API para actualizar el partido
-        // await api.partidos.updatePartido(partido.id_partido, { fecha, hora });
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Preparar datos para actualizar (fecha ya está en formato YYYY-MM-DD)
+        const updateData = {
+          id: partido.id_partido,
+          fecha: fecha,
+          hora: hora,
+          id_cancha: canchaId ?? undefined
+        };
+
+        console.log('Actualizando partido con datos:', updateData);
+
+        const response = await api.partidos.update(updateData);
+
+        if (!response.success) {
+          throw new Error(response.message || 'Error al actualizar el partido');
+        }
+
         return true;
       },
       'updatePartido',
@@ -231,6 +248,27 @@ export const EditPartidoScreen: React.FC<EditPartidoScreenProps> = ({ navigation
     );
   };
 
+  // Mostrar indicador de carga
+  if (dataLoading) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <MaterialCommunityIcons name="arrow-left" size={24} color={colors.primary} />
+          </TouchableOpacity>
+          <Text style={styles.title}>Editar Partido</Text>
+        </View>
+        <View style={styles.loadingContainer}>
+          <MaterialCommunityIcons name="loading" size={48} color={colors.primary} />
+          <Text style={styles.loadingText}>Cargando información del partido...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
@@ -245,12 +283,9 @@ export const EditPartidoScreen: React.FC<EditPartidoScreenProps> = ({ navigation
           <Text style={styles.title}>Editar Partido</Text>
         </View>
 
-        {/* Equipos */}
+        {/* Equipos (solo lectura) */}
         <View style={styles.equiposSection}>
-          <TouchableOpacity 
-            style={styles.equipoCard}
-            onPress={() => setShowEquipoLocalModal(true)}
-          >
+          <View style={styles.equipoCard}>
             {equipoLocal ? (
               <>
                 <Image source={equipoLocal.logo ? { uri: equipoLocal.logo } : require('../../assets/InterLOGO.png')} style={styles.equipoLogo} />
@@ -265,17 +300,11 @@ export const EditPartidoScreen: React.FC<EditPartidoScreenProps> = ({ navigation
               </>
             )}
             <Text style={styles.equipoLabel}>Local</Text>
-            <View style={styles.editBadge}>
-              <MaterialCommunityIcons name="pencil" size={14} color={colors.white} />
-            </View>
-          </TouchableOpacity>
+          </View>
 
           <MaterialCommunityIcons name="sword-cross" size={32} color={colors.textSecondary} />
 
-          <TouchableOpacity 
-            style={styles.equipoCard}
-            onPress={() => setShowEquipoVisitanteModal(true)}
-          >
+          <View style={styles.equipoCard}>
             {equipoVisitante ? (
               <>
                 <Image source={equipoVisitante.logo ? { uri: equipoVisitante.logo } : require('../../assets/InterLOGO.png')} style={styles.equipoLogo} />
@@ -290,45 +319,26 @@ export const EditPartidoScreen: React.FC<EditPartidoScreenProps> = ({ navigation
               </>
             )}
             <Text style={styles.equipoLabel}>Visitante</Text>
-            <View style={styles.editBadge}>
-              <MaterialCommunityIcons name="pencil" size={14} color={colors.white} />
-            </View>
-          </TouchableOpacity>
+          </View>
         </View>
 
         {/* Formulario */}
         <View style={styles.form}>
           {/* Fecha */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Fecha *</Text>
-            <View style={styles.inputContainer}>
-              <MaterialCommunityIcons name="calendar" size={20} color={colors.textSecondary} />
-              <TextInput
-                style={styles.input}
-                placeholder="DD/MM/YYYY (ej: 25/12/2025)"
-                value={fecha}
-                onChangeText={setFecha}
-                placeholderTextColor={colors.textLight}
-              />
-            </View>
-            <Text style={styles.helpText}>Formato: DD/MM/YYYY</Text>
-          </View>
+          <DatePickerInput
+            label="Fecha *"
+            value={fecha}
+            onChangeDate={setFecha}
+            placeholder="Seleccionar fecha"
+          />
 
           {/* Hora */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Hora *</Text>
-            <View style={styles.inputContainer}>
-              <MaterialCommunityIcons name="clock" size={20} color={colors.textSecondary} />
-              <TextInput
-                style={styles.input}
-                placeholder="HH:MM (ej: 15:00)"
-                value={hora}
-                onChangeText={setHora}
-                placeholderTextColor={colors.textLight}
-              />
-            </View>
-            <Text style={styles.helpText}>Formato: HH:MM (24 horas)</Text>
-          </View>
+          <TimePickerInput
+            label="Hora *"
+            value={hora}
+            onChangeTime={setHora}
+            placeholder="Seleccionar hora"
+          />
 
           {/* Local */}
           <View style={styles.inputGroup}>
@@ -378,130 +388,6 @@ export const EditPartidoScreen: React.FC<EditPartidoScreenProps> = ({ navigation
           </TouchableOpacity>
         </View>
       </ScrollView>
-
-      {/* Modal: Seleccionar Equipo Local */}
-      <Modal
-        visible={showEquipoLocalModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => {
-          setShowEquipoLocalModal(false);
-          setSearchLocal('');
-        }}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Seleccionar Equipo Local</Text>
-              <TouchableOpacity onPress={() => {
-                setShowEquipoLocalModal(false);
-                setSearchLocal('');
-              }}>
-                <MaterialCommunityIcons name="close" size={24} color={colors.textPrimary} />
-              </TouchableOpacity>
-            </View>
-            
-            {/* Buscador */}
-            <View style={styles.searchContainer}>
-              <MaterialCommunityIcons name="magnify" size={20} color={colors.textSecondary} />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Buscar equipo..."
-                value={searchLocal}
-                onChangeText={setSearchLocal}
-                placeholderTextColor={colors.textSecondary}
-              />
-              {searchLocal.length > 0 && (
-                <TouchableOpacity onPress={() => setSearchLocal('')}>
-                  <MaterialCommunityIcons name="close-circle" size={20} color={colors.textSecondary} />
-                </TouchableOpacity>
-              )}
-            </View>
-
-            <ScrollView style={styles.modalList}>
-              {equiposLocalesFiltrados.map(equipo => (
-                <TouchableOpacity
-                  key={equipo.id_equipo}
-                  style={[
-                    styles.modalItem,
-                    equipoLocalId === equipo.id_equipo && styles.modalItemSelected
-                  ]}
-                  onPress={() => {
-                    setEquipoLocalId(equipo.id_equipo);
-                    setShowEquipoLocalModal(false);
-                    setSearchLocal('');
-                  }}
-                >
-                  <Image source={equipo.logo ? { uri: equipo.logo } : require('../../assets/InterLOGO.png')} style={styles.modalEquipoLogo} />
-                  <Text style={styles.modalItemText}>{equipo.nombre}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Modal: Seleccionar Equipo Visitante */}
-      <Modal
-        visible={showEquipoVisitanteModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => {
-          setShowEquipoVisitanteModal(false);
-          setSearchVisitante('');
-        }}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Seleccionar Equipo Visitante</Text>
-              <TouchableOpacity onPress={() => {
-                setShowEquipoVisitanteModal(false);
-                setSearchVisitante('');
-              }}>
-                <MaterialCommunityIcons name="close" size={24} color={colors.textPrimary} />
-              </TouchableOpacity>
-            </View>
-            
-            {/* Buscador */}
-            <View style={styles.searchContainer}>
-              <MaterialCommunityIcons name="magnify" size={20} color={colors.textSecondary} />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Buscar equipo..."
-                value={searchVisitante}
-                onChangeText={setSearchVisitante}
-                placeholderTextColor={colors.textSecondary}
-              />
-              {searchVisitante.length > 0 && (
-                <TouchableOpacity onPress={() => setSearchVisitante('')}>
-                  <MaterialCommunityIcons name="close-circle" size={20} color={colors.textSecondary} />
-                </TouchableOpacity>
-              )}
-            </View>
-
-            <ScrollView style={styles.modalList}>
-              {equiposVisitantesFiltrados.map(equipo => (
-                <TouchableOpacity
-                  key={equipo.id_equipo}
-                  style={[
-                    styles.modalItem,
-                    equipoVisitanteId === equipo.id_equipo && styles.modalItemSelected
-                  ]}
-                  onPress={() => {
-                    setEquipoVisitanteId(equipo.id_equipo);
-                    setShowEquipoVisitanteModal(false);
-                    setSearchVisitante('');
-                  }}
-                >
-                  <Image source={equipo.logo ? { uri: equipo.logo } : require('../../assets/InterLOGO.png')} style={styles.modalEquipoLogo} />
-                  <Text style={styles.modalItemText}>{equipo.nombre}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
 
       {/* Modal: Seleccionar Local */}
       <Modal
@@ -621,6 +507,18 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -665,14 +563,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.textLight,
     textAlign: 'center',
-  },
-  editBadge: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    backgroundColor: colors.primary,
-    borderRadius: 12,
-    padding: 4,
   },
   equipoLogo: {
     width: 64,
@@ -778,21 +668,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    gap: 8,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    color: colors.textPrimary,
-    padding: 0,
-  },
   modalTitle: {
     fontSize: 18,
     fontWeight: '700',
@@ -812,11 +687,6 @@ const styles = StyleSheet.create({
   },
   modalItemSelected: {
     backgroundColor: colors.primaryLight,
-  },
-  modalEquipoLogo: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
   },
   modalItemText: {
     fontSize: 16,

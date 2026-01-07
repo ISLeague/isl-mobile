@@ -7,6 +7,8 @@ import {
   AvanzarEquiposApiResponse,
   GenerarEliminatoriasRequest,
   GenerarEliminatoriasApiResponse,
+  ObtenerClasificadosApiResponse,
+  TipoCopa,
 } from '../types/fases.types';
 
 /**
@@ -77,6 +79,21 @@ export const fasesService = {
     const response = await apiClient.post('/fases', data, {
       params: { action: 'generar-eliminatorias' }
     });
+    return response.data;
+  },
+
+  /**
+   * Obtener equipos clasificados de una fase según reglas
+   */
+  obtenerClasificados: async (
+    idFase: number,
+    copa?: TipoCopa
+  ): Promise<ObtenerClasificadosApiResponse> => {
+    const params: any = { id_fase: idFase, action: 'obtener-clasificados' };
+    if (copa) {
+      params.copa = copa;
+    }
+    const response = await apiClient.get('/fases', { params });
     return response.data;
   },
 };

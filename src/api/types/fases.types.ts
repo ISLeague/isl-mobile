@@ -97,3 +97,31 @@ export interface GenerarEliminatoriasApiResponse {
   data: GenerarEliminatoriasResponse;
   timestamp: string;
 }
+
+// Obtener Clasificados Types
+export interface EquipoClasificado {
+  id_equipo: number;
+  nombre: string;
+  grupo: string;
+  posicion: number;
+  puntos: number;
+  logo?: string | null;
+}
+
+export interface ObtenerClasificadosResponse {
+  fase: {
+    id_fase: number;
+    nombre: string;
+    tipo: TipoFase;
+  };
+  total_clasificados: number;
+  oro: EquipoClasificado[];
+  plata: EquipoClasificado[];
+  bronce: EquipoClasificado[];
+}
+
+export interface ObtenerClasificadosApiResponse {
+  success: boolean;
+  data: ObtenerClasificadosResponse;
+  timestamp: string;
+}

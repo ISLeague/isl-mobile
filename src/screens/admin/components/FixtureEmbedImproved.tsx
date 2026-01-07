@@ -326,7 +326,7 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
   };
 
   const handleEditPartido = (partido: Partido) => {
-    navigation.navigate('EditPartido', { partido });
+    navigation.navigate('EditPartido', { partido, idEdicionCategoria });
   };
 
   const handleLoadResult = (partido: Partido) => {

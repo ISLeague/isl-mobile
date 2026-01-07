@@ -3,6 +3,7 @@ import { CreateLocalRequest, UpdateLocalRequest, CreateCanchaRequest, UpdateCanc
 
 export const localesService = {
   list: async (idEdicionCategoria: number) => {
+    console.log("comming local ", idEdicionCategoria)
     const response = await apiClient.get('/locales', {
       params: { id_edicion_categoria: idEdicionCategoria, action: 'list' }
     }); 
@@ -79,7 +80,9 @@ export const canchasService = {
   },
 
   get: async (id: number) => {
+    console.log("canchasss ", id)
     const response = await apiClient.get('/canchas', { params: { id, action: 'get' } });
+    console.log(response.data)
     return response.data;
   },
 

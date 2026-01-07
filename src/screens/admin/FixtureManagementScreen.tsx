@@ -195,8 +195,8 @@ export const FixtureManagementScreen: React.FC<FixtureManagementScreenProps> = (
   };
 
   const handleEditPartido = useCallback((partido: Partido) => {
-    navigation.navigate('EditPartido', { partido });
-  }, [navigation]);
+    navigation.navigate('EditPartido', { partido, idEdicionCategoria });
+  }, [navigation, idEdicionCategoria]);
 
   const handleLoadResult = useCallback((partido: Partido) => {
     navigation.navigate('LoadResults', { partido });
