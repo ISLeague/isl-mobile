@@ -458,9 +458,9 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps & { refreshTrigger?:
     );
   };
 
-  const renderEquipoRow = (clasificacion: Clasificacion & { equipo: Equipo }, grupo: Grupo) => {
-    // Usar una key única basada en id_equipo y id_grupo en lugar de id_clasificacion
-    const uniqueKey = `${grupo.id_grupo}-${clasificacion.id_equipo}`;
+  const renderEquipoRow = (clasificacion: Clasificacion & { equipo: Equipo }, grupo: Grupo, index: number) => {
+    // Usar una key única basada en id_equipo, id_grupo e index para evitar duplicados
+    const uniqueKey = `${grupo.id_grupo}-${clasificacion.id_equipo ?? 'none'}-${index}`;
 
     const content = (
       <TouchableOpacity
@@ -578,7 +578,7 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps & { refreshTrigger?:
             </View>
           </View>
 
-          {equipos.map((clasificacion) => renderEquipoRow(clasificacion, grupo))}
+          {equipos.map((clasificacion, index) => renderEquipoRow(clasificacion, grupo, index))}
         </View>
 
         {/* SecciÃ³n de Reglas - Collapsible */}

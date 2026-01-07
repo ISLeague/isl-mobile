@@ -60,6 +60,7 @@ import { CreateTeamScreen } from './src/screens/admin/CreateTeamScreen';
 import { BulkCreateTeamsScreen } from './src/screens/admin/BulkCreateTeamsScreen';
 import { GrupoDetailScreen } from './src/screens/admin/GrupoDetailScreen';
 import { MoveTeamToGroupScreen } from './src/screens/admin/MoveTeamToGroupScreen';
+import { CreateKnockoutFlowScreen } from './src/screens/admin/CreateKnockoutFlowScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -115,7 +116,10 @@ export default function App() {
           <Stack.Screen name="CreateGroupsFlow" component={CreateGroupsFlowScreen} />
           <Stack.Screen name="EditGroup" component={EditGroupScreen} />
           <Stack.Screen name="GrupoDetail" component={GrupoDetailScreen} />
-          
+
+          {/* Knockout Management */}
+          <Stack.Screen name="CreateFase" component={CreateKnockoutFlowScreen} />
+
           {/* Fixture Management */}
           <Stack.Screen name="FixtureManagement" component={FixtureManagementScreen} />
           <Stack.Screen name="RondasList" component={RondasListScreen} />

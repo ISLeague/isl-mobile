@@ -18,7 +18,7 @@ import {
   TipoCopa,
   RondaEliminatoria
 } from '../../../api/types';
-import { FAB, SearchBar } from '../../../components/common';
+import { FAB } from '../../../components/common';
 import { useToast } from '../../../contexts/ToastContext';
 import { safeAsync, getUserFriendlyMessage } from '../../../utils/errorHandling';
 import api from '../../../api';
@@ -26,6 +26,7 @@ import api from '../../../api';
 interface KnockoutEmbedProps {
   navigation: any;
   isAdmin?: boolean;
+  isSuperAdmin?: boolean;
   idEdicionCategoria?: number;
 }
 
@@ -45,6 +46,7 @@ const getSubtipoGradient = (copa: TipoCopa) => {
 export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
   navigation,
   isAdmin = false,
+  isSuperAdmin = false,
   idEdicionCategoria,
 }) => {
   const { showError } = useToast();
@@ -54,7 +56,6 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
   const [expandedRondas, setExpandedRondas] = useState<{ [key: string]: boolean }>({});
   const [selectedCopa, setSelectedCopa] = useState<TipoCopa>('oro');
   const [knockoutActivo, setKnockoutActivo] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [fasesKnockout, setFasesKnockout] = useState<any[]>([]);
 
@@ -196,14 +197,14 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
     );
   }
 
-  const renderLlave = (llave: Eliminatoria) => {
+  const renderLlave = (llave: Eliminatoria, index: number) => {
     const equipoA = equipos.find(e => e.id_equipo === llave.id_equipo_a);
     const equipoB = equipos.find(e => e.id_equipo === llave.id_equipo_b);
     const equipoGanador = equipos.find(e => e.id_equipo === llave.id_equipo_ganador);
     const partido = getPartidoByLlave(llave);
 
     return (
-      <View key={llave.id_eliminatoria} style={styles.llaveCard}>
+      <View key={`llave-${llave.id_eliminatoria}-${index}`} style={styles.llaveCard}>
         <View style={styles.llaveHeader}>
           <Text style={styles.llaveNumero}>Llave {llave.numero_llave}</Text>
           <View style={[
@@ -366,7 +367,7 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
 
         {isExpanded && (
           <>
-            {isAdmin && (
+            {isSuperAdmin && (
               <View style={styles.rondaActions}>
                 <TouchableOpacity
                   style={styles.rondaActionButton}
@@ -382,7 +383,7 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
               {llavesRonda.length === 0 ? (
                 <Text style={styles.emptyText}>No hay llaves en esta ronda</Text>
               ) : (
-                llavesRonda.map((llave) => renderLlave(llave))
+                llavesRonda.map((llave, index) => renderLlave(llave, index))
               )}
             </View>
           </>
@@ -391,101 +392,129 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
     );
   };
 
-  const rondasConfig: { ronda: RondaEliminatoria; titulo: string }[] = [
-    { ronda: 'final', titulo: 'Final' },
-    { ronda: 'semifinal', titulo: 'Semifinales' },
-    { ronda: 'cuartos', titulo: 'Cuartos de Final' },
-    { ronda: 'octavos', titulo: 'Octavos de Final' },
-  ];
+  // Obtener títulos de ronda
+  const getRondaTitulo = (ronda: RondaEliminatoria): string => {
+    const titulos: { [key in RondaEliminatoria]: string } = {
+      'final': 'Final',
+      'semifinal': 'Semifinales',
+      'cuartos': 'Cuartos de Final',
+      'octavos': 'Octavos de Final',
+    };
+    return titulos[ronda];
+  };
+
+  // Obtener rondas únicas que tienen llaves
+  const rondasExistentes = Array.from(new Set(llaves.map(l => l.ronda)))
+    .sort((a, b) => {
+      // Ordenar: final, semifinal, cuartos, octavos
+      const orden: { [key in RondaEliminatoria]: number } = {
+        'final': 1,
+        'semifinal': 2,
+        'cuartos': 3,
+        'octavos': 4,
+      };
+      return orden[a] - orden[b];
+    });
 
   return (
     <View style={styles.container}>
-      {/* Switch para activar/desactivar Knockout (solo admin) */}
-      {isAdmin && (
-        <View style={styles.switchContainer}>
-          <View style={styles.switchInfo}>
-            <MaterialCommunityIcons
-              name={knockoutActivo ? "trophy" : "trophy-outline"}
-              size={24}
-              color={knockoutActivo ? colors.primary : colors.textSecondary}
-            />
-            <View style={styles.switchTextContainer}>
-              <Text style={styles.switchTitle}>
-                {knockoutActivo ? 'Knockout Activo' : 'Knockout Inactivo'}
-              </Text>
-              <Text style={styles.switchSubtitle}>
-                {knockoutActivo
-                  ? 'Los fans pueden ver el knockout'
-                  : 'El knockout está oculto para los fans'}
-              </Text>
-            </View>
-          </View>
-          <Switch
-            value={knockoutActivo}
-            onValueChange={setKnockoutActivo}
-            trackColor={{ false: colors.border, true: colors.primary }}
-            thumbColor={colors.white}
-          />
-        </View>
-      )}
-
       {/* Mostrar contenido solo si el knockout está activo o si es admin */}
       {(knockoutActivo || isAdmin) ? (
         <>
-          {/* Selector de Copa */}
-          {availableCopas.length > 1 && (
-            <View style={styles.copaSelector}>
-              {availableCopas.map(copa => {
-                const isSelected = selectedCopa === copa;
-                const gradientColors = getSubtipoGradient(copa);
+          <ScrollView
+            style={styles.scrollView}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContent}
+          >
+            {/* Switch para activar/desactivar Knockout (solo superadmin) */}
+            {isSuperAdmin && (
+              <View style={styles.switchContainer}>
+                <View style={styles.switchInfo}>
+                  <MaterialCommunityIcons
+                    name={knockoutActivo ? "trophy" : "trophy-outline"}
+                    size={24}
+                    color={knockoutActivo ? colors.primary : colors.textSecondary}
+                  />
+                  <View style={styles.switchTextContainer}>
+                    <Text style={styles.switchTitle}>
+                      {knockoutActivo ? 'Knockout Activo' : 'Knockout Inactivo'}
+                    </Text>
+                    <Text style={styles.switchSubtitle}>
+                      {knockoutActivo
+                        ? 'Los fans pueden ver el knockout'
+                        : 'El knockout está oculto para los fans'}
+                    </Text>
+                  </View>
+                </View>
+                <Switch
+                  value={knockoutActivo}
+                  onValueChange={setKnockoutActivo}
+                  trackColor={{ false: colors.border, true: colors.primary }}
+                  thumbColor={colors.white}
+                />
+              </View>
+            )}
 
-                return (
-                  <TouchableOpacity
-                    key={copa}
-                    style={styles.copaButtonWrapper}
-                    onPress={() => setSelectedCopa(copa)}
-                    activeOpacity={0.8}
-                  >
-                    {isSelected ? (
-                      <LinearGradient
-                        colors={gradientColors as [string, string, ...string[]]}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                        style={styles.copaButtonGradient}
-                      >
-                        <Text style={styles.copaTextSelected}>
-                          {copa.toUpperCase()}
-                        </Text>
-                      </LinearGradient>
-                    ) : (
-                      <View style={styles.copaButton}>
-                        <Text style={styles.copaText}>
-                          {copa.toUpperCase()}
-                        </Text>
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          )}
+            {/* Selector de Copa */}
+            {availableCopas.length > 1 && (
+              <View style={styles.copaSelector}>
+                {availableCopas.map(copa => {
+                  const isSelected = selectedCopa === copa;
+                  const gradientColors = getSubtipoGradient(copa);
 
-          {/* Barra de búsqueda */}
-          <View style={styles.searchSection}>
-            <SearchBar
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholder="Buscar equipo en eliminatorias..."
-              onClear={() => setSearchQuery('')}
-            />
-          </View>
+                  return (
+                    <TouchableOpacity
+                      key={copa}
+                      style={styles.copaButtonWrapper}
+                      onPress={() => setSelectedCopa(copa)}
+                      activeOpacity={0.8}
+                    >
+                      {isSelected ? (
+                        <LinearGradient
+                          colors={gradientColors as [string, string, ...string[]]}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 0 }}
+                          style={styles.copaButtonGradient}
+                        >
+                          <Text style={styles.copaTextSelected}>
+                            {copa.toUpperCase()}
+                          </Text>
+                        </LinearGradient>
+                      ) : (
+                        <View style={styles.copaButton}>
+                          <Text style={styles.copaText}>
+                            {copa.toUpperCase()}
+                          </Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
 
-          <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-            {rondasConfig.map(({ ronda, titulo }) => renderRonda(ronda, titulo))}
+            {/* Rondas */}
+            {rondasExistentes.length === 0 ? (
+              <View style={styles.emptyRondasContainer}>
+                <MaterialCommunityIcons name="trophy-outline" size={48} color={colors.textLight} />
+                <Text style={styles.emptyRondasText}>
+                  {isSuperAdmin
+                    ? 'No hay llaves creadas aún'
+                    : 'No hay llaves disponibles en esta copa'}
+                </Text>
+                {isSuperAdmin && (
+                  <Text style={styles.emptyRondasHint}>
+                    Crea llaves para comenzar
+                  </Text>
+                )}
+              </View>
+            ) : (
+              rondasExistentes.map((ronda) => renderRonda(ronda, getRondaTitulo(ronda)))
+            )}
           </ScrollView>
 
-          {/* FAB para crear fase si no existe (solo admin) */}
-          {isAdmin && !fasesKnockout.find(f => f.copa === selectedCopa) && (
+          {/* FAB para crear fase si no existe (solo superadmin) */}
+          {isSuperAdmin && !fasesKnockout.find(f => f.copa === selectedCopa) && (
             <FAB
               onPress={() => {
                 navigation.navigate('CreateFase', {
@@ -520,10 +549,8 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
-  searchSection: {
-    padding: 16,
-    paddingBottom: 8,
-    backgroundColor: colors.backgroundGray,
+  scrollContent: {
+    paddingBottom: 80,
   },
   emptyContainer: {
     flex: 1,
@@ -548,9 +575,12 @@ const styles = StyleSheet.create({
   copaSelector: {
     flexDirection: 'row',
     backgroundColor: colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
-    marginBottom: 16,
+    marginBottom: 8,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   copaButtonWrapper: {
     flex: 1,
@@ -582,8 +612,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 16,
     backgroundColor: colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
+    marginBottom: 8,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   switchInfo: {
     flexDirection: 'row',
@@ -605,15 +639,15 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   rondaContainer: {
-    marginBottom: 16,
+    marginBottom: 12,
     backgroundColor: colors.white,
     borderRadius: 12,
     overflow: 'hidden',
     marginHorizontal: 16,
     shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
     elevation: 2,
   },
   rondaHeader: {
@@ -808,6 +842,24 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: colors.textPrimary,
+  },
+  emptyRondasContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+    marginTop: 20,
+  },
+  emptyRondasText: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyRondasHint: {
+    fontSize: 14,
+    color: colors.textLight,
+    textAlign: 'center',
   },
   inactiveContainer: {
     flex: 1,

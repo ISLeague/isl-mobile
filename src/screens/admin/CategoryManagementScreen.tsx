@@ -40,7 +40,7 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
   const { torneo, pais, categoria, edicionCategoria, edicion } = route.params;
 
 
-  const { isAdmin, isGuest } = useAuth();
+  const { isAdmin, isGuest, isSuperAdmin } = useAuth();
   const { setColorPreset, colorPreset, logo, gradient } = useTheme();
   const currentPreset = colorPresets[colorPreset];
   const logoScale = currentPreset.logoScale || 1;
@@ -373,6 +373,7 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
                   <KnockoutEmbed
                     navigation={navigation}
                     isAdmin={true}
+                    isSuperAdmin={isSuperAdmin}
                     idEdicionCategoria={idEdicionCategoria}
                   />
                 </View>
@@ -461,6 +462,7 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
                   <KnockoutEmbed
                     navigation={navigation}
                     isAdmin={false}
+                    isSuperAdmin={false}
                     idEdicionCategoria={idEdicionCategoria}
                   />
                 </View>
