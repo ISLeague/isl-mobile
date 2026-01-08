@@ -6,17 +6,22 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  Modal,
+  Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../../theme/colors';
 import { Button, Card } from '../../components/common';
+import { DatePickerInput } from '../../components/common/DatePickerInput';
+import { TimePickerInput } from '../../components/common/TimePickerInput';
 import { useToast } from '../../contexts/ToastContext';
 import { safeAsync } from '../../utils/errorHandling';
 import api from '../../api';
 import type { TipoCopa, TipoFase, Fase } from '../../api/types/fases.types';
 import type { EquipoClasificado } from '../../api/types/fases.types';
+import type { Local, Cancha } from '../../api/types/locales.types';
 
 interface CreateKnockoutFlowScreenProps {
   navigation: any;
@@ -85,6 +90,19 @@ export const CreateKnockoutFlowScreen: React.FC<CreateKnockoutFlowScreenProps> =
   const [llavesCreadas, setLlavesCreadas] = useState<number>(0);
   const [creatingFase, setCreatingFase] = useState(false);
   const [creatingLlave, setCreatingLlave] = useState(false);
+
+  // Estado para modal de creación de partido
+  const [showPartidoModal, setShowPartidoModal] = useState(false);
+  const [idEliminatoriaCreada, setIdEliminatoriaCreada] = useState<number | null>(null);
+  const [locales, setLocales] = useState<Local[]>([]);
+  const [selectedLocal, setSelectedLocal] = useState<number | null>(null);
+  const [canchas, setCanchas] = useState<Cancha[]>([]);
+  const [selectedCancha, setSelectedCancha] = useState<number | null>(null);
+  const [fechaPartido, setFechaPartido] = useState<string>('');
+  const [horaPartido, setHoraPartido] = useState<string>('20:00');
+  const [loadingLocales, setLoadingLocales] = useState(false);
+  const [loadingCanchas, setLoadingCanchas] = useState(false);
+  const [creatingPartido, setCreatingPartido] = useState(false);
 
   useEffect(() => {
     loadFasesStatus();
@@ -280,40 +298,113 @@ export const CreateKnockoutFlowScreen: React.FC<CreateKnockoutFlowScreenProps> =
         showSuccess(`Llave ${llavesCreadas + 1} creada`);
         setLlavesCreadas(prev => prev + 1);
 
-        // Crear partido para esta llave
+        // Guardar ID de eliminatoria y abrir modal para crear partido
+        setIdEliminatoriaCreada(llaveResult.data.id_eliminatoria);
+
+        // Inicializar fecha por defecto
         const hoy = new Date();
         hoy.setDate(hoy.getDate() + (llavesCreadas * 3));
-        const fechaPartido = hoy.toISOString().split('T')[0];
+        setFechaPartido(hoy.toISOString().split('T')[0]);
 
-        const partidoResult = await safeAsync(
-          async () => {
-            const response = await api.partidos.createEliminatoria({
-              id_eliminatoria: llaveResult.data.id_eliminatoria,
-              fecha: fechaPartido,
-              hora: '20:00',
-              id_cancha: 1,
-              observaciones: `${getCopaLabel(selectedCopa)} - ${ronda}`,
-            });
-            return response;
-          },
-          'createPartido',
-          { fallbackValue: null, onError: () => showInfo('Llave creada, pero faltó crear el partido') }
-        );
-
-        if (partidoResult && partidoResult.success) {
-          showSuccess('Partido creado');
-        }
-
-        // Eliminar equipos de la lista
-        setClasificados(prev => prev.filter(e => e.id_equipo !== equipoA && e.id_equipo !== equipoB));
-        setEquipoA(null);
-        setEquipoB(null);
+        // Cargar locales y abrir modal
+        await loadLocales();
+        setShowPartidoModal(true);
       }
     } catch (error) {
       showError('Error al crear llave');
     }
 
     setCreatingLlave(false);
+  };
+
+  const loadLocales = async () => {
+    setLoadingLocales(true);
+    const result = await safeAsync(
+      async () => {
+        const response = await api.locales.list(idEdicionCategoria);
+        return response;
+      },
+      'loadLocales',
+      { fallbackValue: null, onError: () => showError('Error al cargar locales') }
+    );
+
+    if (result && result.success && result.data?.locales) {
+      setLocales(result.data.locales);
+    }
+    setLoadingLocales(false);
+  };
+
+  const handleSelectLocal = async (idLocal: number) => {
+    setSelectedLocal(idLocal);
+    setSelectedCancha(null);
+    setCanchas([]);
+
+    setLoadingCanchas(true);
+    const result = await safeAsync(
+      async () => {
+        const response = await api.canchas.list(idLocal);
+        return response;
+      },
+      'loadCanchas',
+      { fallbackValue: null, onError: () => showError('Error al cargar canchas') }
+    );
+
+    if (result && result.success && result.data?.canchas) {
+      setCanchas(result.data.canchas);
+    }
+    setLoadingCanchas(false);
+  };
+
+  const handleCrearPartido = async () => {
+    if (!idEliminatoriaCreada || !selectedCancha || !fechaPartido || !horaPartido) {
+      showError('Complete todos los campos');
+      return;
+    }
+
+    setCreatingPartido(true);
+
+    const result = await safeAsync(
+      async () => {
+        const response = await api.partidos.createEliminatoria({
+          id_eliminatoria: idEliminatoriaCreada,
+          fecha: fechaPartido,
+          hora: horaPartido,
+          id_cancha: selectedCancha,
+          observaciones: `${getCopaLabel(selectedCopa!)} - Llave ${llavesCreadas}`,
+        });
+        return response;
+      },
+      'createPartido',
+      { fallbackValue: null, onError: () => showError('Error al crear partido') }
+    );
+
+    if (result && result.success) {
+      showSuccess('Partido creado exitosamente');
+
+      // Cerrar modal y limpiar estado
+      setShowPartidoModal(false);
+      setIdEliminatoriaCreada(null);
+      setSelectedLocal(null);
+      setSelectedCancha(null);
+      setCanchas([]);
+      setLocales([]);
+
+      // Eliminar equipos de la lista
+      setClasificados(prev => prev.filter(e => e.id_equipo !== equipoA && e.id_equipo !== equipoB));
+      setEquipoA(null);
+      setEquipoB(null);
+    }
+
+    setCreatingPartido(false);
+  };
+
+  const handleCerrarModal = () => {
+    setShowPartidoModal(false);
+    setIdEliminatoriaCreada(null);
+    setSelectedLocal(null);
+    setSelectedCancha(null);
+    setCanchas([]);
+    setLocales([]);
   };
 
   const renderSelectCopa = () => {
@@ -525,7 +616,7 @@ export const CreateKnockoutFlowScreen: React.FC<CreateKnockoutFlowScreenProps> =
 
         {equipoA && equipoB && (
           <Button
-            title={creatingLlave ? 'Creando llave...' : 'Crear Llave y Partido'}
+            title={creatingLlave ? 'Creando llave...' : 'Crear Llave'}
             onPress={handleCrearLlave}
             disabled={creatingLlave}
             style={styles.generateButton}
@@ -569,6 +660,143 @@ export const CreateKnockoutFlowScreen: React.FC<CreateKnockoutFlowScreenProps> =
         {currentStep === 'select-copa' && renderSelectCopa()}
         {currentStep === 'select-equipos' && renderSelectEquipos()}
       </ScrollView>
+
+      {/* Modal para crear partido */}
+      <Modal
+        visible={showPartidoModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={handleCerrarModal}
+      >
+        <Pressable style={styles.modalOverlay} onPress={handleCerrarModal}>
+          <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {/* Header del modal */}
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Crear Partido</Text>
+                <TouchableOpacity onPress={handleCerrarModal}>
+                  <MaterialCommunityIcons name="close" size={24} color={colors.textPrimary} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Contenido del modal */}
+              <View style={styles.modalBody}>
+                <Text style={styles.modalSubtitle}>
+                  Llave {llavesCreadas}: {clasificados.find(e => e.id_equipo === equipoA)?.nombre} vs{' '}
+                  {clasificados.find(e => e.id_equipo === equipoB)?.nombre}
+                </Text>
+
+                {/* Seleccionar Local */}
+                <View style={styles.section}>
+                  <Text style={styles.sectionLabel}>Local *</Text>
+                  {loadingLocales ? (
+                    <ActivityIndicator size="small" color={colors.primary} />
+                  ) : (
+                    <View style={styles.optionsList}>
+                      {locales.map((local) => (
+                        <TouchableOpacity
+                          key={local.id_local}
+                          style={[
+                            styles.optionItem,
+                            selectedLocal === local.id_local && styles.optionItemSelected,
+                          ]}
+                          onPress={() => handleSelectLocal(local.id_local)}
+                        >
+                          <View style={styles.optionInfo}>
+                            <Text style={styles.optionName}>{local.nombre}</Text>
+                            <Text style={styles.optionDetail}>{local.direccion}</Text>
+                          </View>
+                          {selectedLocal === local.id_local && (
+                            <MaterialCommunityIcons name="check-circle" size={24} color={colors.primary} />
+                          )}
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+                </View>
+
+                {/* Seleccionar Cancha */}
+                {selectedLocal && (
+                  <View style={styles.section}>
+                    <Text style={styles.sectionLabel}>Cancha *</Text>
+                    {loadingCanchas ? (
+                      <ActivityIndicator size="small" color={colors.primary} />
+                    ) : canchas.length === 0 ? (
+                      <Text style={styles.emptyText}>No hay canchas disponibles en este local</Text>
+                    ) : (
+                      <View style={styles.optionsList}>
+                        {canchas.map((cancha) => (
+                          <TouchableOpacity
+                            key={cancha.id_cancha}
+                            style={[
+                              styles.optionItem,
+                              selectedCancha === cancha.id_cancha && styles.optionItemSelected,
+                            ]}
+                            onPress={() => setSelectedCancha(cancha.id_cancha)}
+                          >
+                            <View style={styles.optionInfo}>
+                              <Text style={styles.optionName}>{cancha.nombre}</Text>
+                              <Text style={styles.optionDetail}>
+                                {cancha.tipo_superficie.replace('_', ' ')}
+                              </Text>
+                            </View>
+                            {selectedCancha === cancha.id_cancha && (
+                              <MaterialCommunityIcons name="check-circle" size={24} color={colors.primary} />
+                            )}
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    )}
+                  </View>
+                )}
+
+                {/* Fecha y Hora */}
+                <View style={styles.dateTimeRow}>
+                  <View style={styles.dateTimeItem}>
+                    <DatePickerInput
+                      label="Fecha *"
+                      value={fechaPartido}
+                      onChangeDate={setFechaPartido}
+                      minimumDate={new Date()}
+                    />
+                  </View>
+                  <View style={styles.dateTimeItem}>
+                    <TimePickerInput
+                      label="Hora *"
+                      value={horaPartido}
+                      onChangeTime={setHoraPartido}
+                    />
+                  </View>
+                </View>
+
+                {/* Botones */}
+                <View style={styles.modalButtons}>
+                  <TouchableOpacity
+                    style={styles.cancelButton}
+                    onPress={handleCerrarModal}
+                    disabled={creatingPartido}
+                  >
+                    <Text style={styles.cancelButtonText}>Cancelar</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.confirmButton,
+                      (!selectedCancha || !fechaPartido || !horaPartido || creatingPartido) &&
+                        styles.confirmButtonDisabled,
+                    ]}
+                    onPress={handleCrearPartido}
+                    disabled={!selectedCancha || !fechaPartido || !horaPartido || creatingPartido}
+                  >
+                    <Text style={styles.confirmButtonText}>
+                      {creatingPartido ? 'Creando...' : 'Crear Partido'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -822,5 +1050,128 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
     textAlign: 'center',
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: colors.white,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '90%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderLight,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  modalBody: {
+    padding: 20,
+  },
+  modalSubtitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: 24,
+    textAlign: 'center',
+  },
+  section: {
+    marginBottom: 24,
+  },
+  sectionLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: 12,
+  },
+  optionsList: {
+    gap: 8,
+  },
+  optionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.backgroundGray,
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: colors.border,
+  },
+  optionItemSelected: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
+  },
+  optionInfo: {
+    flex: 1,
+  },
+  optionName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: 2,
+  },
+  optionDetail: {
+    fontSize: 13,
+    color: colors.textSecondary,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    paddingVertical: 16,
+  },
+  dateTimeRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 24,
+  },
+  dateTimeItem: {
+    flex: 1,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  cancelButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  confirmButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 8,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  confirmButtonDisabled: {
+    backgroundColor: colors.textLight,
+  },
+  confirmButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.white,
   },
 });
