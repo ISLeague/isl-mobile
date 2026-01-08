@@ -33,10 +33,11 @@ export const authService = {
   register: async (data: RegisterRequest): Promise<AuthResponse> => {
     const response = await apiClient.post('/auth', data, { params: { action: 'register' } });
 
-    // Transformar la respuesta del backend al formato esperado
-    const backendData = response.data.data || response.data;
-    const token = backendData.session?.access_token || backendData.token;
-    const usuario = backendData.usuario || backendData.user;
+    // La respuesta del registro tiene un formato específico: { success, data: { usuario, session, mensaje }, timestamp }
+    const { data: backendData } = response.data;
+    const token = backendData.session?.access_token || null;
+    const usuario = backendData.usuario;
+    const mensaje = backendData.mensaje;
 
     if (token) {
       await setAuthToken(token);
@@ -45,6 +46,7 @@ export const authService = {
     return {
       token,
       usuario,
+      mensaje,
     };
   },
 

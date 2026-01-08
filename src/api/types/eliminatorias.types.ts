@@ -25,7 +25,6 @@ export interface Eliminatoria {
 export interface CreateLlaveRequest {
   id_fase: number;
   ronda: RondaEliminatoria;
-  numero_llave: number;
   id_equipo_a?: number;
   id_equipo_b?: number;
   origen_a?: string;

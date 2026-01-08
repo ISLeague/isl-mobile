@@ -15,6 +15,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Button } from '../../components/common/Button';
 import { Input } from '../../components/common/Input';
 import { colors } from '../../theme/colors';
+import { authService } from '../../api/services/auth.service';
 
 export const RegisterScreen = ({ navigation }: any) => {
   const [nombre, setNombre] = useState('');
@@ -24,6 +25,7 @@ export const RegisterScreen = ({ navigation }: any) => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
+  const [acceptPrivacy, setAcceptPrivacy] = useState(false);
   const [errors, setErrors] = useState<{
     nombre?: string;
     apellido?: string;
@@ -76,41 +78,39 @@ export const RegisterScreen = ({ navigation }: any) => {
 
   const handleRegister = async () => {
     if (!validateForm()) return;
+    if (!acceptTerms || !acceptPrivacy) {
+      Alert.alert('Atención', 'Debes aceptar los términos y la política de privacidad');
+      return;
+    }
 
     setLoading(true);
 
     try {
-      // TODO: Aquí irá la llamada a tu API con los campos de términos
-      // const response = await registerAPI({ 
-      //   nombre, 
-      //   email, 
-      //   password, 
-      //   id_pais: 1,
-      //   acepto_terminos: acceptTerms,
-      //   acepto_privacidad: acceptTerms,
-      //   fecha_aceptacion_terminos: new Date().toISOString()
-      // });
+      const response = await authService.register({
+        nombre,
+        apellido,
+        email,
+        password,
+        rol: 'fan',
+        acepto_terminos: acceptTerms,
+        acepto_privacidad: acceptPrivacy,
+      });
 
-     
-
-      // Simulación de registro exitoso
-      setTimeout(() => {
-        setLoading(false);
-        Alert.alert(
-          '¡Éxito!',
-          'Cuenta creada correctamente',
-          [
-            {
-              text: 'OK',
-              onPress: () => navigation.replace('Login'),
-            },
-          ]
-        );
-      }, 1500);
-
-    } catch (error) {
       setLoading(false);
-      Alert.alert('Error', 'No se pudo crear la cuenta');
+      Alert.alert(
+        '¡Éxito!',
+        response.mensaje || 'Registro completado. Por favor revisa tu email para confirmar tu cuenta.',
+        [
+          {
+            text: 'Ir al Login',
+            onPress: () => navigation.replace('Login'),
+          },
+        ]
+      );
+    } catch (error: any) {
+      setLoading(false);
+      const errorMessage = error.response?.data?.message || 'No se pudo crear la cuenta';
+      Alert.alert('Error', errorMessage);
     }
   };
 
@@ -244,7 +244,7 @@ export const RegisterScreen = ({ navigation }: any) => {
               }
             />
 
-            {/* Casilla de Términos y Condiciones */}
+            {/* Checkbox Términos */}
             <TouchableOpacity
               style={styles.checkboxContainer}
               onPress={() => setAcceptTerms(!acceptTerms)}
@@ -263,7 +263,22 @@ export const RegisterScreen = ({ navigation }: any) => {
                 >
                   Términos y Condiciones
                 </Text>
-                {' '}y la{' '}
+              </Text>
+            </TouchableOpacity>
+
+            {/* Checkbox Privacidad */}
+            <TouchableOpacity
+              style={styles.checkboxContainer}
+              onPress={() => setAcceptPrivacy(!acceptPrivacy)}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.checkbox, acceptPrivacy && styles.checkboxChecked]}>
+                {acceptPrivacy && (
+                  <MaterialCommunityIcons name="check" size={18} color={colors.white} />
+                )}
+              </View>
+              <Text style={styles.checkboxText}>
+                Acepto la{' '}
                 <Text
                   style={styles.termsLink}
                   onPress={() => Linking.openURL('https://www.interleagueonline.com/politica-de-privacidad-isl/')}
@@ -277,7 +292,7 @@ export const RegisterScreen = ({ navigation }: any) => {
               title="Crear Cuenta"
               onPress={handleRegister}
               loading={loading}
-              disabled={!acceptTerms}
+              disabled={!acceptTerms || !acceptPrivacy}
               style={styles.registerButton}
             />
           </View>

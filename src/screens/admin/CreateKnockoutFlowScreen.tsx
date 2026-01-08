@@ -234,8 +234,8 @@ export const CreateKnockoutFlowScreen: React.FC<CreateKnockoutFlowScreenProps> =
       // Obtener los equipos de la copa seleccionada
       const equiposCopa: EquipoClasificado[] =
         copa === 'oro' ? result.data.oro :
-        copa === 'plata' ? result.data.plata :
-        result.data.bronce;
+          copa === 'plata' ? result.data.plata :
+            result.data.bronce;
       setClasificados(equiposCopa);
     }
 
@@ -284,7 +284,6 @@ export const CreateKnockoutFlowScreen: React.FC<CreateKnockoutFlowScreenProps> =
           const response = await api.eliminatorias.createLlave({
             id_fase: copaStatus.fase!.id_fase,
             ronda: ronda,
-            numero_llave: llavesCreadas + 1,
             id_equipo_a: equipoA,
             id_equipo_b: equipoB,
           });
@@ -782,7 +781,7 @@ export const CreateKnockoutFlowScreen: React.FC<CreateKnockoutFlowScreenProps> =
                     style={[
                       styles.confirmButton,
                       (!selectedCancha || !fechaPartido || !horaPartido || creatingPartido) &&
-                        styles.confirmButtonDisabled,
+                      styles.confirmButtonDisabled,
                     ]}
                     onPress={handleCrearPartido}
                     disabled={!selectedCancha || !fechaPartido || !horaPartido || creatingPartido}
