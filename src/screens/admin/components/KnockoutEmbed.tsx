@@ -513,8 +513,8 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
             )}
           </ScrollView>
 
-          {/* FAB para crear fase si no existe (solo superadmin) */}
-          {isSuperAdmin && !fasesKnockout.find(f => f.copa === selectedCopa) && (
+          {/* FAB para crear/configurar knockout (solo superadmin) */}
+          {isSuperAdmin && (
             <FAB
               onPress={() => {
                 navigation.navigate('CreateFase', {

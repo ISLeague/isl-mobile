@@ -40,11 +40,14 @@ export const SponsorTab: React.FC<SponsorTabProps> = ({
     setLoading(true);
     try {
       const response = await api.sponsors.list(idEdicionCategoria);
-      if (response.success) {
-        setSponsors(response.data);
+      if (response.success && response.data?.sponsors) {
+        setSponsors(response.data.sponsors);
+      } else {
+        setSponsors([]);
       }
     } catch (error) {
       // console.error('Error cargando sponsors:', error);
+      setSponsors([]);
     } finally {
       setLoading(false);
     }
@@ -86,7 +89,7 @@ export const SponsorTab: React.FC<SponsorTabProps> = ({
     );
   }
 
-  if (sponsors.length === 0) {
+  if (!sponsors || !Array.isArray(sponsors) || sponsors.length === 0) {
     return (
       <View style={styles.container}>
         <View style={styles.emptyContainer}>

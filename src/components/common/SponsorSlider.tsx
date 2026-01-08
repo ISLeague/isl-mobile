@@ -101,7 +101,7 @@ export const SponsorSlider: React.FC<SponsorSliderProps> = ({
     );
   }
 
-  if (sponsors.length === 0) {
+  if (!sponsors || !Array.isArray(sponsors) || sponsors.length === 0) {
     return (
       <View style={styles.emptyContainer}>
         <MaterialCommunityIcons name="storefront-outline" size={32} color={colors.textLight} />

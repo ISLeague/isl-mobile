@@ -23,7 +23,7 @@ interface CreateKnockoutFlowScreenProps {
   route: any;
 }
 
-type Step = 'select-copa' | 'select-equipos' | 'generando';
+type Step = 'select-copa' | 'select-equipos';
 
 interface FaseKnockoutStatus {
   copa: TipoCopa;
@@ -80,9 +80,11 @@ export const CreateKnockoutFlowScreen: React.FC<CreateKnockoutFlowScreenProps> =
   const [selectedCopa, setSelectedCopa] = useState<TipoCopa | null>(null);
   const [idFaseGrupos, setIdFaseGrupos] = useState<number | null>(null);
   const [clasificados, setClasificados] = useState<EquipoClasificado[]>([]);
-  const [equiposSeleccionados, setEquiposSeleccionados] = useState<number[]>([]);
+  const [equipoA, setEquipoA] = useState<number | null>(null);
+  const [equipoB, setEquipoB] = useState<number | null>(null);
+  const [llavesCreadas, setLlavesCreadas] = useState<number>(0);
   const [creatingFase, setCreatingFase] = useState(false);
-  const [generando, setGenerando] = useState(false);
+  const [creatingLlave, setCreatingLlave] = useState(false);
 
   useEffect(() => {
     loadFasesStatus();
@@ -199,6 +201,7 @@ export const CreateKnockoutFlowScreen: React.FC<CreateKnockoutFlowScreenProps> =
 
     const result = await safeAsync(
       async () => {
+        console.log('Cargando clasificados para copa:', copa, idFaseGrupos);
         const response = await api.fases.obtenerClasificados(idFaseGrupos, copa);
         return response;
       },
@@ -221,124 +224,96 @@ export const CreateKnockoutFlowScreen: React.FC<CreateKnockoutFlowScreenProps> =
     setLoading(false);
   };
 
-  const toggleEquipo = (idEquipo: number) => {
-    setEquiposSeleccionados(prev => {
-      if (prev.includes(idEquipo)) {
-        return prev.filter(id => id !== idEquipo);
-      } else {
-        return [...prev, idEquipo];
-      }
-    });
+  const handleSelectEquipo = (idEquipo: number) => {
+    if (!equipoA) {
+      // Seleccionar equipo A (local)
+      setEquipoA(idEquipo);
+    } else if (!equipoB && idEquipo !== equipoA) {
+      // Seleccionar equipo B (visitante) - debe ser diferente de A
+      setEquipoB(idEquipo);
+    } else if (idEquipo === equipoA) {
+      // Deseleccionar equipo A
+      setEquipoA(null);
+    } else if (idEquipo === equipoB) {
+      // Deseleccionar equipo B
+      setEquipoB(null);
+    }
   };
 
-  const handleGenerarEliminatorias = async () => {
-    if (!selectedCopa) return;
-
-    const cantidadEquipos = equiposSeleccionados.length;
-
-    // Validar cantidad de equipos (debe ser potencia de 2: 2, 4, 8, 16)
-    if (![2, 4, 8, 16].includes(cantidadEquipos)) {
-      showError('Debe seleccionar 2, 4, 8 o 16 equipos para generar eliminatorias');
-      return;
-    }
-
-    setGenerando(true);
-    setCurrentStep('generando');
+  const handleCrearLlave = async () => {
+    if (!equipoA || !equipoB || !selectedCopa) return;
 
     const copaStatus = fasesStatus.find(f => f.copa === selectedCopa);
     if (!copaStatus?.fase) {
       showError('No se encontró la fase knockout');
-      setGenerando(false);
       return;
     }
 
-    // Crear llaves y partidos manualmente
+    setCreatingLlave(true);
+
     try {
-      // Determinar la ronda según cantidad de equipos
+      // Determinar la ronda según equipos restantes
+      const equiposRestantes = clasificados.length;
       let ronda: any;
-      if (cantidadEquipos === 2) ronda = 'final';
-      else if (cantidadEquipos === 4) ronda = 'semifinal';
-      else if (cantidadEquipos === 8) ronda = 'cuartos';
-      else if (cantidadEquipos === 16) ronda = 'octavos';
+      if (equiposRestantes <= 2) ronda = 'final';
+      else if (equiposRestantes <= 4) ronda = 'semifinal';
+      else if (equiposRestantes <= 8) ronda = 'cuartos';
+      else ronda = 'octavos';
 
-      let llavesCreadas = 0;
-      let partidosCreados = 0;
+      // Crear llave
+      const llaveResult = await safeAsync(
+        async () => {
+          const response = await api.eliminatorias.createLlave({
+            id_fase: copaStatus.fase!.id_fase,
+            ronda: ronda,
+            numero_llave: llavesCreadas + 1,
+            id_equipo_a: equipoA,
+            id_equipo_b: equipoB,
+          });
+          return response;
+        },
+        'createLlave',
+        { fallbackValue: null, onError: () => showError('Error al crear llave') }
+      );
 
-      // Crear llaves - emparejar equipos
-      const parejas = [];
-      for (let i = 0; i < cantidadEquipos; i += 2) {
-        parejas.push({
-          equipoA: equiposSeleccionados[i],
-          equipoB: equiposSeleccionados[i + 1]
-        });
-      }
+      if (llaveResult && llaveResult.success) {
+        showSuccess(`Llave ${llavesCreadas + 1} creada`);
+        setLlavesCreadas(prev => prev + 1);
 
-      // Crear cada llave con su partido
-      for (let i = 0; i < parejas.length; i++) {
-        const pareja = parejas[i];
+        // Crear partido para esta llave
+        const hoy = new Date();
+        hoy.setDate(hoy.getDate() + (llavesCreadas * 3));
+        const fechaPartido = hoy.toISOString().split('T')[0];
 
-        // Crear llave
-        const llaveResult = await safeAsync(
+        const partidoResult = await safeAsync(
           async () => {
-            const response = await api.eliminatorias.createLlave({
-              id_fase: copaStatus.fase!.id_fase,
-              ronda: ronda,
-              numero_llave: i + 1,
-              id_equipo_a: pareja.equipoA,
-              id_equipo_b: pareja.equipoB,
+            const response = await api.partidos.createEliminatoria({
+              id_eliminatoria: llaveResult.data.id_eliminatoria,
+              fecha: fechaPartido,
+              hora: '20:00',
+              id_cancha: 1,
+              observaciones: `${getCopaLabel(selectedCopa)} - ${ronda}`,
             });
             return response;
           },
-          'createLlave',
-          {
-            fallbackValue: null,
-            onError: () => {}
-          }
+          'createPartido',
+          { fallbackValue: null, onError: () => showInfo('Llave creada, pero faltó crear el partido') }
         );
 
-        if (llaveResult && llaveResult.success) {
-          llavesCreadas++;
-
-          // Crear partido para esta llave
-          const hoy = new Date();
-          hoy.setDate(hoy.getDate() + (i * 3)); // 3 días entre partidos
-          const fechaPartido = hoy.toISOString().split('T')[0];
-
-          const partidoResult = await safeAsync(
-            async () => {
-              const response = await api.partidos.create({
-                equipo_local_id: pareja.equipoA,
-                equipo_visitante_id: pareja.equipoB,
-                fecha: fechaPartido,
-                local_id: 1, // TODO: Allow user to select local/venue
-              });
-              return response;
-            },
-            'createPartido',
-            {
-              fallbackValue: null,
-              onError: () => {}
-            }
-          );
-
-          if (partidoResult && partidoResult.success) {
-            partidosCreados++;
-          }
+        if (partidoResult && partidoResult.success) {
+          showSuccess('Partido creado');
         }
+
+        // Eliminar equipos de la lista
+        setClasificados(prev => prev.filter(e => e.id_equipo !== equipoA && e.id_equipo !== equipoB));
+        setEquipoA(null);
+        setEquipoB(null);
       }
-
-      showSuccess(`Eliminatorias generadas exitosamente para ${getCopaLabel(selectedCopa)}`);
-      showInfo(`Se crearon ${llavesCreadas} llaves y ${partidosCreados} partidos`);
-
-      // Volver a la pantalla anterior
-      setTimeout(() => {
-        navigation.goBack();
-      }, 1500);
     } catch (error) {
-      showError('Error al generar eliminatorias');
+      showError('Error al crear llave');
     }
 
-    setGenerando(false);
+    setCreatingLlave(false);
   };
 
   const renderSelectCopa = () => {
@@ -397,12 +372,56 @@ export const CreateKnockoutFlowScreen: React.FC<CreateKnockoutFlowScreenProps> =
   };
 
   const renderSelectEquipos = () => {
-    if (clasificados.length === 0) {
+    // Mostrar loading mientras se cargan los clasificados
+    if (loading && clasificados.length === 0) {
       return (
         <View style={styles.stepContainer}>
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={colors.primary} />
             <Text style={styles.loadingText}>Cargando equipos clasificados...</Text>
+          </View>
+        </View>
+      );
+    }
+
+    // Mostrar mensaje de éxito cuando se terminan de crear todas las llaves
+    if (clasificados.length === 0 && llavesCreadas > 0) {
+      return (
+        <View style={styles.stepContainer}>
+          <View style={styles.successContainer}>
+            <MaterialCommunityIcons name="check-circle" size={64} color={colors.success} />
+            <Text style={styles.successTitle}>¡Llaves creadas exitosamente!</Text>
+            <Text style={styles.successText}>
+              Se crearon {llavesCreadas} llaves para {getCopaLabel(selectedCopa!)}
+            </Text>
+            <Button
+              title="Finalizar"
+              onPress={() => navigation.goBack()}
+              style={styles.generateButton}
+            />
+          </View>
+        </View>
+      );
+    }
+
+    // Mostrar mensaje si no hay equipos clasificados
+    if (clasificados.length === 0) {
+      return (
+        <View style={styles.stepContainer}>
+          <View style={styles.successContainer}>
+            <MaterialCommunityIcons name="alert-circle" size={64} color={colors.textSecondary} />
+            <Text style={styles.successTitle}>No hay equipos clasificados</Text>
+            <Text style={styles.successText}>
+              No se encontraron equipos clasificados para {getCopaLabel(selectedCopa!)}
+            </Text>
+            <Button
+              title="Volver"
+              onPress={() => {
+                setCurrentStep('select-copa');
+                setSelectedCopa(null);
+              }}
+              style={styles.generateButton}
+            />
           </View>
         </View>
       );
@@ -417,15 +436,17 @@ export const CreateKnockoutFlowScreen: React.FC<CreateKnockoutFlowScreenProps> =
               setCurrentStep('select-copa');
               setSelectedCopa(null);
               setClasificados([]);
-              setEquiposSeleccionados([]);
+              setEquipoA(null);
+              setEquipoB(null);
+              setLlavesCreadas(0);
             }}
           >
             <MaterialCommunityIcons name="arrow-left" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
           <View style={styles.stepHeaderText}>
-            <Text style={styles.stepTitle}>Seleccionar Equipos</Text>
+            <Text style={styles.stepTitle}>Crear Llaves</Text>
             <Text style={styles.stepSubtitle}>
-              {getCopaLabel(selectedCopa!)} - {equiposSeleccionados.length} equipos seleccionados
+              {getCopaLabel(selectedCopa!)} - {llavesCreadas} llaves creadas • {clasificados.length} equipos restantes
             </Text>
           </View>
         </View>
@@ -434,21 +455,49 @@ export const CreateKnockoutFlowScreen: React.FC<CreateKnockoutFlowScreenProps> =
           <MaterialCommunityIcons name="information" size={24} color={colors.primary} />
           <View style={styles.infoTextContainer}>
             <Text style={styles.infoText}>
-              Selecciona los equipos que avanzarán al knockout. Debes elegir 2, 4, 8 o 16 equipos.
+              {!equipoA && 'Selecciona el Equipo Local (A)'}
+              {equipoA && !equipoB && 'Selecciona el Equipo Visitante (B)'}
+              {equipoA && equipoB && 'Confirma la llave creando el partido'}
             </Text>
           </View>
         </Card>
 
+        {/* Mostrar equipos seleccionados */}
+        {(equipoA || equipoB) && (
+          <View style={styles.selectedTeamsContainer}>
+            <View style={styles.selectedTeam}>
+              <Text style={styles.selectedTeamLabel}>Equipo A (Local)</Text>
+              <Text style={styles.selectedTeamName}>
+                {equipoA ? clasificados.find(e => e.id_equipo === equipoA)?.nombre : '- Sin seleccionar -'}
+              </Text>
+            </View>
+            <Text style={styles.vsText}>vs</Text>
+            <View style={styles.selectedTeam}>
+              <Text style={styles.selectedTeamLabel}>Equipo B (Visitante)</Text>
+              <Text style={styles.selectedTeamName}>
+                {equipoB ? clasificados.find(e => e.id_equipo === equipoB)?.nombre : '- Sin seleccionar -'}
+              </Text>
+            </View>
+          </View>
+        )}
+
         <View style={styles.equiposList}>
           {clasificados.map((equipo, index) => {
-            const isSelected = equiposSeleccionados.includes(equipo.id_equipo);
+            const isEquipoA = equipo.id_equipo === equipoA;
+            const isEquipoB = equipo.id_equipo === equipoB;
+            const isSelected = isEquipoA || isEquipoB;
 
             return (
               <TouchableOpacity
                 key={equipo.id_equipo}
-                style={[styles.equipoItem, isSelected && styles.equipoItemSelected]}
-                onPress={() => toggleEquipo(equipo.id_equipo)}
+                style={[
+                  styles.equipoItem,
+                  isEquipoA && styles.equipoItemEquipoA,
+                  isEquipoB && styles.equipoItemEquipoB,
+                ]}
+                onPress={() => handleSelectEquipo(equipo.id_equipo)}
                 activeOpacity={0.7}
+                disabled={creatingLlave}
               >
                 <View style={styles.equipoInfo}>
                   <View style={styles.equipoPosicion}>
@@ -462,34 +511,26 @@ export const CreateKnockoutFlowScreen: React.FC<CreateKnockoutFlowScreenProps> =
                   </View>
                 </View>
 
-                <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
-                  {isSelected && (
-                    <MaterialCommunityIcons name="check" size={18} color={colors.white} />
-                  )}
-                </View>
+                {isSelected && (
+                  <View style={styles.equipoBadge}>
+                    <Text style={styles.equipoBadgeText}>
+                      {isEquipoA ? 'A' : 'B'}
+                    </Text>
+                  </View>
+                )}
               </TouchableOpacity>
             );
           })}
         </View>
 
-        <Button
-          title={`Generar Eliminatorias (${equiposSeleccionados.length} equipos)`}
-          onPress={handleGenerarEliminatorias}
-          disabled={![2, 4, 8, 16].includes(equiposSeleccionados.length)}
-          style={styles.generateButton}
-        />
-      </View>
-    );
-  };
-
-  const renderGenerando = () => {
-    return (
-      <View style={styles.generandoContainer}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.generandoTitle}>Generando Eliminatorias...</Text>
-        <Text style={styles.generandoText}>
-          Creando llaves y partidos para {getCopaLabel(selectedCopa!)}
-        </Text>
+        {equipoA && equipoB && (
+          <Button
+            title={creatingLlave ? 'Creando llave...' : 'Crear Llave y Partido'}
+            onPress={handleCrearLlave}
+            disabled={creatingLlave}
+            style={styles.generateButton}
+          />
+        )}
       </View>
     );
   };
@@ -512,7 +553,7 @@ export const CreateKnockoutFlowScreen: React.FC<CreateKnockoutFlowScreenProps> =
         <TouchableOpacity
           style={styles.headerBackButton}
           onPress={() => navigation.goBack()}
-          disabled={generando}
+          disabled={creatingLlave}
         >
           <MaterialCommunityIcons name="arrow-left" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
@@ -527,7 +568,6 @@ export const CreateKnockoutFlowScreen: React.FC<CreateKnockoutFlowScreenProps> =
       >
         {currentStep === 'select-copa' && renderSelectCopa()}
         {currentStep === 'select-equipos' && renderSelectEquipos()}
-        {currentStep === 'generando' && renderGenerando()}
       </ScrollView>
     </SafeAreaView>
   );
@@ -716,20 +756,69 @@ const styles = StyleSheet.create({
   generateButton: {
     marginTop: 8,
   },
-  generandoContainer: {
-    flex: 1,
-    justifyContent: 'center',
+  selectedTeamsContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
-    padding: 40,
+    justifyContent: 'space-between',
+    backgroundColor: colors.white,
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+    gap: 12,
   },
-  generandoTitle: {
-    fontSize: 20,
+  selectedTeam: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  selectedTeamLabel: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginBottom: 4,
+  },
+  selectedTeamName: {
+    fontSize: 14,
     fontWeight: '600',
     color: colors.textPrimary,
-    marginTop: 24,
-    marginBottom: 8,
+    textAlign: 'center',
   },
-  generandoText: {
+  vsText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  equipoItemEquipoA: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
+  },
+  equipoItemEquipoB: {
+    borderColor: colors.success,
+    backgroundColor: '#e8f5e9',
+  },
+  equipoBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  equipoBadgeText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: colors.white,
+  },
+  successContainer: {
+    alignItems: 'center',
+    padding: 40,
+    gap: 16,
+  },
+  successTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: colors.success,
+    textAlign: 'center',
+  },
+  successText: {
     fontSize: 14,
     color: colors.textSecondary,
     textAlign: 'center',

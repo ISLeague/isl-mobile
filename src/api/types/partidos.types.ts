@@ -58,6 +58,15 @@ export interface CreatePartidoFromFixtureRequest {
   observaciones?: string;
 }
 
+export interface CreatePartidoEliminatoriaRequest {
+  id_eliminatoria: number;
+  fecha?: string;
+  hora?: string;
+  id_cancha?: number;
+  arbitro_principal?: string;
+  observaciones?: string;
+}
+
 export interface Partido {
   id_partido: number;
   id_fixture?: number;

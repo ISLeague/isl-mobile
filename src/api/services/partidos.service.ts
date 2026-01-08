@@ -10,6 +10,7 @@ import {
   GetPartidosPorJornadaRequest,
   PartidosPorJornadaResponse,
   CreatePartidoFromFixtureRequest,
+  CreatePartidoEliminatoriaRequest,
 } from '../types/partidos.types';
 
 /**
@@ -133,6 +134,16 @@ export const partidosService = {
   createFromFixture: async (data: CreatePartidoFromFixtureRequest) => {
     const response = await apiClient.post('/partidos', data, {
       params: { action: 'create' }
+    });
+    return response.data;
+  },
+
+  /**
+   * Crear partido de eliminatoria (requiere autorización)
+   */
+  createEliminatoria: async (data: CreatePartidoEliminatoriaRequest) => {
+    const response = await apiClient.post('/partidos', data, {
+      params: { action: 'create-eliminatoria' }
     });
     return response.data;
   },
