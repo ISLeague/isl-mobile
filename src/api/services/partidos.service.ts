@@ -147,4 +147,14 @@ export const partidosService = {
     });
     return response.data;
   },
+
+  /**
+   * Obtener instancias de eliminatorias creadas (e.g. octavos, cuartos, semifinal, final)
+   */
+  obtenerInstancias: async (id_edicion_categoria: number, copa: string) => {
+    const response = await apiClient.get('/partidos', {
+      params: { id_edicion_categoria, copa, action: 'instancias' }
+    });
+    return response.data;
+  },
 };

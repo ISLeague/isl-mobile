@@ -22,13 +22,14 @@ import api from '../../api';
 import type { TipoCopa, TipoFase, Fase } from '../../api/types/fases.types';
 import type { EquipoClasificado } from '../../api/types/fases.types';
 import type { Local, Cancha } from '../../api/types/locales.types';
+import type { RondaEliminatoria } from '../../api/types/eliminatorias.types';
 
 interface CreateKnockoutFlowScreenProps {
   navigation: any;
   route: any;
 }
 
-type Step = 'select-copa' | 'select-equipos';
+type Step = 'select-copa' | 'select-instancia' | 'select-equipos';
 
 interface FaseKnockoutStatus {
   copa: TipoCopa;
@@ -90,6 +91,9 @@ export const CreateKnockoutFlowScreen: React.FC<CreateKnockoutFlowScreenProps> =
   const [llavesCreadas, setLlavesCreadas] = useState<number>(0);
   const [creatingFase, setCreatingFase] = useState(false);
   const [creatingLlave, setCreatingLlave] = useState(false);
+  const [currentRoundName, setCurrentRoundName] = useState<RondaEliminatoria>('octavos');
+  const [instanciasCreadas, setInstanciasCreadas] = useState<string[]>([]);
+  const [loadingInstancias, setLoadingInstancias] = useState(false);
 
   // Estado para modal de creación de partido
   const [showPartidoModal, setShowPartidoModal] = useState(false);
@@ -166,8 +170,28 @@ export const CreateKnockoutFlowScreen: React.FC<CreateKnockoutFlowScreenProps> =
       await handleCreateFase(copa);
     }
 
-    // Avanzar al siguiente paso
-    setCurrentStep('select-equipos');
+    // Cargar las instancias (rondas) ya creadas para esta copa
+    await loadInstancias(copa);
+
+    // Avanzar al paso de selección de instancia
+    setCurrentStep('select-instancia');
+  };
+
+  const loadInstancias = async (copa: TipoCopa) => {
+    setLoadingInstancias(true);
+    const result = await safeAsync(
+      async () => {
+        const response = await api.partidos.obtenerInstancias(idEdicionCategoria, copa);
+        return response;
+      },
+      'obtenerInstancias',
+      { fallbackValue: null }
+    );
+
+    if (result && result.success) {
+      setInstanciasCreadas(result.data || []);
+    }
+    setLoadingInstancias(false);
   };
 
   const handleCreateFase = async (copa: TipoCopa) => {
@@ -270,13 +294,8 @@ export const CreateKnockoutFlowScreen: React.FC<CreateKnockoutFlowScreenProps> =
     setCreatingLlave(true);
 
     try {
-      // Determinar la ronda según equipos restantes
-      const equiposRestantes = clasificados.length;
-      let ronda: any;
-      if (equiposRestantes <= 2) ronda = 'final';
-      else if (equiposRestantes <= 4) ronda = 'semifinal';
-      else if (equiposRestantes <= 8) ronda = 'cuartos';
-      else ronda = 'octavos';
+      // Usar la ronda seleccionada manualmente
+      const ronda = currentRoundName;
 
       // Crear llave
       const llaveResult = await safeAsync(
@@ -457,6 +476,72 @@ export const CreateKnockoutFlowScreen: React.FC<CreateKnockoutFlowScreenProps> =
             );
           })}
         </View>
+      </View>
+    );
+  };
+
+  const renderSelectInstancia = () => {
+    const rondas: RondaEliminatoria[] = ['octavos', 'cuartos', 'semifinal', 'final'];
+
+    return (
+      <View style={styles.stepContainer}>
+        <View style={styles.stepHeader}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => setCurrentStep('select-copa')}
+          >
+            <MaterialCommunityIcons name="arrow-left" size={24} color={colors.textPrimary} />
+          </TouchableOpacity>
+          <View style={styles.stepHeaderText}>
+            <Text style={styles.stepTitle}>Selecciona la Ronda</Text>
+            <Text style={styles.stepSubtitle}>
+              {getCopaLabel(selectedCopa!)} • Elige qué instancia deseas gestionar
+            </Text>
+          </View>
+        </View>
+
+        {loadingInstancias ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.loadingText}>Cargando instancias...</Text>
+          </View>
+        ) : (
+          <View style={styles.instanciasGrid}>
+            {rondas.map((ronda) => {
+              const isCreated = instanciasCreadas.includes(ronda);
+              return (
+                <TouchableOpacity
+                  key={ronda}
+                  style={[
+                    styles.instanciaCard,
+                    isCreated && styles.instanciaCardCreated
+                  ]}
+                  onPress={() => {
+                    setCurrentRoundName(ronda);
+                    setCurrentStep('select-equipos');
+                  }}
+                >
+                  <MaterialCommunityIcons
+                    name={isCreated ? "check-circle" : "circle-outline"}
+                    size={32}
+                    color={isCreated ? colors.success : colors.textSecondary}
+                  />
+                  <Text style={[
+                    styles.instanciaCardTitle,
+                    isCreated && styles.instanciaCardTitleCreated
+                  ]}>
+                    {ronda.charAt(0).toUpperCase() + ronda.slice(1)}
+                  </Text>
+                  {isCreated && (
+                    <View style={styles.badgeSuccess}>
+                      <Text style={styles.badgeSuccessText}>Activa</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
       </View>
     );
   };
@@ -657,6 +742,7 @@ export const CreateKnockoutFlowScreen: React.FC<CreateKnockoutFlowScreenProps> =
         showsVerticalScrollIndicator={false}
       >
         {currentStep === 'select-copa' && renderSelectCopa()}
+        {currentStep === 'select-instancia' && renderSelectInstancia()}
         {currentStep === 'select-equipos' && renderSelectEquipos()}
       </ScrollView>
 
@@ -1172,5 +1258,47 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: colors.white,
+  },
+  instanciasGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    paddingTop: 8,
+  },
+  instanciaCard: {
+    width: '48%',
+    backgroundColor: colors.white,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  instanciaCardCreated: {
+    borderColor: colors.success,
+    backgroundColor: '#f1f8e9',
+  },
+  instanciaCardTitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.textPrimary,
+    marginTop: 8,
+  },
+  instanciaCardTitleCreated: {
+    color: colors.success,
+    fontWeight: 'bold',
+  },
+  badgeSuccess: {
+    backgroundColor: colors.success,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginTop: 8,
+  },
+  badgeSuccessText: {
+    color: colors.white,
+    fontSize: 10,
+    fontWeight: 'bold',
   },
 });
