@@ -85,15 +85,25 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
           ? llavesResponse.data.todas_las_llaves
           : [];
 
-        // Cargar partidos de esta edición categoría
-        const partidosResponse = await api.partidos.list({ id_edicion_categoria: idEdicionCategoria });
-        const allPartidos = partidosResponse.success && partidosResponse.data ? partidosResponse.data : [];
+        // Cargar partidos de knockout (con la nueva acción agrupada)
+        const knockoutResponse = await api.partidos.listKnockout(idEdicionCategoria || 1, selectedCopa);
+        let allKnockoutPartidos: any[] = [];
+
+        if (knockoutResponse && knockoutResponse.success && knockoutResponse.data.partidos_por_etapa) {
+          const porEtapa = knockoutResponse.data.partidos_por_etapa;
+          allKnockoutPartidos = [
+            ...(porEtapa.octavos || []),
+            ...(porEtapa.cuartos || []),
+            ...(porEtapa.semifinal || []),
+            ...(porEtapa.final || []),
+          ];
+        }
 
         // Cargar equipos
         const equiposResponse = await api.equipos.list(idEdicionCategoria || 1);
         const allEquipos = equiposResponse.success && equiposResponse.data ? equiposResponse.data : [];
 
-        return { llaves: llavesData, partidos: allPartidos, equipos: allEquipos, fases: fasesKO };
+        return { llaves: llavesData, partidos: allKnockoutPartidos, equipos: allEquipos, fases: fasesKO };
       },
       'loadKnockoutData',
       {
@@ -126,11 +136,8 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
   };
 
   const getPartidoByLlave = (llave: Eliminatoria): Partido | null => {
-    // Buscar partido que corresponda a esta llave
-    // Asumimos que el partido tiene alguna referencia a la llave (puede ser por equipos o metadata)
-    return partidos.find(p =>
-      p.id_equipo_local === llave.id_equipo_a && p.id_equipo_visitante === llave.id_equipo_b
-    ) || null;
+    // Buscar partido por id_eliminatoria
+    return partidos.find(p => p.id_eliminatoria === llave.id_eliminatoria) || null;
   };
 
   const handleEditPartido = (partido: Partido) => {
@@ -181,8 +188,8 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
   const availableCopas: TipoCopa[] = isAdmin
     ? ['oro', 'plata', 'bronce']
     : (['oro', 'plata', 'bronce'].filter(c =>
-        hasLlavesInCopa(c as TipoCopa)
-      ) as TipoCopa[]);
+      hasLlavesInCopa(c as TipoCopa)
+    ) as TipoCopa[]);
 
   // Si no hay ninguna copa con llaves para fans, mostrar mensaje vacío
   if (availableCopas.length === 0 && !isAdmin) {
@@ -198,10 +205,13 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
   }
 
   const renderLlave = (llave: Eliminatoria, index: number) => {
-    const equipoA = equipos.find(e => e.id_equipo === llave.id_equipo_a);
-    const equipoB = equipos.find(e => e.id_equipo === llave.id_equipo_b);
-    const equipoGanador = equipos.find(e => e.id_equipo === llave.id_equipo_ganador);
     const partido = getPartidoByLlave(llave);
+
+    // Priorizar datos del partido (incluye logos y nombres actualizados)
+    const displayEquipoA = partido?.equipo_local || equipos.find(e => e.id_equipo === llave.id_equipo_a);
+    const displayEquipoB = partido?.equipo_visitante || equipos.find(e => e.id_equipo === llave.id_equipo_b);
+
+    const equipoGanador = equipos.find(e => e.id_equipo === llave.id_equipo_ganador);
 
     return (
       <View key={`llave-${llave.id_eliminatoria}-${index}`} style={styles.llaveCard}>
@@ -225,18 +235,29 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
         <View style={styles.equiposContainer}>
           {/* Equipo A */}
           <View style={styles.equipoRow}>
-            {equipoA ? (
+            {displayEquipoA ? (
               <>
                 <Image
-                  source={equipoA.logo ? { uri: equipoA.logo } : require('../../../assets/InterLOGO.png')}
+                  source={displayEquipoA.logo ? { uri: displayEquipoA.logo } : require('../../../assets/InterLOGO.png')}
                   style={styles.equipoLogo}
                 />
                 <Text style={[
                   styles.equipoNombre,
-                  llave.id_equipo_ganador === equipoA.id_equipo && styles.equipoNombreGanador
+                  llave.id_equipo_ganador === (displayEquipoA as any).id_equipo && styles.equipoNombreGanador
                 ]} numberOfLines={1}>
-                  {equipoA.nombre}
+                  {displayEquipoA.nombre}
                 </Text>
+                {partido && (partido.marcador_local !== null || partido.marcador_visitante !== null) && (
+                  <Text style={[
+                    styles.equipoResultado,
+                    llave.id_equipo_ganador === (displayEquipoA as any).id_equipo && styles.equipoResultadoGanador
+                  ]}>
+                    {partido.marcador_local ?? 0}
+                    {partido.fue_a_penales && partido.penales_local !== null && (
+                      <Text style={styles.penalesText}> ({partido.penales_local})</Text>
+                    )}
+                  </Text>
+                )}
               </>
             ) : (
               <>
@@ -248,7 +269,7 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
                 </Text>
               </>
             )}
-            {llave.id_equipo_ganador === llave.id_equipo_a && (
+            {llave.id_equipo_ganador && displayEquipoA && (displayEquipoA as any).id_equipo === llave.id_equipo_ganador && (
               <MaterialCommunityIcons name="trophy" size={16} color={colors.warning} />
             )}
           </View>
@@ -257,18 +278,29 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
 
           {/* Equipo B */}
           <View style={styles.equipoRow}>
-            {equipoB ? (
+            {displayEquipoB ? (
               <>
                 <Image
-                  source={equipoB.logo ? { uri: equipoB.logo } : require('../../../assets/InterLOGO.png')}
+                  source={displayEquipoB.logo ? { uri: displayEquipoB.logo } : require('../../../assets/InterLOGO.png')}
                   style={styles.equipoLogo}
                 />
                 <Text style={[
                   styles.equipoNombre,
-                  llave.id_equipo_ganador === equipoB.id_equipo && styles.equipoNombreGanador
+                  llave.id_equipo_ganador === (displayEquipoB as any).id_equipo && styles.equipoNombreGanador
                 ]} numberOfLines={1}>
-                  {equipoB.nombre}
+                  {displayEquipoB.nombre}
                 </Text>
+                {partido && (partido.marcador_local !== null || partido.marcador_visitante !== null) && (
+                  <Text style={[
+                    styles.equipoResultado,
+                    llave.id_equipo_ganador === (displayEquipoB as any).id_equipo && styles.equipoResultadoGanador
+                  ]}>
+                    {partido.marcador_visitante ?? 0}
+                    {partido.fue_a_penales && partido.penales_visitante !== null && (
+                      <Text style={styles.penalesText}> ({partido.penales_visitante})</Text>
+                    )}
+                  </Text>
+                )}
               </>
             ) : (
               <>
@@ -280,11 +312,30 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
                 </Text>
               </>
             )}
-            {llave.id_equipo_ganador === llave.id_equipo_b && (
+            {llave.id_equipo_ganador && displayEquipoB && (displayEquipoB as any).id_equipo === llave.id_equipo_ganador && (
               <MaterialCommunityIcons name="trophy" size={16} color={colors.warning} />
             )}
           </View>
         </View>
+
+        {partido && (
+          <View style={styles.partidoInfo}>
+            <View style={styles.partidoDetalle}>
+              <MaterialCommunityIcons name="calendar" size={14} color={colors.textSecondary} />
+              <Text style={styles.partidoDetalleText}>{partido.fecha || 'Sin fecha'}</Text>
+            </View>
+            <View style={styles.partidoDetalle}>
+              <MaterialCommunityIcons name="clock-outline" size={14} color={colors.textSecondary} />
+              <Text style={styles.partidoDetalleText}>{partido.hora?.substring(0, 5) || 'Sin hora'}</Text>
+            </View>
+            <View style={styles.partidoDetalle}>
+              <MaterialCommunityIcons name="map-marker" size={14} color={colors.textSecondary} />
+              <Text style={styles.partidoDetalleText} numberOfLines={1}>
+                {partido.cancha?.nombre || 'Por definir'}
+              </Text>
+            </View>
+          </View>
+        )}
 
         {equipoGanador && (
           <View style={styles.ganadorContainer}>
@@ -770,14 +821,14 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   equipoLogo: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
   },
   equipoPorDefinir: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: colors.white,
     justifyContent: 'center',
     alignItems: 'center',
@@ -819,6 +870,37 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: colors.success,
+  },
+  partidoInfo: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderLight,
+  },
+  partidoDetalle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  partidoDetalleText: {
+    fontSize: 11,
+    color: colors.textSecondary,
+  },
+  equipoResultado: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.textSecondary,
+    marginLeft: 8,
+  },
+  equipoResultadoGanador: {
+    color: colors.success,
+  },
+  penalesText: {
+    fontSize: 10,
+    fontWeight: '400',
+    color: colors.textLight,
   },
   llaveActions: {
     flexDirection: 'row',

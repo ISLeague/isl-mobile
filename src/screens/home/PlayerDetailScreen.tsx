@@ -11,7 +11,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { GradientHeader, Card } from '../../components/common';
 import { colors } from '../../theme/colors';
-import { formatDate } from '../../utils';
+import { formatDate, calculateAge } from '../../utils';
 import { JugadorDetalleData } from '../../api/types/jugadores.types';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
@@ -99,7 +99,7 @@ export const PlayerDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   }
 
   const { equipo, estadisticas_historicas } = detalleData;
-  const edad = detalleData.edad;
+  const edad = detalleData.edad || calculateAge(detalleData.fecha_nacimiento);
   const esRefuerzo = detalleData.es_refuerzo || false;
   const esCapitan = detalleData.es_capitan || false;
   const esGoleador = estadisticas_historicas.es_goleador || false;
@@ -112,40 +112,50 @@ export const PlayerDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {/* Datos básicos */}
         <Card style={styles.profileCard}>
-          {detalleData.foto && (
-            <Image
-              source={{ uri: detalleData.foto }}
-              style={styles.playerPhoto}
-            />
-          )}
-
           <View style={styles.profileHeader}>
-            <View style={styles.numberBadge}>
-              <Text style={styles.numberText}>#{detalleData.numero_camiseta || '-'}</Text>
+            <View style={styles.imageWrapper}>
+              {detalleData.foto ? (
+                <Image
+                  source={{ uri: detalleData.foto }}
+                  style={styles.playerPhotoLarge}
+                />
+              ) : (
+                <View style={styles.playerPhotoPlaceholder}>
+                  <MaterialCommunityIcons name="account" size={48} color={colors.textLight} />
+                </View>
+              )}
               {esCapitan && (
                 <View style={styles.capitanBadge}>
                   <Text style={styles.capitanText}>C</Text>
                 </View>
               )}
             </View>
+
             <View style={styles.profileInfo}>
+              <View style={styles.numberRow}>
+                <View style={styles.numberBadge}>
+                  <Text style={styles.numberText}>#{detalleData.numero_camiseta || '-'}</Text>
+                </View>
+                <View style={styles.badgesRow}>
+                  {esRefuerzo && (
+                    <View style={[styles.badge, styles.refuerzoBadge]}>
+                      <Text style={styles.badgeText}>R</Text>
+                    </View>
+                  )}
+                  {esGoleador && (
+                    <View style={[styles.badge, styles.goleadorBadge]}>
+                      <MaterialCommunityIcons name="soccer" size={14} color={colors.white} />
+                    </View>
+                  )}
+                  {esMejorJugador && (
+                    <View style={[styles.badge, styles.mvpBadge]}>
+                      <MaterialCommunityIcons name="trophy" size={14} color={colors.white} />
+                    </View>
+                  )}
+                </View>
+              </View>
               <View style={styles.nameRow}>
                 <Text style={styles.playerName}>{formatPlayerName(detalleData.nombre_completo)}</Text>
-                {esRefuerzo && (
-                  <View style={[styles.badge, styles.refuerzoBadge]}>
-                    <Text style={styles.badgeText}>R</Text>
-                  </View>
-                )}
-                {esGoleador && (
-                  <View style={[styles.badge, styles.goleadorBadge]}>
-                    <MaterialCommunityIcons name="soccer" size={14} color={colors.white} />
-                  </View>
-                )}
-                {esMejorJugador && (
-                  <View style={[styles.badge, styles.mvpBadge]}>
-                    <MaterialCommunityIcons name="trophy" size={14} color={colors.white} />
-                  </View>
-                )}
               </View>
 
               {/* Mostrar edad solo para admin */}
@@ -176,100 +186,38 @@ export const PlayerDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           </View>
         </Card>
 
-        {/* Estadísticas principales */}
+        {/* Bloque 1: Rendimiento en la Temporada */}
         <Card style={styles.statsCard}>
-          <Text style={styles.sectionTitle}>Estadísticas Principales</Text>
+          <Text style={styles.sectionTitle}>Rendimiento Temporada</Text>
           <View style={styles.statsGrid}>
-            {renderStatItem(
-              'run',
-              'Partidos',
-              estadisticas_historicas.partidos_jugados || 0,
-              colors.primary
-            )}
-            {renderStatItem(
-              'clock-outline',
-              'Minutos',
-              estadisticas_historicas.minutos_jugados || 0,
-              colors.info
-            )}
-            {renderStatItem(
-              'soccer',
-              'Goles',
-              estadisticas_historicas.goles_totales || 0,
-              colors.success
-            )}
-            {renderStatItem(
-              'handball',
-              'Asistencias',
-              estadisticas_historicas.asistencias_totales || 0,
-              '#00BCD4'
-            )}
+            {renderStatItem('run', 'Partidos', estadisticas_historicas.partidos_jugados || 0, colors.primary)}
+            {renderStatItem('soccer', 'Goles', estadisticas_historicas.goles_totales || 0, colors.success)}
+            {renderStatItem('handball', 'Asistencias', estadisticas_historicas.asistencias_totales || 0, '#00BCD4')}
+            {renderStatItem('star', 'MVP', estadisticas_historicas.mvp_partidos || 0, '#FFD700')}
           </View>
         </Card>
 
-        {/* Tarjetas y sanciones */}
+        {/* Bloque 2: Disciplina */}
         <Card style={styles.statsCard}>
-          <Text style={styles.sectionTitle}>Tarjetas y Sanciones</Text>
+          <Text style={styles.sectionTitle}>Disciplina</Text>
           <View style={styles.statsGrid}>
-            {renderStatItem(
-              'card',
-              'Amarillas',
-              estadisticas_historicas.amarillas_totales || 0,
-              colors.warning
-            )}
-            {renderStatItem(
-              'card-multiple',
-              'Dobles Am.',
-              estadisticas_historicas.dobles_amarillas || 0,
-              '#FF9800'
-            )}
-            {renderStatItem(
-              'card',
-              'Rojas',
-              estadisticas_historicas.rojas_totales || 0,
-              colors.error
-            )}
-            {renderStatItem(
-              'own-goal',
-              'Autogoles',
-              estadisticas_historicas.autogoles || 0,
-              '#9C27B0'
-            )}
+            {renderStatItem('card', 'Amarillas', estadisticas_historicas.amarillas_totales || 0, colors.warning)}
+            {renderStatItem('card-multiple', 'Dobles Am.', estadisticas_historicas.dobles_amarillas || 0, '#FF9800')}
+            {renderStatItem('card', 'Rojas', estadisticas_historicas.rojas_totales || 0, colors.error)}
+            {renderStatItem('clock-outline', 'Minutos', estadisticas_historicas.minutos_jugados || 0, colors.info)}
           </View>
         </Card>
 
-        {/* Estadísticas adicionales */}
-        {(isAdmin || isSuperAdmin) && (
-          <Card style={styles.statsCard}>
-            <Text style={styles.sectionTitle}>Estadísticas Adicionales</Text>
-            <View style={styles.statsGrid}>
-              {renderStatItem(
-                'bullseye-arrow',
-                'Penales Conv.',
-                estadisticas_historicas.penales_convertidos || 0,
-                '#4CAF50'
-              )}
-              {renderStatItem(
-                'close-circle',
-                'Penales Fall.',
-                estadisticas_historicas.penales_fallados || 0,
-                '#F44336'
-              )}
-              {renderStatItem(
-                'star',
-                'MVP',
-                estadisticas_historicas.mvp_partidos || 0,
-                '#FFD700'
-              )}
-              {estadisticas_historicas.posicion_final_equipo && renderStatItem(
-                'podium',
-                'Posición',
-                estadisticas_historicas.posicion_final_equipo,
-                '#607D8B'
-              )}
-            </View>
-          </Card>
-        )}
+        {/* Bloque 3: Efectividad y Otros */}
+        <Card style={styles.statsCard}>
+          <Text style={styles.sectionTitle}>Efectividad y Otros</Text>
+          <View style={styles.statsGrid}>
+            {renderStatItem('bullseye-arrow', 'Penales', estadisticas_historicas.penales_convertidos || 0, '#4CAF50')}
+            {renderStatItem('close-circle', 'P. Fallados', estadisticas_historicas.penales_fallados || 0, '#F44336')}
+            {renderStatItem('human-handsdown', 'Autogoles', estadisticas_historicas.autogoles || 0, '#9C27B0')}
+            {estadisticas_historicas.posicion_final_equipo && renderStatItem('podium', 'Posición', estadisticas_historicas.posicion_final_equipo, '#607D8B')}
+          </View>
+        </Card>
 
       </ScrollView>
     </View>
@@ -456,5 +404,34 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 14,
     color: colors.textSecondary,
+  },
+  imageWrapper: {
+    position: 'relative',
+    marginRight: 16,
+  },
+  playerPhotoLarge: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+  },
+  playerPhotoPlaceholder: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: colors.backgroundGray,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  numberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 12,
+  },
+  badgesRow: {
+    flexDirection: 'row',
+    gap: 6,
   },
 });

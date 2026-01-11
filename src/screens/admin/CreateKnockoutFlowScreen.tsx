@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Modal,
   Pressable,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -642,16 +643,32 @@ export const CreateKnockoutFlowScreen: React.FC<CreateKnockoutFlowScreenProps> =
           <View style={styles.selectedTeamsContainer}>
             <View style={styles.selectedTeam}>
               <Text style={styles.selectedTeamLabel}>Equipo A (Local)</Text>
-              <Text style={styles.selectedTeamName}>
-                {equipoA ? clasificados.find(e => e.id_equipo === equipoA)?.nombre : '- Sin seleccionar -'}
-              </Text>
+              <View style={styles.selectedTeamRow}>
+                {equipoA && (
+                  <Image
+                    source={clasificados.find(e => e.id_equipo === equipoA)?.logo ? { uri: clasificados.find(e => e.id_equipo === equipoA)!.logo! } : require('../../assets/InterLOGO.png')}
+                    style={styles.selectedTeamLogo}
+                  />
+                )}
+                <Text style={styles.selectedTeamName}>
+                  {equipoA ? clasificados.find(e => e.id_equipo === equipoA)?.nombre : '- Sin seleccionar -'}
+                </Text>
+              </View>
             </View>
             <Text style={styles.vsText}>vs</Text>
             <View style={styles.selectedTeam}>
               <Text style={styles.selectedTeamLabel}>Equipo B (Visitante)</Text>
-              <Text style={styles.selectedTeamName}>
-                {equipoB ? clasificados.find(e => e.id_equipo === equipoB)?.nombre : '- Sin seleccionar -'}
-              </Text>
+              <View style={styles.selectedTeamRow}>
+                {equipoB && (
+                  <Image
+                    source={clasificados.find(e => e.id_equipo === equipoB)?.logo ? { uri: clasificados.find(e => e.id_equipo === equipoB)!.logo! } : require('../../assets/InterLOGO.png')}
+                    style={styles.selectedTeamLogo}
+                  />
+                )}
+                <Text style={styles.selectedTeamName}>
+                  {equipoB ? clasificados.find(e => e.id_equipo === equipoB)?.nombre : '- Sin seleccionar -'}
+                </Text>
+              </View>
             </View>
           </View>
         )}
@@ -678,6 +695,10 @@ export const CreateKnockoutFlowScreen: React.FC<CreateKnockoutFlowScreenProps> =
                   <View style={styles.equipoPosicion}>
                     <Text style={styles.equipoPosicionText}>{index + 1}</Text>
                   </View>
+                  <Image
+                    source={equipo.logo ? { uri: equipo.logo } : require('../../assets/InterLOGO.png')}
+                    style={styles.equipoLogo}
+                  />
                   <View style={styles.equipoDetails}>
                     <Text style={styles.equipoNombre}>{equipo.nombre}</Text>
                     <Text style={styles.equipoGrupo}>
@@ -766,9 +787,29 @@ export const CreateKnockoutFlowScreen: React.FC<CreateKnockoutFlowScreenProps> =
 
               {/* Contenido del modal */}
               <View style={styles.modalBody}>
+                <View style={styles.modalMatchInfo}>
+                  <View style={styles.modalMatchTeam}>
+                    <Image
+                      source={clasificados.find(e => e.id_equipo === equipoA)?.logo ? { uri: clasificados.find(e => e.id_equipo === equipoA)!.logo! } : require('../../assets/InterLOGO.png')}
+                      style={styles.modalTeamLogo}
+                    />
+                    <Text style={styles.modalTeamName} numberOfLines={1}>
+                      {clasificados.find(e => e.id_equipo === equipoA)?.nombre}
+                    </Text>
+                  </View>
+                  <Text style={styles.modalVsText}>vs</Text>
+                  <View style={styles.modalMatchTeam}>
+                    <Image
+                      source={clasificados.find(e => e.id_equipo === equipoB)?.logo ? { uri: clasificados.find(e => e.id_equipo === equipoB)!.logo! } : require('../../assets/InterLOGO.png')}
+                      style={styles.modalTeamLogo}
+                    />
+                    <Text style={styles.modalTeamName} numberOfLines={1}>
+                      {clasificados.find(e => e.id_equipo === equipoB)?.nombre}
+                    </Text>
+                  </View>
+                </View>
                 <Text style={styles.modalSubtitle}>
-                  Llave {llavesCreadas}: {clasificados.find(e => e.id_equipo === equipoA)?.nombre} vs{' '}
-                  {clasificados.find(e => e.id_equipo === equipoB)?.nombre}
+                  Llave {llavesCreadas} • {getCopaLabel(selectedCopa!)}
                 </Text>
 
                 {/* Seleccionar Local */}
@@ -1020,12 +1061,6 @@ const styles = StyleSheet.create({
   equipoItemSelected: {
     borderColor: colors.primary,
     backgroundColor: colors.primaryLight,
-  },
-  equipoInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    gap: 12,
   },
   equipoPosicion: {
     width: 32,
@@ -1300,5 +1335,59 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: 10,
     fontWeight: 'bold',
+  },
+  equipoInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  equipoLogo: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.white,
+  },
+  selectedTeamRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  selectedTeamLogo: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+  },
+  modalMatchInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.backgroundGray,
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+    gap: 12,
+  },
+  modalMatchTeam: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 8,
+  },
+  modalTeamLogo: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.white,
+  },
+  modalTeamName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    textAlign: 'center',
+  },
+  modalVsText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: colors.textSecondary,
   },
 });

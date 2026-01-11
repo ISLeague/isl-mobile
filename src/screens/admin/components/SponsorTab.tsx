@@ -8,6 +8,7 @@ import {
   Image,
   Linking,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../../theme/colors';
@@ -31,6 +32,7 @@ export const SponsorTab: React.FC<SponsorTabProps> = ({
   const { isAdmin } = useAuth();
   const [sponsors, setSponsors] = useState<Sponsor[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     loadSponsors();
@@ -50,6 +52,23 @@ export const SponsorTab: React.FC<SponsorTabProps> = ({
       setSponsors([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      const response = await api.sponsors.list(idEdicionCategoria);
+      if (response.success && response.data?.sponsors) {
+        setSponsors(response.data.sponsors);
+      } else {
+        setSponsors([]);
+      }
+    } catch (error) {
+      // console.error('Error recargando sponsors:', error);
+      setSponsors([]);
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -92,7 +111,19 @@ export const SponsorTab: React.FC<SponsorTabProps> = ({
   if (!sponsors || !Array.isArray(sponsors) || sponsors.length === 0) {
     return (
       <View style={styles.container}>
-        <View style={styles.emptyContainer}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.emptyContainer}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[colors.primary]}
+              tintColor={colors.primary}
+            />
+          }
+        >
           <MaterialCommunityIcons name="handshake-outline" size={64} color={colors.textSecondary} />
           <Text style={styles.emptyText}>No hay sponsors registrados</Text>
           {isAdmin && (
@@ -101,7 +132,7 @@ export const SponsorTab: React.FC<SponsorTabProps> = ({
               <Text style={styles.addButtonText}>Agregar Sponsor</Text>
             </TouchableOpacity>
           )}
-        </View>
+        </ScrollView>
       </View>
     );
   }
@@ -112,6 +143,14 @@ export const SponsorTab: React.FC<SponsorTabProps> = ({
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[colors.primary]}
+            tintColor={colors.primary}
+          />
+        }
       >
         {/* Header con botón agregar */}
         {isAdmin && (

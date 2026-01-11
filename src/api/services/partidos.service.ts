@@ -11,6 +11,7 @@ import {
   PartidosPorJornadaResponse,
   CreatePartidoFromFixtureRequest,
   CreatePartidoEliminatoriaRequest,
+  ListKnockoutResponse,
 } from '../types/partidos.types';
 
 /**
@@ -154,6 +155,16 @@ export const partidosService = {
   obtenerInstancias: async (id_edicion_categoria: number, copa: string) => {
     const response = await apiClient.get('/partidos', {
       params: { id_edicion_categoria, copa, action: 'instancias' }
+    });
+    return response.data;
+  },
+
+  /**
+   * Listar partidos de knockout agrupados por etapa
+   */
+  listKnockout: async (id_edicion_categoria: number, copa: string): Promise<ListKnockoutResponse> => {
+    const response = await apiClient.get('/partidos', {
+      params: { id_edicion_categoria, copa, action: 'list-knockout' }
     });
     return response.data;
   },

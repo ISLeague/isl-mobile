@@ -32,19 +32,28 @@ export const DatePickerInput: React.FC<DatePickerInputProps> = ({
   maximumDate,
 }) => {
   const [showPicker, setShowPicker] = useState(false);
-  const [tempDate, setTempDate] = useState<Date | null>(null);
+  const [internalDate, setInternalDate] = useState<Date>(new Date());
 
   // Parse date from string (YYYY-MM-DD) or use today
   const parseDate = (dateString: string): Date => {
     if (!dateString) return new Date();
-    const parts = dateString.split('-');
-    if (parts.length === 3) {
-      return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+    try {
+      const parts = dateString.split('-');
+      if (parts.length === 3) {
+        // Usar constructor local seguro
+        const year = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1;
+        const day = parseInt(parts[2], 10);
+        const date = new Date(year, month, day);
+        if (!isNaN(date.getTime())) return date;
+      }
+    } catch (e) {
+      // Fallback
     }
     return new Date();
   };
 
-  // Format date to YYYY-MM-DD
+  // Format date to YYYY-MM-DD (Safe local format)
   const formatDate = (date: Date): string => {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -55,15 +64,17 @@ export const DatePickerInput: React.FC<DatePickerInputProps> = ({
   // Format date for display (DD/MM/YYYY)
   const formatDisplayDate = (dateString: string): string => {
     if (!dateString) return '';
-    const parts = dateString.split('-');
-    if (parts.length === 3) {
-      return `${parts[2]}/${parts[1]}/${parts[0]}`;
-    }
+    try {
+      const parts = dateString.split('-');
+      if (parts.length === 3) {
+        const d = parts[2].split('T')[0]; // Safe guard for potential ISO leftovers
+        return `${d}/${parts[1]}/${parts[0]}`;
+      }
+    } catch (e) { }
     return dateString;
   };
 
   const handleDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
-    // En Android el picker se cierra automáticamente
     if (Platform.OS === 'android') {
       setShowPicker(false);
       if (event.type === 'set' && selectedDate) {
@@ -71,29 +82,25 @@ export const DatePickerInput: React.FC<DatePickerInputProps> = ({
         onChangeDate(formattedDate);
       }
     } else {
-      // En iOS guardamos temporalmente la fecha
+      // iOS
       if (selectedDate) {
-        setTempDate(selectedDate);
+        setInternalDate(selectedDate);
       }
     }
   };
 
   const handleConfirm = () => {
-    if (tempDate) {
-      const formattedDate = formatDate(tempDate);
-      onChangeDate(formattedDate);
-    }
+    const formattedDate = formatDate(internalDate);
+    onChangeDate(formattedDate);
     setShowPicker(false);
-    setTempDate(null);
   };
 
   const handleCancel = () => {
     setShowPicker(false);
-    setTempDate(null);
   };
 
   const handleOpen = () => {
-    setTempDate(parseDate(value));
+    setInternalDate(parseDate(value));
     setShowPicker(true);
   };
 
@@ -115,19 +122,19 @@ export const DatePickerInput: React.FC<DatePickerInputProps> = ({
 
       {error && <Text style={styles.errorText}>{error}</Text>}
 
-      {/* Android: Picker directo */}
+      {/* Android: Picker */}
       {Platform.OS === 'android' && showPicker && (
         <DateTimePicker
-          value={parseDate(value)}
+          value={internalDate}
           mode="date"
-          display="default"
+          display="calendar"
           onChange={handleDateChange}
           minimumDate={minimumDate}
           maximumDate={maximumDate}
         />
       )}
 
-      {/* iOS: Modal con picker */}
+      {/* iOS: Picker */}
       {Platform.OS === 'ios' && (
         <Modal
           visible={showPicker}
@@ -140,13 +147,13 @@ export const DatePickerInput: React.FC<DatePickerInputProps> = ({
                 <TouchableOpacity onPress={handleCancel}>
                   <Text style={styles.modalButtonCancel}>Cancelar</Text>
                 </TouchableOpacity>
-                <Text style={styles.modalTitle}>Seleccionar Fecha</Text>
+                <Text style={styles.modalTitle}>Fecha</Text>
                 <TouchableOpacity onPress={handleConfirm}>
                   <Text style={styles.modalButtonConfirm}>Confirmar</Text>
                 </TouchableOpacity>
               </View>
               <DateTimePicker
-                value={tempDate || parseDate(value)}
+                value={internalDate}
                 mode="date"
                 display="spinner"
                 onChange={handleDateChange}

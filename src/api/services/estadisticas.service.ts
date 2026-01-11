@@ -7,6 +7,8 @@ import {
   TarjetasResponse,
   MVPResponse,
   DetalleJugadorResponse,
+  DetalleEquipoResponse,
+  GlobalStatsResponse,
 } from '../types/estadisticas.types';
 
 /**
@@ -94,6 +96,35 @@ export const estadisticasService = {
         id_jugador: idJugador,
         id_edicion_categoria: idEdicionCategoria,
         action: 'detalle-jugador'
+      },
+    });
+    return response.data;
+  },
+
+  /**
+   * Obtener estadísticas completas de un equipo
+   */
+  detalleEquipo: async (idEquipo: number, idEdicionCategoria: number, limit: number = 50): Promise<DetalleEquipoResponse> => {
+    const response = await apiClient.get('/estadisticas', {
+      params: {
+        id_equipo: idEquipo,
+        id_edicion_categoria: idEdicionCategoria,
+        limit,
+        action: 'equipo'
+      },
+    });
+    return response.data;
+  },
+
+  /**
+   * Obtener estadísticas globales de una edición categoría (Big Leagues Style)
+   */
+  global: async (idEdicionCategoria: number, limit: number = 5): Promise<GlobalStatsResponse> => {
+    const response = await apiClient.get('/estadisticas', {
+      params: {
+        id_edicion_categoria: idEdicionCategoria,
+        limit,
+        action: 'global'
       },
     });
     return response.data;

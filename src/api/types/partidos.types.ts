@@ -75,6 +75,7 @@ export interface Partido {
   id_ronda?: number;
   id_fase?: number;
   id_cancha?: number;
+  id_eliminatoria?: number;
   tipo_partido?: 'clasificacion' | 'eliminatoria' | 'amistoso';
   afecta_clasificacion?: boolean;
   fecha_hora?: string;
@@ -114,6 +115,11 @@ export interface Partido {
     id_ronda: number;
     nombre: string;
     tipo: 'fase_grupos' | 'amistosa' | 'eliminatorias';
+  };
+  eliminatoria?: {
+    id_eliminatoria: number;
+    ronda: string;
+    numero_llave: number;
   };
   // Legacy support
   goles_local?: number;
@@ -240,6 +246,24 @@ export interface PartidosPorJornadaResponse {
     jornadas: JornadaConPartidos[];
     total_jornadas: number;
     total_partidos: number;
+  };
+  timestamp: string;
+}
+
+// ============================================
+// 🏆 KNOCKOUT LIST
+// ============================================
+
+export interface ListKnockoutResponse {
+  success: boolean;
+  data: {
+    total: number;
+    partidos_por_etapa: {
+      octavos: Partido[];
+      cuartos: Partido[];
+      semifinal: Partido[];
+      final: Partido[];
+    };
   };
   timestamp: string;
 }

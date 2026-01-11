@@ -24,6 +24,7 @@ import { TheBestEmbed } from './components/TheBestEmbed';
 import { MyTeamEmbed } from './components/MyTeamEmbed';
 import { FixtureEmbedImproved } from './components/FixtureEmbedImproved';
 import KnockoutEmbed from './components/KnockoutEmbed';
+import { LeagueStatsEmbed } from './components/LeagueStatsEmbed';
 import { useAuth } from '../../contexts/AuthContext';
 import { SponsorSlider } from '../../components/common';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -65,6 +66,7 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
       { id: 'grupos', label: 'Grupos' },
       { id: 'fixture', label: 'Fixture' },
       { id: 'knockout', label: 'Knockout' },
+      { id: 'stats', label: 'Stats Liga' },
       { id: 'local', label: 'Local' },
       { id: 'sponsors', label: 'Sponsors' },
     ]
@@ -72,6 +74,7 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
       // Fans e invitados ven todo (invitados verán mensajes al intentar acceder)
       { id: 'miequipo', label: 'Mi Equipo' },
       { id: 'grupos', label: 'Grupos' },
+      { id: 'stats', label: 'Stats Liga' },
       { id: 'fixture', label: 'Fixture' },
       { id: 'knockout', label: 'Knockout' },
       { id: 'thebest', label: 'The Best' },
@@ -394,6 +397,12 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
                   />
                 </View>
               );
+            } else if (tab.id === 'stats') {
+              return (
+                <View key={tab.id} style={styles.pageWrapper}>
+                  <LeagueStatsEmbed navigation={navigation} idEdicionCategoria={idEdicionCategoria} />
+                </View>
+              );
             } else if (tab.id === 'local') {
               return (
                 <View key={tab.id} style={styles.pageWrapper}>
@@ -421,7 +430,7 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
                 <View key={tab.id} style={styles.pageWrapper}>
                   <SponsorTab
                     idEdicionCategoria={idEdicionCategoria || 1}
-                    onCreateSponsor={() => navigation.navigate('CreateSponsor')}
+                    onCreateSponsor={() => navigation.navigate('CreateSponsor', { idEdicionCategoria: idEdicionCategoria || 1 })}
                     onEditSponsor={(sponsor) => navigation.navigate('EditSponsor  ', { sponsor })}
                   />
                 </View>
@@ -465,6 +474,12 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
                     isSuperAdmin={false}
                     idEdicionCategoria={idEdicionCategoria}
                   />
+                </View>
+              );
+            } else if (tab.id === 'stats') {
+              return (
+                <View key={tab.id} style={styles.pageWrapper}>
+                  <LeagueStatsEmbed navigation={navigation} idEdicionCategoria={idEdicionCategoria} />
                 </View>
               );
             } else if (tab.id === 'thebest') {

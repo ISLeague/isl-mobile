@@ -47,7 +47,7 @@ export const ImagePickerInput: React.FC<ImagePickerInputProps> = ({
   onJugadoresChanged,
   initialJugadores = [],
 }) => {
-  const [imageSource, setImageSource] = React.useState<'url' | 'device'>('url');
+  const [inputType, setInputType] = React.useState<'device' | 'url'>('url');
   const [jugadores, setJugadores] = React.useState<Jugador[]>(initialJugadores);
   const [showAddPlayerModal, setShowAddPlayerModal] = React.useState(false);
   const [newPlayer, setNewPlayer] = React.useState<Jugador>({
@@ -61,9 +61,9 @@ export const ImagePickerInput: React.FC<ImagePickerInputProps> = ({
   React.useEffect(() => {
     if (value) {
       if (value.startsWith('http://') || value.startsWith('https://')) {
-        setImageSource('url');
+        setInputType('url');
       } else if (value.startsWith('file://') || value.startsWith('content://')) {
-        setImageSource('device');
+        setInputType('device');
       }
     }
   }, [value]);
@@ -72,7 +72,7 @@ export const ImagePickerInput: React.FC<ImagePickerInputProps> = ({
     try {
       // Solicitar permisos
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      
+
       if (permissionResult.status !== 'granted') {
         Alert.alert(
           'Permisos requeridos',
@@ -91,7 +91,7 @@ export const ImagePickerInput: React.FC<ImagePickerInputProps> = ({
 
       if (!result.canceled && result.assets[0]) {
         const imageUri = result.assets[0].uri;
-        setImageSource('device');
+        setInputType('device');
         onChangeImage(imageUri);
       }
     } catch (error) {
@@ -104,7 +104,7 @@ export const ImagePickerInput: React.FC<ImagePickerInputProps> = ({
     try {
       // Solicitar permisos de cámara
       const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
-      
+
       if (permissionResult.status !== 'granted') {
         Alert.alert(
           'Permisos requeridos',
@@ -122,7 +122,7 @@ export const ImagePickerInput: React.FC<ImagePickerInputProps> = ({
 
       if (!result.canceled && result.assets[0]) {
         const imageUri = result.assets[0].uri;
-        setImageSource('device');
+        setInputType('device');
         onChangeImage(imageUri);
       }
     } catch (error) {
@@ -131,50 +131,6 @@ export const ImagePickerInput: React.FC<ImagePickerInputProps> = ({
     }
   };
 
-  const showImageSourceOptions = () => {
-    Alert.alert(
-      'Seleccionar Imagen',
-      'Elige cómo quieres agregar la imagen:',
-      [
-        {
-          text: 'Galería',
-          onPress: pickImageFromGallery,
-        },
-        {
-          text: 'Cámara',
-          onPress: takePhoto,
-        },
-        {
-          text: 'URL',
-          onPress: () => {
-            Alert.prompt(
-              'Ingresar URL',
-              'Ingresa la URL completa de la imagen:',
-              [
-                { text: 'Cancelar', style: 'cancel' },
-                {
-                  text: 'Aceptar',
-                  onPress: (url?: string) => {
-                    if (url && url.trim()) {
-                      setImageSource('url');
-                      onChangeUrl(url.trim());
-                    }
-                  },
-                },
-              ],
-              'plain-text',
-              value.startsWith('http') ? value : ''
-            );
-          },
-        },
-        {
-          text: 'Cancelar',
-          style: 'cancel',
-        },
-      ],
-      { cancelable: true }
-    );
-  };
 
   const isValidUrl = (str: string) => {
     return str.startsWith('http://') || str.startsWith('https://');
@@ -244,7 +200,7 @@ export const ImagePickerInput: React.FC<ImagePickerInputProps> = ({
                       try {
                         const lines = csvData.split('\n');
                         const importedPlayers: Jugador[] = [];
-                        
+
                         lines.forEach(line => {
                           const [nombre, dni, numero, fecha] = line.split(',').map(s => s.trim());
                           if (nombre && dni && numero) {
@@ -256,7 +212,7 @@ export const ImagePickerInput: React.FC<ImagePickerInputProps> = ({
                             });
                           }
                         });
-                        
+
                         const updatedJugadores = [...jugadores, ...importedPlayers];
                         setJugadores(updatedJugadores);
                         if (onJugadoresChanged) {
@@ -296,7 +252,6 @@ export const ImagePickerInput: React.FC<ImagePickerInputProps> = ({
             style={styles.removeButton}
             onPress={() => {
               onChangeUrl('');
-              setImageSource('url');
             }}
             activeOpacity={0.7}
           >
@@ -305,33 +260,67 @@ export const ImagePickerInput: React.FC<ImagePickerInputProps> = ({
         </View>
       )}
 
-      {/* Botón para seleccionar imagen */}
-      <TouchableOpacity
-        style={styles.selectButton}
-        onPress={showImageSourceOptions}
-        activeOpacity={0.7}
-      >
-        <MaterialCommunityIcons 
-          name={value ? "image-edit" : "image-plus"} 
-          size={24} 
-          color={colors.primary} 
-        />
-        <Text style={styles.selectButtonText}>
-          {value ? 'Cambiar Imagen' : 'Seleccionar Imagen'}
-        </Text>
-      </TouchableOpacity>
-
-      {/* Indicador de fuente */}
-      {value && (
-        <View style={styles.sourceIndicator}>
+      {/* Selector de tipo de entrada */}
+      <View style={styles.tabContainer}>
+        <TouchableOpacity
+          style={[styles.tab, inputType === 'device' && styles.activeTab]}
+          onPress={() => setInputType('device')}
+        >
           <MaterialCommunityIcons
-            name={imageSource === 'url' ? 'web' : 'cellphone'}
-            size={14}
-            color={colors.textLight}
+            name="upload"
+            size={20}
+            color={inputType === 'device' ? colors.white : colors.primary}
           />
-          <Text style={styles.sourceText}>
-            {imageSource === 'url' ? 'Desde URL' : 'Desde dispositivo'}
+          <Text style={[styles.tabText, inputType === 'device' && styles.activeTabText]}>
+            Subir Imagen
           </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, inputType === 'url' && styles.activeTab]}
+          onPress={() => setInputType('url')}
+        >
+          <MaterialCommunityIcons
+            name="link-variant"
+            size={20}
+            color={inputType === 'url' ? colors.white : colors.primary}
+          />
+          <Text style={[styles.tabText, inputType === 'url' && styles.activeTabText]}>
+            Ingresar URL
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Inputs según el tipo seleccionado */}
+      {inputType === 'device' ? (
+        <View style={styles.uploadContainer}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={pickImageFromGallery}
+            activeOpacity={0.7}
+          >
+            <MaterialCommunityIcons name="image-multiple" size={24} color={colors.primary} />
+            <Text style={styles.actionButtonText}>Galería</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={takePhoto}
+            activeOpacity={0.7}
+          >
+            <MaterialCommunityIcons name="camera" size={24} color={colors.primary} />
+            <Text style={styles.actionButtonText}>Cámara</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <View style={styles.urlInputContainer}>
+          <TextInput
+            style={styles.urlInput}
+            placeholder={placeholder}
+            value={isLocalUri(value) ? '' : value}
+            onChangeText={onChangeUrl}
+            placeholderTextColor={colors.textLight}
+            autoCapitalize="none"
+            keyboardType="url"
+          />
         </View>
       )}
 
@@ -525,6 +514,68 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.textLight,
     marginTop: 6,
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    marginBottom: 12,
+    gap: 12,
+  },
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    backgroundColor: colors.white,
+    gap: 8,
+  },
+  activeTab: {
+    backgroundColor: colors.primary,
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  activeTabText: {
+    color: colors.white,
+  },
+  uploadContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 8,
+    backgroundColor: colors.backgroundGray,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: 8,
+  },
+  actionButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  urlInputContainer: {
+    width: '100%',
+  },
+  urlInput: {
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 14,
+    color: colors.textPrimary,
   },
   playersSection: {
     marginTop: 20,

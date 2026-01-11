@@ -40,6 +40,7 @@ export const sponsorsService = {
      * Crear un nuevo sponsor
      */
     create: async (data: CreateSponsorRequest): Promise<SponsorResponse> => {
+        console.log("data que entraaa ", data)
         const response = await apiClient.post('/sponsors', data, {
             params: { action: 'create' }
         });

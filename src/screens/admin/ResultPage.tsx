@@ -64,6 +64,7 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
 
   const [eventosLocal, setEventosLocal] = useState<PlayerEvent[]>([]);
   const [eventosVisitante, setEventosVisitante] = useState<PlayerEvent[]>([]);
+  const [idEliminatoria, setIdEliminatoria] = useState<number | null>(null);
 
   // Load teams and players data
   const loadData = useCallback(async () => {
@@ -77,6 +78,11 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
 
       if (resultadoResponse.success && resultadoResponse.data) {
         const data = resultadoResponse.data;
+
+        // Set id_eliminatoria from partido
+        if (data.partido?.id_eliminatoria) {
+          setIdEliminatoria(data.partido.id_eliminatoria);
+        }
 
         // Set teams from nested objects
         if (data.equipo_local) {
@@ -303,6 +309,40 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
       });
 
       if (response.success) {
+        // Si el partido tiene id_eliminatoria, actualizar el ganador de la eliminatoria
+        if (idEliminatoria) {
+          try {
+            // Determinar el ganador del partido
+            let idGanador: number | null = null;
+
+            if (walkoverEnabled && walkoverWinner) {
+              // Si es walkover, el ganador es el seleccionado
+              idGanador = walkoverWinner === 'local' ? equipoLocalId : equipoVisitanteId;
+            } else if (penalesEnabled) {
+              // Si fue a penales, el ganador se determina por penales
+              idGanador = penalesLocal > penalesVisitante ? equipoLocalId : equipoVisitanteId;
+            } else {
+              // Si no fue a penales ni walkover, el ganador se determina por goles
+              if (finalGolesLocal > finalGolesVisitante) {
+                idGanador = equipoLocalId;
+              } else if (finalGolesVisitante > finalGolesLocal) {
+                idGanador = equipoVisitanteId;
+              }
+            }
+
+            // Solo actualizar si hay un ganador definido
+            if (idGanador) {
+              await api.eliminatorias.actualizarGanador(idEliminatoria, {
+                id_equipo_ganador: idGanador,
+                estado: 'finalizado'
+              });
+            }
+          } catch (eliminatoriaError) {
+            // console.error('Error actualizando ganador de eliminatoria:', eliminatoriaError);
+            // No mostramos error al usuario, solo registramos en consola
+          }
+        }
+
         showSuccess('Resultado guardado exitosamente');
         setTimeout(() => {
           navigation.goBack();

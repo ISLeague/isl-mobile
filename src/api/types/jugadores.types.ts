@@ -25,6 +25,11 @@ export interface EstadisticasHistoricas {
   es_goleador: boolean;
   es_mejor_jugador: boolean;
   posicion_final_equipo: number | null;
+  id_historial_jugador?: number;
+  id_plantilla?: number;
+  id_edicion_categoria?: number;
+  id_equipo?: number;
+  created_at?: string;
 }
 
 export interface Jugador {
@@ -75,10 +80,11 @@ export interface JugadoresListResponse {
 
 export interface JugadorDetalleData {
   id_plantilla: number;
+  id_equipo?: number;
   nombre_completo: string;
   dni: string;
   fecha_nacimiento: string;
-  edad: number;
+  edad?: number;
   numero_camiseta: number;
   pie_dominante: string;
   foto: string | null;

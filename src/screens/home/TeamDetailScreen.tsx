@@ -23,7 +23,8 @@ import { useToast } from '../../contexts/ToastContext';
 import { safeAsync } from '../../utils/errorHandling';
 import { calculateAge } from '../../utils';
 import api from '../../api';
-import type { Equipo, EstadisticasDetalleEquipo, ImagenEquipo } from '../../api/types/equipos.types';
+import type { Equipo, ImagenEquipo } from '../../api/types/equipos.types';
+import type { EstadisticasDetalleEquipo, JugadorEstadisticas } from '../../api/types/estadisticas.types';
 import { getLogoUri } from '../../utils/imageUtils';
 import type { Jugador } from '../../api/types/jugadores.types';
 import type { Grupo } from '../../api/types/grupos.types';
@@ -81,6 +82,7 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
   // Estado del equipo y datos relacionados - se cargan desde la API
   const [equipo, setEquipo] = useState<Equipo>();
   const [jugadores, setJugadores] = useState<Jugador[]>([]);
+  const [jugadoresConStats, setJugadoresConStats] = useState<JugadorEstadisticas[]>([]);
   const [estadisticasEquipo, setEstadisticasEquipo] = useState<EstadisticasDetalleEquipo | null>(null);
   const [grupoEquipo, setGrupoEquipo] = useState<Grupo | null>(null);
   const [imagenesEquipo, setImagenesEquipo] = useState<ImagenEquipo[]>([]);
@@ -94,8 +96,11 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
 
         // Load team data
         const equipoResponse = await api.equipos.getById(equipoId);
+        let currentIdEdicionCategoria = 0;
+
         if (equipoResponse.data) {
           setEquipo(equipoResponse.data);
+          currentIdEdicionCategoria = equipoResponse.data.id_edicion_categoria;
         }
 
         // Load players by team ID
@@ -104,21 +109,29 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
           setJugadores(jugadoresResponse.data.jugadores);
         }
 
-        // TODO: Load team statistics from API
-        // For now, set default values
-        setEstadisticasEquipo({
-          partidos_jugados: 0,
-          partidos_ganados: 0,
-          partidos_empatados: 0,
-          partidos_perdidos: 0,
-          goles_favor: 0,
-          goles_contra: 0,
-          diferencia_goles: 0,
-          puntos: 0,
-          posicion: 0,
-          tarjetas_amarillas: 0,
-          tarjetas_rojas: 0,
-        });
+        // Load detailed team statistics if we have the id_edicion_categoria
+        if (currentIdEdicionCategoria > 0) {
+          const statsResponse = await api.estadisticas.detalleEquipo(equipoId, currentIdEdicionCategoria, 50);
+          if (statsResponse.success && statsResponse.data) {
+            setEstadisticasEquipo(statsResponse.data.estadisticas_equipo);
+            setJugadoresConStats(statsResponse.data.jugadores);
+          }
+        } else {
+          // Set default values if stats cannot be loaded
+          setEstadisticasEquipo({
+            partidos_jugados: 0,
+            partidos_ganados: 0,
+            partidos_empatados: 0,
+            partidos_perdidos: 0,
+            goles_favor: 0,
+            goles_contra: 0,
+            diferencia_goles: 0,
+            puntos: 0,
+            posicion: 0,
+            tarjetas_amarillas: 0,
+            tarjetas_rojas: 0,
+          });
+        }
 
         // TODO: Load group information from API
         // For now, set to null
@@ -634,6 +647,45 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
                   DNI: {jugador.dni}
                 </Text>
               )}
+
+              {/* Estadísticas del jugador si están disponibles */}
+              {(() => {
+                const playerStats = jugadoresConStats.find(j => j.nombre === jugador.nombre_completo || j.numero_camiseta === jugador.numero_camiseta);
+                if (playerStats && playerStats.estadisticas) {
+                  const { goles, asistencias, tarjetas_amarillas, tarjetas_rojas } = playerStats.estadisticas;
+                  if (goles > 0 || asistencias > 0 || tarjetas_amarillas > 0 || tarjetas_rojas > 0) {
+                    return (
+                      <View style={styles.playerStatsRow}>
+                        {goles > 0 && (
+                          <View style={styles.miniStat}>
+                            <MaterialCommunityIcons name="soccer" size={12} color={colors.textSecondary} />
+                            <Text style={styles.miniStatText}>{goles}</Text>
+                          </View>
+                        )}
+                        {asistencias > 0 && (
+                          <View style={styles.miniStat}>
+                            <MaterialCommunityIcons name="handball" size={12} color={colors.textSecondary} />
+                            <Text style={styles.miniStatText}>{asistencias}</Text>
+                          </View>
+                        )}
+                        {tarjetas_amarillas > 0 && (
+                          <View style={styles.miniStat}>
+                            <MaterialCommunityIcons name="card" size={12} color="#FFD700" />
+                            <Text style={styles.miniStatText}>{tarjetas_amarillas}</Text>
+                          </View>
+                        )}
+                        {tarjetas_rojas > 0 && (
+                          <View style={styles.miniStat}>
+                            <MaterialCommunityIcons name="card" size={12} color={colors.error} />
+                            <Text style={styles.miniStatText}>{tarjetas_rojas}</Text>
+                          </View>
+                        )}
+                      </View>
+                    );
+                  }
+                }
+                return null;
+              })()}
             </View>
             {isAdmin && (
               <View style={styles.playerActions}>
@@ -2053,5 +2105,25 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     flex: 1,
     lineHeight: 20,
+  },
+  playerStatsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 4,
+  },
+  miniStat: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.backgroundGray,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    gap: 4,
+  },
+  miniStatText: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: colors.textSecondary,
   },
 });

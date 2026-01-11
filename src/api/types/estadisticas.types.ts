@@ -141,3 +141,115 @@ export interface DetalleJugadorResponse {
   data: DetalleJugador;
   timestamp: string;
 }
+
+// Estadísticas de equipo detalladas
+export interface JugadorEstadisticas {
+  id_plantilla: number;
+  nombre: string;
+  numero_camiseta: number | null;
+  foto: string | null;
+  pie_dominante: string;
+  es_refuerzo: boolean;
+  es_capitan: boolean;
+  estadisticas: {
+    goles: number;
+    asistencias: number;
+    mvps: number;
+    tarjetas_amarillas: number;
+    tarjetas_rojas: number;
+    partidos_jugados: number;
+    autogoles: number;
+    penales_convertidos: number;
+    penales_fallados: number;
+    es_goleador: boolean;
+    es_mejor_jugador: boolean;
+  };
+}
+
+export interface EstadisticasDetalleEquipo {
+  partidos_jugados: number;
+  partidos_ganados: number;
+  partidos_empatados: number;
+  partidos_perdidos: number;
+  goles_favor?: number;
+  goles_contra?: number;
+  diferencia_goles?: number;
+  puntos?: number;
+  posicion?: number;
+  tarjetas_amarillas?: number;
+  tarjetas_rojas?: number;
+}
+
+export interface DetalleEquipo {
+  equipo: {
+    id_equipo: number;
+    nombre: string;
+    nombre_corto: string;
+    logo: string;
+    edicion_categoria: {
+      id_edicion_categoria: number;
+      edicion: {
+        id_edicion: number;
+        nombre: string;
+        numero: number;
+      };
+      categoria: {
+        id_categoria: number;
+        nombre: string;
+      };
+    };
+  };
+  estadisticas_equipo: EstadisticasDetalleEquipo;
+  ultimos_5_partidos: string[];
+  jugadores: JugadorEstadisticas[];
+}
+
+export interface DetalleEquipoResponse {
+  success: boolean;
+  data: DetalleEquipo;
+  timestamp: string;
+}
+export interface GlobalStatsPlayer {
+  posicion: number;
+  id_plantilla: number;
+  nombre: string;
+  numero_camiseta: number | null;
+  foto: string | null;
+  equipo: {
+    id_equipo: number;
+    nombre: string;
+    logo: string;
+  };
+  estadisticas: {
+    goles: number;
+    asistencias: number;
+    mvps: number;
+    tarjetas_amarillas: number;
+    tarjetas_rojas: number;
+    partidos_jugados: number;
+  };
+}
+
+export interface GlobalStatsResponse {
+  success: boolean;
+  data: {
+    edicion_categoria: {
+      id_edicion_categoria: number;
+      edicion: {
+        id_edicion: number;
+        nombre: string;
+        numero: number;
+      };
+      categoria: {
+        id_categoria: number;
+        nombre: string;
+      };
+    };
+    goleadores: GlobalStatsPlayer[];
+    asistidores: GlobalStatsPlayer[];
+    mvps: GlobalStatsPlayer[];
+    tarjetas_rojas: GlobalStatsPlayer[];
+    tarjetas_amarillas: GlobalStatsPlayer[];
+  };
+  timestamp: string;
+}

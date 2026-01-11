@@ -11,8 +11,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
-import { Button, ImagePickerInput } from '../../components/common';
+import { Button, ImagePickerInput, DatePickerInput } from '../../components/common';
+import { TipoSponsor } from '../../api/types/sponsors.types';
 import api from '../../api';
+import { CreateSponsorRequest } from '../../api/types/sponsors.types';
 
 interface CreateSponsorScreenProps {
   navigation: any;
@@ -25,6 +27,11 @@ export const CreateSponsorScreen: React.FC<CreateSponsorScreenProps> = ({ naviga
   const [nombre, setNombre] = useState('');
   const [logo, setLogo] = useState('');
   const [link, setLink] = useState('');
+  const [tipo, setTipo] = useState<TipoSponsor>('oficial');
+  const [descripcion, setDescripcion] = useState('');
+  const [orden, setOrden] = useState('1');
+  const [fechaInicio, setFechaInicio] = useState('');
+  const [fechaFin, setFechaFin] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleCreate = async () => {
@@ -39,11 +46,21 @@ export const CreateSponsorScreen: React.FC<CreateSponsorScreenProps> = ({ naviga
       return;
     }
 
-    const sponsorData = {
+    if (!idEdicionCategoria) {
+      Alert.alert('Error', 'ID de edición categoría es requerido');
+      return;
+    }
+
+    const sponsorData: CreateSponsorRequest = {
       nombre,
       logo,
-      link: link || undefined,
+      link: link || '',
+      tipo,
+      descripcion: descripcion || undefined,
       id_edicion_categoria: idEdicionCategoria,
+      orden: parseInt(orden) || 1,
+      fecha_inicio: fechaInicio || undefined,
+      fecha_fin: fechaFin || undefined,
     };
 
     setLoading(true);
@@ -100,9 +117,9 @@ export const CreateSponsorScreen: React.FC<CreateSponsorScreenProps> = ({ naviga
             helpText="Selecciona una imagen de tu dispositivo o ingresa una URL"
           />
 
-          {/* Link del Sponsor (Opcional) */}
+          {/* Link del Sponsor */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Sitio Web (Opcional)</Text>
+            <Text style={styles.label}>Sitio Web</Text>
             <TextInput
               style={styles.input}
               placeholder="https://ejemplo.com"
@@ -112,9 +129,78 @@ export const CreateSponsorScreen: React.FC<CreateSponsorScreenProps> = ({ naviga
               keyboardType="url"
               autoCapitalize="none"
             />
+          </View>
+
+          {/* Tipo de Sponsor */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Tipo de Sponsor *</Text>
+            <View style={styles.tipoContainer}>
+              {(['principal', 'oficial', 'colaborador'] as TipoSponsor[]).map((t) => (
+                <TouchableOpacity
+                  key={t}
+                  style={[
+                    styles.tipoButton,
+                    tipo === t && styles.tipoButtonSelected
+                  ]}
+                  onPress={() => setTipo(t)}
+                >
+                  <Text style={[
+                    styles.tipoButtonText,
+                    tipo === t && styles.tipoButtonTextSelected
+                  ]}>
+                    {t.charAt(0).toUpperCase() + t.slice(1)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Descripción */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Descripción (Opcional)</Text>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              placeholder="Breve descripción del sponsor..."
+              value={descripcion}
+              onChangeText={setDescripcion}
+              placeholderTextColor={colors.textLight}
+              multiline
+              numberOfLines={3}
+            />
+          </View>
+
+          {/* Orden */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Orden de Visualización</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="1"
+              value={orden}
+              onChangeText={setOrden}
+              placeholderTextColor={colors.textLight}
+              keyboardType="numeric"
+            />
             <Text style={styles.helpText}>
-              Sitio web o landing page del sponsor
+              Número para ordenar los sponsors (menor número aparece primero)
             </Text>
+          </View>
+
+          {/* Fechas */}
+          <View style={styles.row}>
+            <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
+              <DatePickerInput
+                label="Fecha Inicio"
+                value={fechaInicio}
+                onChangeDate={setFechaInicio}
+              />
+            </View>
+            <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
+              <DatePickerInput
+                label="Fecha Fin"
+                value={fechaFin}
+                onChangeDate={setFechaFin}
+              />
+            </View>
           </View>
 
           {/* Vista previa del logo */}
@@ -221,5 +307,39 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     marginTop: 16,
+    marginBottom: 40,
+  },
+  tipoContainer: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  tipoButton: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.white,
+    alignItems: 'center',
+  },
+  tipoButtonSelected: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
+  },
+  tipoButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  tipoButtonTextSelected: {
+    color: colors.primary,
+  },
+  textArea: {
+    height: 100,
+    textAlignVertical: 'top',
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 });

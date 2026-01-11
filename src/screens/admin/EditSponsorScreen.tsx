@@ -11,9 +11,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
-import { Button, ImagePickerInput } from '../../components/common';
+import { Button, ImagePickerInput, DatePickerInput } from '../../components/common';
 import api from '../../api';
 import { useToast } from '../../contexts/ToastContext';
+import { TipoSponsor } from '../../api/types/sponsors.types';
 
 export const EditSponsorScreen = ({ navigation, route }: any) => {
   const { sponsor } = route.params;
@@ -22,6 +23,11 @@ export const EditSponsorScreen = ({ navigation, route }: any) => {
   const [nombre, setNombre] = useState(sponsor.nombre);
   const [logo, setLogo] = useState(sponsor.logo);
   const [link, setLink] = useState(sponsor.link || '');
+  const [tipo, setTipo] = useState<TipoSponsor>(sponsor.tipo || 'oficial');
+  const [descripcion, setDescripcion] = useState(sponsor.descripcion || '');
+  const [orden, setOrden] = useState(String(sponsor.orden || '1'));
+  const [fechaInicio, setFechaInicio] = useState(sponsor.fecha_inicio || '');
+  const [fechaFin, setFechaFin] = useState(sponsor.fecha_fin || '');
   const [loading, setLoading] = useState(false);
 
   const handleUpdate = () => {
@@ -45,11 +51,16 @@ export const EditSponsorScreen = ({ navigation, route }: any) => {
           onPress: async () => {
             setLoading(true);
             try {
-              await api.sponsors.update({
+              await api.sponsors.update(sponsor.id_sponsor, {
                 id_sponsor: sponsor.id_sponsor,
                 nombre,
                 logo,
-                link
+                link,
+                tipo,
+                descripcion,
+                orden: parseInt(orden) || 1,
+                fecha_inicio: fechaInicio || undefined,
+                fecha_fin: fechaFin || undefined
               });
               showSuccess('Sponsor actualizado exitosamente');
               navigation.goBack();
@@ -130,9 +141,9 @@ export const EditSponsorScreen = ({ navigation, route }: any) => {
             helpText="Selecciona una imagen de tu dispositivo o ingresa una URL"
           />
 
-          {/* Link del Sponsor (Opcional) */}
+          {/* Link del Sponsor */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Sitio Web (Opcional)</Text>
+            <Text style={styles.label}>Sitio Web</Text>
             <TextInput
               style={styles.input}
               placeholder="https://ejemplo.com"
@@ -142,9 +153,78 @@ export const EditSponsorScreen = ({ navigation, route }: any) => {
               keyboardType="url"
               autoCapitalize="none"
             />
+          </View>
+
+          {/* Tipo de Sponsor */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Tipo de Sponsor *</Text>
+            <View style={styles.tipoContainer}>
+              {(['principal', 'oficial', 'colaborador'] as TipoSponsor[]).map((t) => (
+                <TouchableOpacity
+                  key={t}
+                  style={[
+                    styles.tipoButton,
+                    tipo === t && styles.tipoButtonSelected
+                  ]}
+                  onPress={() => setTipo(t)}
+                >
+                  <Text style={[
+                    styles.tipoButtonText,
+                    tipo === t && styles.tipoButtonTextSelected
+                  ]}>
+                    {t.charAt(0).toUpperCase() + t.slice(1)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Descripción */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Descripción</Text>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              placeholder="Breve descripción del sponsor..."
+              value={descripcion}
+              onChangeText={setDescripcion}
+              placeholderTextColor={colors.textLight}
+              multiline
+              numberOfLines={3}
+            />
+          </View>
+
+          {/* Orden */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Orden de Visualización</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="1"
+              value={orden}
+              onChangeText={setOrden}
+              placeholderTextColor={colors.textLight}
+              keyboardType="numeric"
+            />
             <Text style={styles.helpText}>
-              Sitio web o landing page del sponsor
+              Número para ordenar los sponsors (menor número aparece primero)
             </Text>
+          </View>
+
+          {/* Fechas */}
+          <View style={styles.row}>
+            <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
+              <DatePickerInput
+                label="Fecha Inicio"
+                value={fechaInicio}
+                onChangeDate={setFechaInicio}
+              />
+            </View>
+            <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
+              <DatePickerInput
+                label="Fecha Fin"
+                value={fechaFin}
+                onChangeDate={setFechaFin}
+              />
+            </View>
           </View>
 
           {/* Botones */}
@@ -257,6 +337,7 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 14,
     marginTop: 24,
+    marginBottom: 40,
     borderWidth: 1,
     borderColor: colors.error,
     borderRadius: 12,
@@ -266,5 +347,38 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: colors.error,
+  },
+  tipoContainer: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  tipoButton: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.white,
+    alignItems: 'center',
+  },
+  tipoButtonSelected: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
+  },
+  tipoButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  tipoButtonTextSelected: {
+    color: colors.primary,
+  },
+  textArea: {
+    height: 100,
+    textAlignVertical: 'top',
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 });
