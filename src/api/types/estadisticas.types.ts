@@ -171,13 +171,13 @@ export interface EstadisticasDetalleEquipo {
   partidos_ganados: number;
   partidos_empatados: number;
   partidos_perdidos: number;
-  goles_favor?: number;
-  goles_contra?: number;
+  goles_a_favor: number;
+  goles_en_contra: number;
+  tarjetas_amarillas: number;
+  tarjetas_rojas: number;
   diferencia_goles?: number;
   puntos?: number;
   posicion?: number;
-  tarjetas_amarillas?: number;
-  tarjetas_rojas?: number;
 }
 
 export interface DetalleEquipo {

@@ -84,6 +84,7 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
   const [jugadores, setJugadores] = useState<Jugador[]>([]);
   const [jugadoresConStats, setJugadoresConStats] = useState<JugadorEstadisticas[]>([]);
   const [estadisticasEquipo, setEstadisticasEquipo] = useState<EstadisticasDetalleEquipo | null>(null);
+  const [ultimos5Partidos, setUltimos5Partidos] = useState<string[]>([]);
   const [grupoEquipo, setGrupoEquipo] = useState<Grupo | null>(null);
   const [imagenesEquipo, setImagenesEquipo] = useState<ImagenEquipo[]>([]);
   const [loadingImages, setLoadingImages] = useState(false);
@@ -115,6 +116,7 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
           if (statsResponse.success && statsResponse.data) {
             setEstadisticasEquipo(statsResponse.data.estadisticas_equipo);
             setJugadoresConStats(statsResponse.data.jugadores);
+            setUltimos5Partidos(statsResponse.data.ultimos_5_partidos || []);
           }
         } else {
           // Set default values if stats cannot be loaded
@@ -123,11 +125,8 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
             partidos_ganados: 0,
             partidos_empatados: 0,
             partidos_perdidos: 0,
-            goles_favor: 0,
-            goles_contra: 0,
-            diferencia_goles: 0,
-            puntos: 0,
-            posicion: 0,
+            goles_a_favor: 0,
+            goles_en_contra: 0,
             tarjetas_amarillas: 0,
             tarjetas_rojas: 0,
           });
@@ -862,10 +861,32 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
                     </View>
                   </View>
 
-                  {/* TODO: Siguiente Partido - Requires API endpoint for upcoming matches */}
-                  {/* TODO: Partidos Recientes - Requires API endpoint for recent matches */}
-
-                  {/* Removed Grupo InfoCard - Team name comes from API */}
+                  {/* Últimos 5 Partidos */}
+                  {ultimos5Partidos.length > 0 && (
+                    <View style={styles.recentMatchesContainer}>
+                      <Text style={styles.sectionTitle}>Últimos Partidos</Text>
+                      <View style={styles.recentMatchesList}>
+                        {ultimos5Partidos.map((resultado, index) => (
+                          <View
+                            key={index}
+                            style={[
+                              styles.resultCircle,
+                              {
+                                backgroundColor:
+                                  resultado === 'G'
+                                    ? colors.success
+                                    : resultado === 'E'
+                                    ? colors.textLight
+                                    : colors.error,
+                              },
+                            ]}
+                          >
+                            <Text style={styles.resultCircleText}>{resultado}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  )}
 
                   {/* Estadísticas Detalladas */}
                   <Card style={styles.statsCard}>
@@ -873,11 +894,11 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
 
                     <View style={styles.statsRow}>
                       <View style={styles.statItem}>
-                        <Text style={[styles.statValue, { color: colors.success }]}>{estadisticasEquipo?.goles_favor ?? 0}</Text>
+                        <Text style={[styles.statValue, { color: colors.success }]}>{estadisticasEquipo?.goles_a_favor ?? 0}</Text>
                         <Text style={styles.statLabel}>Goles a Favor</Text>
                       </View>
                       <View style={styles.statItem}>
-                        <Text style={[styles.statValue, { color: colors.error }]}>{estadisticasEquipo?.goles_contra ?? 0}</Text>
+                        <Text style={[styles.statValue, { color: colors.error }]}>{estadisticasEquipo?.goles_en_contra ?? 0}</Text>
                         <Text style={styles.statLabel}>Goles en Contra</Text>
                       </View>
                     </View>
