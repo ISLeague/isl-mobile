@@ -217,7 +217,6 @@ export const PlayerDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             {renderStatItem('card', 'Amarillas', estadisticas_historicas.amarillas_totales || 0, colors.warning)}
             {renderStatItem('card-multiple', 'Dobles Am.', estadisticas_historicas.dobles_amarillas || 0, '#FF9800')}
             {renderStatItem('card', 'Rojas', estadisticas_historicas.rojas_totales || 0, colors.error)}
-            {renderStatItem('clock-outline', 'Minutos', estadisticas_historicas.minutos_jugados || 0, colors.info)}
           </View>
         </Card>
 
