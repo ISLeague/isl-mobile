@@ -613,7 +613,16 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
     return (
       <TouchableOpacity
         key={jugador.id_jugador}
-        onPress={() => navigation.navigate('PlayerDetail', { playerId: jugador.id_jugador })}
+        onPress={() => {
+          console.log('🔍 [TeamDetail] Navigating to PlayerDetail with jugador:', jugador);
+          console.log('🔍 [TeamDetail] jugador.id_jugador:', jugador.id_jugador);
+          console.log('🔍 [TeamDetail] jugador.id_plantilla:', (jugador as any).id_plantilla);
+
+          const playerId = jugador.id_jugador || (jugador as any).id_plantilla;
+          console.log('🔍 [TeamDetail] Final playerId to navigate:', playerId);
+
+          navigation.navigate('PlayerDetail', { playerId });
+        }}
         activeOpacity={0.7}
       >
         <Card style={styles.playerCard}>

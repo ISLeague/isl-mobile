@@ -24,22 +24,35 @@ type Props = NativeStackScreenProps<any, 'PlayerDetail'>;
 export const PlayerDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const { isAdmin, isSuperAdmin } = useAuth();
   const { showError } = useToast();
+
+  // Log all route params to debug
+  console.log('🔍 [PlayerDetail] route.params:', route.params);
+  console.log('🔍 [PlayerDetail] All keys in route.params:', route.params ? Object.keys(route.params) : 'No params');
+
   const { playerId } = route.params as { playerId: number };
+
+  console.log('🔍 [PlayerDetail] Extracted playerId:', playerId);
+  console.log('🔍 [PlayerDetail] playerId type:', typeof playerId);
 
   const [loading, setLoading] = useState(true);
   const [detalleData, setDetalleData] = useState<JugadorDetalleData | null>(null);
 
   useEffect(() => {
     const loadJugadorDetalle = async () => {
+      console.log('🔍 [PlayerDetail] About to call API with playerId:', playerId);
+
       const result = await safeAsync(
         async () => {
+          console.log('🔍 [PlayerDetail] Calling api.jugadores.detalle with id:', playerId);
           const response = await api.jugadores.detalle(playerId);
+          console.log('🔍 [PlayerDetail] API response:', response);
           return response;
         },
         'PlayerDetailScreen - loadJugadorDetalle',
         {
           fallbackValue: null,
           onError: (error) => {
+            console.error('❌ [PlayerDetail] Error loading player:', error);
             showError('No se pudo cargar la información del jugador', 'Error');
           }
         }
@@ -205,17 +218,6 @@ export const PlayerDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             {renderStatItem('card-multiple', 'Dobles Am.', estadisticas_historicas.dobles_amarillas || 0, '#FF9800')}
             {renderStatItem('card', 'Rojas', estadisticas_historicas.rojas_totales || 0, colors.error)}
             {renderStatItem('clock-outline', 'Minutos', estadisticas_historicas.minutos_jugados || 0, colors.info)}
-          </View>
-        </Card>
-
-        {/* Bloque 3: Efectividad y Otros */}
-        <Card style={styles.statsCard}>
-          <Text style={styles.sectionTitle}>Efectividad y Otros</Text>
-          <View style={styles.statsGrid}>
-            {renderStatItem('bullseye-arrow', 'Penales', estadisticas_historicas.penales_convertidos || 0, '#4CAF50')}
-            {renderStatItem('close-circle', 'P. Fallados', estadisticas_historicas.penales_fallados || 0, '#F44336')}
-            {renderStatItem('human-handsdown', 'Autogoles', estadisticas_historicas.autogoles || 0, '#9C27B0')}
-            {estadisticas_historicas.posicion_final_equipo && renderStatItem('podium', 'Posición', estadisticas_historicas.posicion_final_equipo, '#607D8B')}
           </View>
         </Card>
 

@@ -31,7 +31,7 @@ export const jugadoresService = {
    */
   detalle: async (id: number) => {
     const response = await apiClient.get('/jugadores', {
-      params: { id },
+      params: { id, action: 'detalle' },
     });
     return response.data;
   },
