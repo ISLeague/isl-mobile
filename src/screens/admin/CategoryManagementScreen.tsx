@@ -40,6 +40,8 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
   const tabRefs = useRef<{ [key: string]: View | null }>({});
   const { torneo, pais, categoria, edicionCategoria, edicion } = route.params;
 
+  // Usar la categoria del edicionCategoria si existe, sino usar la categoria directa
+  const initialCategoria = edicionCategoria?.categoria || categoria;
 
   const { isAdmin, isGuest, isSuperAdmin } = useAuth();
   const { setColorPreset, colorPreset, logo, gradient } = useTheme();
@@ -47,7 +49,7 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
   const logoScale = currentPreset.logoScale || 1;
   const [activeTab, setActiveTab] = useState('equipos');
   const [categorias, setCategorias] = useState<any[]>([]);
-  const [selectedCategoria, setSelectedCategoria] = useState(categoria);
+  const [selectedCategoria, setSelectedCategoria] = useState(initialCategoria);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [showThemeModal, setShowThemeModal] = useState(false);
   const [tabLayouts, setTabLayouts] = useState<{ [key: string]: { x: number; width: number } }>({});
@@ -66,7 +68,7 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
       { id: 'grupos', label: 'Grupos' },
       { id: 'fixture', label: 'Fixture' },
       { id: 'knockout', label: 'Knockout' },
-      { id: 'stats', label: 'Stats Liga' },
+      { id: 'stats', label: 'The Best' },
       { id: 'local', label: 'Local' },
       { id: 'sponsors', label: 'Sponsors' },
     ]
@@ -74,7 +76,7 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
       // Fans e invitados ven todo (invitados verán mensajes al intentar acceder)
       { id: 'miequipo', label: 'Mi Equipo' },
       { id: 'grupos', label: 'Grupos' },
-      { id: 'stats', label: 'Stats Liga' },
+      { id: 'stats', label: 'The Best' },
       { id: 'fixture', label: 'Fixture' },
       { id: 'knockout', label: 'Knockout' },
       { id: 'thebest', label: 'The Best' },
@@ -145,12 +147,14 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
   };
 
   const [refreshGroups, setRefreshGroups] = useState(0);
+  const [refreshTeams, setRefreshTeams] = useState(0);
 
   // Refresh LocalTab and Groups when screen gains focus
   useFocusEffect(
     React.useCallback(() => {
       setRefreshLocalTab(prev => prev + 1);
       setRefreshGroups(prev => prev + 1);
+      setRefreshTeams(prev => prev + 1);
     }, [])
   );
 
@@ -164,11 +168,22 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
 
   const loadCategorias = async () => {
     try {
+      // First load all global categories to get names
+      const allCategoriasResponse = await api.categorias.list();
+      const allCategorias = allCategoriasResponse.data?.data || allCategoriasResponse.data || [];
+      
       const response = await api.edicionCategorias.list({ id_edicion: edicion.id_edicion });
       if (response.success && response.data) {
         // Handle both { data: [...] } and { data: { data: [...] } }
         const categoriesArray = response.data.data || response.data || [];
-        setCategorias(categoriesArray);
+        
+        // Enrich with categoria info if not present
+        const enrichedCategories = categoriesArray.map((edicionCat: any) => ({
+          ...edicionCat,
+          categoria: edicionCat.categoria || allCategorias.find((c: any) => c.id_categoria === edicionCat.id_categoria),
+        }));
+        
+        setCategorias(enrichedCategories);
       }
     } catch (error) {
       // console.error('Error loading categorias:', error);
@@ -256,7 +271,7 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
           </View>
         </View>
 
-        {showCategoryPicker && (
+        {showCategoryPicker && categorias.length > 0 && (
           <View style={styles.categoryPicker}>
             {categorias.map((cat) => (
               <TouchableOpacity
@@ -274,7 +289,7 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
                     cat.id_edicion_categoria === idEdicionCategoria ? styles.categoryOptionActive : undefined,
                   ]}
                 >
-                  {cat.categoria.nombre}
+                  {cat.categoria?.nombre || 'Sin nombre'}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -387,6 +402,7 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
                   <TeamsTab
                     idEdicionCategoria={idEdicionCategoria || 1}
                     maxEquipos={edicionCategoria?.max_equipos}
+                    refreshTrigger={refreshTeams}
                     onCreateTeam={() => navigation.navigate('CreateTeam', {
                       idEdicionCategoria: idEdicionCategoria || 1,
                     })}
@@ -443,7 +459,7 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
                 <View key={tab.id} style={styles.pageWrapper}>
                   <MyTeamEmbed
                     navigation={navigation}
-                    edicionCategoriaId={selectedCategoria.id_categoria}
+                    edicionCategoriaId={selectedCategoria?.id_categoria}
                   />
                 </View>
               );

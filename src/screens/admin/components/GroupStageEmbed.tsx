@@ -179,7 +179,13 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps & { refreshTrigger?:
       return;
     }
 
-    navigation.navigate('CreateGroupsFlow', { idEdicionCategoria });
+    navigation.navigate('CreateGroupsFlow', { 
+      idEdicionCategoria,
+      onGroupsCreated: () => {
+        // Recargar los grupos cuando se crea uno nuevo
+        loadGruposAndClasificacion();
+      }
+    });
   };
 
   const handleDeleteGroup = async (grupo: Grupo) => {
@@ -536,7 +542,9 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps & { refreshTrigger?:
             onPress={() => handleGrupoPress(grupo)}
             activeOpacity={0.7}
           >
-            <Text style={styles.grupoNombre}>Grupo {grupo.nombre}</Text>
+            <Text style={styles.grupoNombre}>
+              {grupo.nombre.toLowerCase().startsWith('grupo') ? grupo.nombre : `Grupo ${grupo.nombre}`}
+            </Text>
             <MaterialCommunityIcons
               name="chevron-right"
               size={20}

@@ -61,6 +61,12 @@ import { BulkCreateTeamsScreen } from './src/screens/admin/BulkCreateTeamsScreen
 import { GrupoDetailScreen } from './src/screens/admin/GrupoDetailScreen';
 import { MoveTeamToGroupScreen } from './src/screens/admin/MoveTeamToGroupScreen';
 import { CreateKnockoutFlowScreen } from './src/screens/admin/CreateKnockoutFlowScreen';
+import { 
+  MinijuegosScreen, 
+  ImpostorMenuScreen, 
+  ImpostorLobbyScreen, 
+  ImpostorGameScreen 
+} from './src/screens/minigames';
 
 const Stack = createNativeStackNavigator();
 
@@ -161,6 +167,11 @@ export default function App() {
           <Stack.Screen name="ManageGroups" component={CategoryManagementScreen} />
           <Stack.Screen name="Standings" component={CategoryManagementScreen} />
           <Stack.Screen name="ManageKnockout" component={CategoryManagementScreen} />
+
+          {/* Minijuegos */}
+          <Stack.Screen name="ImpostorMenu" component={ImpostorMenuScreen} />
+          <Stack.Screen name="ImpostorLobby" component={ImpostorLobbyScreen} />
+          <Stack.Screen name="ImpostorGame" component={ImpostorGameScreen} />
         </Stack.Navigator>
       </NavigationContainer>
           </AuthProvider>

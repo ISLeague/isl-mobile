@@ -115,8 +115,8 @@ export const PlayerDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const edad = detalleData.edad || calculateAge(detalleData.fecha_nacimiento);
   const esRefuerzo = detalleData.es_refuerzo || false;
   const esCapitan = detalleData.es_capitan || false;
-  const esGoleador = estadisticas_historicas.es_goleador || false;
-  const esMejorJugador = estadisticas_historicas.es_mejor_jugador || false;
+  const esGoleador = estadisticas_historicas?.es_goleador || false;
+  const esMejorJugador = estadisticas_historicas?.es_mejor_jugador || false;
 
   return (
     <View style={styles.container}>
@@ -203,10 +203,10 @@ export const PlayerDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         <Card style={styles.statsCard}>
           <Text style={styles.sectionTitle}>Rendimiento Temporada</Text>
           <View style={styles.statsGrid}>
-            {renderStatItem('run', 'Partidos', estadisticas_historicas.partidos_jugados || 0, colors.primary)}
-            {renderStatItem('soccer', 'Goles', estadisticas_historicas.goles_totales || 0, colors.success)}
-            {renderStatItem('handball', 'Asistencias', estadisticas_historicas.asistencias_totales || 0, '#00BCD4')}
-            {renderStatItem('star', 'MVP', estadisticas_historicas.mvp_partidos || 0, '#FFD700')}
+            {renderStatItem('run', 'Partidos', estadisticas_historicas?.partidos_jugados || 0, colors.primary)}
+            {renderStatItem('soccer', 'Goles', estadisticas_historicas?.goles_totales || 0, colors.success)}
+            {renderStatItem('handball', 'Asistencias', estadisticas_historicas?.asistencias_totales || 0, '#00BCD4')}
+            {renderStatItem('star', 'MVP', estadisticas_historicas?.mvp_partidos || 0, '#FFD700')}
           </View>
         </Card>
 
@@ -214,9 +214,9 @@ export const PlayerDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         <Card style={styles.statsCard}>
           <Text style={styles.sectionTitle}>Disciplina</Text>
           <View style={styles.statsGrid}>
-            {renderStatItem('card', 'Amarillas', estadisticas_historicas.amarillas_totales || 0, colors.warning)}
-            {renderStatItem('card-multiple', 'Dobles Am.', estadisticas_historicas.dobles_amarillas || 0, '#FF9800')}
-            {renderStatItem('card', 'Rojas', estadisticas_historicas.rojas_totales || 0, colors.error)}
+            {renderStatItem('card', 'Amarillas', estadisticas_historicas?.amarillas_totales || 0, colors.warning)}
+            {renderStatItem('card-multiple', 'Dobles Am.', estadisticas_historicas?.dobles_amarillas || 0, '#FF9800')}
+            {renderStatItem('card', 'Rojas', estadisticas_historicas?.rojas_totales || 0, colors.error)}
           </View>
         </Card>
 

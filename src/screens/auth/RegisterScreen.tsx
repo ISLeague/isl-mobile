@@ -157,6 +157,8 @@ export const RegisterScreen = ({ navigation }: any) => {
               }}
               error={errors.nombre}
               autoCapitalize="words"
+              autoComplete="given-name"
+              textContentType="givenName"
               leftIcon={
                 <MaterialCommunityIcons
                   name="account"
@@ -176,6 +178,8 @@ export const RegisterScreen = ({ navigation }: any) => {
               }}
               error={errors.apellido}
               autoCapitalize="words"
+              autoComplete="family-name"
+              textContentType="familyName"
               leftIcon={
                 <MaterialCommunityIcons
                   name="account-outline"
@@ -197,6 +201,7 @@ export const RegisterScreen = ({ navigation }: any) => {
               keyboardType="email-address"
               autoCapitalize="none"
               autoComplete="email"
+              textContentType="emailAddress"
               leftIcon={
                 <MaterialCommunityIcons
                   name="email-outline"
@@ -216,6 +221,8 @@ export const RegisterScreen = ({ navigation }: any) => {
               }}
               error={errors.password}
               isPassword
+              autoComplete="new-password"
+              textContentType="newPassword"
               leftIcon={
                 <MaterialCommunityIcons
                   name="lock-outline"
@@ -235,6 +242,8 @@ export const RegisterScreen = ({ navigation }: any) => {
               }}
               error={errors.confirmPassword}
               isPassword
+              autoComplete="new-password"
+              textContentType="newPassword"
               leftIcon={
                 <MaterialCommunityIcons
                   name="lock-check-outline"

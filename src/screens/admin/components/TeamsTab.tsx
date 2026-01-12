@@ -19,6 +19,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 interface TeamsTabProps {
   idEdicionCategoria: number;
   maxEquipos?: number;
+  refreshTrigger?: number;
   onCreateTeam?: () => void;
   onBulkCreateTeams?: () => void;
   onTeamPress?: (equipo: Equipo) => void;
@@ -27,6 +28,7 @@ interface TeamsTabProps {
 export const TeamsTab: React.FC<TeamsTabProps> = ({
   idEdicionCategoria,
   maxEquipos,
+  refreshTrigger,
   onCreateTeam,
   onBulkCreateTeams,
   onTeamPress,
@@ -38,7 +40,7 @@ export const TeamsTab: React.FC<TeamsTabProps> = ({
 
   useEffect(() => {
     loadEquipos();
-  }, [idEdicionCategoria]);
+  }, [idEdicionCategoria, refreshTrigger]);
 
   const loadEquipos = async (isRefreshing = false) => {
     try {

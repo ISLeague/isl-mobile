@@ -139,6 +139,8 @@ export const TimePickerInput: React.FC<TimePickerInputProps> = ({
                 display="spinner"
                 onChange={handleTimeChange}
                 style={styles.picker}
+                textColor="#000000"
+                themeVariant="light"
               />
             </Pressable>
           </Pressable>
@@ -221,5 +223,6 @@ const styles = StyleSheet.create({
   },
   picker: {
     height: 200,
+    backgroundColor: '#FFFFFF',
   },
 });

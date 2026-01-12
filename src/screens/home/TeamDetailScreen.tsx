@@ -210,7 +210,7 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
             // Find the newly added players
             const addedPlayers = newJugadores.filter(
               (newPlayer: Jugador) => !previousJugadores.some(
-                (oldPlayer: Jugador) => oldPlayer.id_jugador === newPlayer.id_jugador
+                (oldPlayer: Jugador) => oldPlayer.id_plantilla === newPlayer.id_plantilla
               )
             );
 
@@ -444,7 +444,7 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
           onPress: async () => {
             const result = await safeAsync(
               async () => {
-                const response = await api.jugadores.delete(jugador.id_jugador);
+                const response = await api.jugadores.delete(jugador.id_plantilla);
                 return response;
               },
               'TeamDetailScreen - handleDeletePlayer',
@@ -458,7 +458,7 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
             if (result && result.success) {
               showSuccess(`${jugador.nombre_completo} eliminado exitosamente`);
               // Actualizar lista local
-              setJugadores(prev => prev.filter(j => j.id_jugador !== jugador.id_jugador));
+              setJugadores(prev => prev.filter(j => j.id_plantilla !== jugador.id_plantilla));
             }
           },
         },
@@ -598,7 +598,7 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
 
     if (loading) {
       return (
-        <Card key={`skeleton-${jugador.id_jugador}`} style={styles.playerCard}>
+        <Card key={`skeleton-${jugador.id_plantilla}`} style={styles.playerCard}>
           <View style={styles.playerHeader}>
             <Skeleton width={50} height={50} borderRadius={8} />
             <View style={styles.playerInfo}>
@@ -612,15 +612,9 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
 
     return (
       <TouchableOpacity
-        key={jugador.id_jugador}
+        key={jugador.id_plantilla}
         onPress={() => {
-          console.log('🔍 [TeamDetail] Navigating to PlayerDetail with jugador:', jugador);
-          console.log('🔍 [TeamDetail] jugador.id_jugador:', jugador.id_jugador);
-          console.log('🔍 [TeamDetail] jugador.id_plantilla:', (jugador as any).id_plantilla);
-
-          const playerId = jugador.id_jugador || (jugador as any).id_plantilla;
-          console.log('🔍 [TeamDetail] Final playerId to navigate:', playerId);
-
+          const playerId = jugador.id_plantilla;
           navigation.navigate('PlayerDetail', { playerId });
         }}
         activeOpacity={0.7}

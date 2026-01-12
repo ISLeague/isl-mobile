@@ -56,11 +56,12 @@ export const TournamentCategoriesScreen = ({ navigation, route }: any) => {
     try {
       setLoading(true);
 
-      // Load all global categories - handle errors gracefully
+      // Load all global categories first
+      let categoriasArray: Categoria[] = [];
       try {
         const allResponse = await api.categorias.list();
         // Handle both { data: [...] } and { data: { data: [...] } }
-        const categoriasArray = allResponse.data?.data || allResponse.data || [];
+        categoriasArray = allResponse.data?.data || allResponse.data || [];
         setAllCategorias(categoriasArray);
       } catch (error: any) {
         setAllCategorias([]);
@@ -73,7 +74,14 @@ export const TournamentCategoriesScreen = ({ navigation, route }: any) => {
         });
         // Handle both { data: [...] } and { data: { data: [...] } }
         const assignedArray = assignedResponse.data?.data || assignedResponse.data || [];
-        setAssignedCategorias(assignedArray);
+        
+        // Enrich assigned categories with categoria info from allCategorias
+        const enrichedAssigned = assignedArray.map((edicionCat: EdicionCategoria) => ({
+          ...edicionCat,
+          categoria: edicionCat.categoria || categoriasArray.find(c => c.id_categoria === edicionCat.id_categoria),
+        }));
+        
+        setAssignedCategorias(enrichedAssigned);
       } catch (error: any) {
         setAssignedCategorias([]);
       }
