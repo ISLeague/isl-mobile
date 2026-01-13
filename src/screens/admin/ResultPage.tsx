@@ -19,6 +19,7 @@ import { Button } from '../../components/common/Button';
 import { GradientHeader } from '../../components/common';
 import api from '../../api';
 import { useToast } from '../../contexts/ToastContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface ResultPageProps {
   navigation: any;
@@ -37,6 +38,7 @@ interface PlayerEvent {
 export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => {
   const { partido, ronda } = route.params;
   const { showSuccess, showError } = useToast();
+  const { isSuperAdmin } = useAuth();
 
   // partido.id_equipo_local y partido.id_equipo_visitante pueden ser números o objetos
   const equipoLocalId = typeof partido.id_equipo_local === 'number' ? partido.id_equipo_local : partido.id_equipo_local?.id_equipo;
@@ -397,7 +399,8 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
           {/* Goles */}
           <TouchableOpacity
             style={styles.eventBadge}
-            onPress={() => setShowEventModal({ jugadorId, isLocal, eventType: 'goles' })}
+            onPress={() => isSuperAdmin && setShowEventModal({ jugadorId, isLocal, eventType: 'goles' })}
+            disabled={!isSuperAdmin}
           >
             <Text style={[styles.eventLabel, playerEvent.goles > 0 && styles.eventLabelActive]}>G</Text>
             <Text style={styles.eventValue}>{playerEvent.goles}</Text>
@@ -406,7 +409,8 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
           {/* Asistencias */}
           <TouchableOpacity
             style={styles.eventBadge}
-            onPress={() => setShowEventModal({ jugadorId, isLocal, eventType: 'asistencias' })}
+            onPress={() => isSuperAdmin && setShowEventModal({ jugadorId, isLocal, eventType: 'asistencias' })}
+            disabled={!isSuperAdmin}
           >
             <Text style={[styles.eventLabel, playerEvent.asistencias > 0 && styles.eventLabelActive]}>A</Text>
             <Text style={styles.eventValue}>{playerEvent.asistencias}</Text>
@@ -415,7 +419,8 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
           {/* Amarillas */}
           <TouchableOpacity
             style={styles.eventBadge}
-            onPress={() => setShowEventModal({ jugadorId, isLocal, eventType: 'amarillas' })}
+            onPress={() => isSuperAdmin && setShowEventModal({ jugadorId, isLocal, eventType: 'amarillas' })}
+            disabled={!isSuperAdmin}
           >
             <Text style={[styles.eventLabel, styles.eventLabelYellow, playerEvent.amarillas > 0 && styles.eventLabelActive]}>YC</Text>
             <Text style={styles.eventValue}>{playerEvent.amarillas}</Text>
@@ -425,10 +430,11 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
           <TouchableOpacity
             style={[styles.eventBadge, (playerEvent.rojas > 0 || playerEvent.amarillas >= 2) && styles.eventBadgeRedActive]}
             onPress={() => {
-              if (playerEvent.amarillas < 2) {
+              if (isSuperAdmin && playerEvent.amarillas < 2) {
                 updatePlayerEvent(isLocal, jugadorId, 'rojas', playerEvent.rojas > 0 ? 0 : 1);
               }
             }}
+            disabled={!isSuperAdmin}
           >
             <Text style={[styles.eventLabel, styles.eventLabelRed, (playerEvent.rojas > 0 || playerEvent.amarillas >= 2) && styles.eventLabelActive]}>RC</Text>
           </TouchableOpacity>
@@ -436,7 +442,8 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
           {/* MVP */}
           <TouchableOpacity
             style={[styles.mvpBadge, playerEvent.isMVP && styles.mvpBadgeActive]}
-            onPress={() => toggleMVP(isLocal, jugadorId)}
+            onPress={() => isSuperAdmin && toggleMVP(isLocal, jugadorId)}
+            disabled={!isSuperAdmin}
           >
             <Text style={[styles.eventLabel, playerEvent.isMVP && styles.eventLabelActive]}>MVP</Text>
           </TouchableOpacity>
@@ -614,11 +621,11 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
           <View style={styles.scoreCenter}>
             <View style={styles.scoreRow}>
               <TouchableOpacity
-                style={[styles.scoreButton, walkoverEnabled && styles.scoreButtonDisabled]}
-                onPress={() => !walkoverEnabled && setShowScoreModal('golesLocal')}
-                disabled={walkoverEnabled}
+                style={[styles.scoreButton, (walkoverEnabled || !isSuperAdmin) && styles.scoreButtonDisabled]}
+                onPress={() => isSuperAdmin && !walkoverEnabled && setShowScoreModal('golesLocal')}
+                disabled={walkoverEnabled || !isSuperAdmin}
               >
-                <Text style={[styles.scoreText, walkoverEnabled && styles.scoreTextDisabled]}>
+                <Text style={[styles.scoreText, (walkoverEnabled || !isSuperAdmin) && styles.scoreTextDisabled]}>
                   {walkoverEnabled ? (walkoverWinner === 'local' ? 3 : 0) : golesLocal}
                 </Text>
               </TouchableOpacity>
@@ -626,11 +633,11 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
               <Text style={styles.scoreDivider}>-</Text>
 
               <TouchableOpacity
-                style={[styles.scoreButton, walkoverEnabled && styles.scoreButtonDisabled]}
-                onPress={() => !walkoverEnabled && setShowScoreModal('golesVisitante')}
-                disabled={walkoverEnabled}
+                style={[styles.scoreButton, (walkoverEnabled || !isSuperAdmin) && styles.scoreButtonDisabled]}
+                onPress={() => isSuperAdmin && !walkoverEnabled && setShowScoreModal('golesVisitante')}
+                disabled={walkoverEnabled || !isSuperAdmin}
               >
-                <Text style={[styles.scoreText, walkoverEnabled && styles.scoreTextDisabled]}>
+                <Text style={[styles.scoreText, (walkoverEnabled || !isSuperAdmin) && styles.scoreTextDisabled]}>
                   {walkoverEnabled ? (walkoverWinner === 'visitante' ? 3 : 0) : golesVisitante}
                 </Text>
               </TouchableOpacity>
@@ -657,12 +664,14 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
           <Switch
             value={penalesEnabled}
             onValueChange={(value) => {
+              if (!isSuperAdmin) return;
               setPenalesEnabled(value);
               if (!value) {
                 setPenalesLocal(0);
                 setPenalesVisitante(0);
               }
             }}
+            disabled={!isSuperAdmin}
             trackColor={{ false: colors.border, true: colors.primary }}
             thumbColor={colors.white}
           />
@@ -673,18 +682,20 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
           <View style={styles.penalesScoreContainer}>
             <TouchableOpacity
               style={styles.penalesButton}
-              onPress={() => setShowScoreModal('penalesLocal')}
+              onPress={() => isSuperAdmin && setShowScoreModal('penalesLocal')}
+              disabled={!isSuperAdmin}
             >
-              <Text style={styles.penalesScore}>{penalesLocal}</Text>
+              <Text style={[styles.penalesScore, !isSuperAdmin && styles.scoreTextDisabled]}>{penalesLocal}</Text>
             </TouchableOpacity>
 
             <Text style={styles.penalesDivider}>-</Text>
 
             <TouchableOpacity
               style={styles.penalesButton}
-              onPress={() => setShowScoreModal('penalesVisitante')}
+              onPress={() => isSuperAdmin && setShowScoreModal('penalesVisitante')}
+              disabled={!isSuperAdmin}
             >
-              <Text style={styles.penalesScore}>{penalesVisitante}</Text>
+              <Text style={[styles.penalesScore, !isSuperAdmin && styles.scoreTextDisabled]}>{penalesVisitante}</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -696,9 +707,11 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
             <Switch
               value={walkoverEnabled}
               onValueChange={(value) => {
+                if (!isSuperAdmin) return;
                 setWalkoverEnabled(value);
                 if (!value) setWalkoverWinner(null);
               }}
+              disabled={!isSuperAdmin}
               trackColor={{ false: colors.border, true: colors.primary }}
               thumbColor={colors.white}
             />
@@ -708,7 +721,8 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
             <View style={styles.walkoverButtons}>
               <TouchableOpacity
                 style={[styles.walkoverButton, walkoverWinner === 'local' && styles.walkoverButtonActive]}
-                onPress={() => setWalkoverWinner('local')}
+                onPress={() => isSuperAdmin && setWalkoverWinner('local')}
+                disabled={!isSuperAdmin}
               >
                 <Text style={[styles.walkoverButtonText, walkoverWinner === 'local' && styles.walkoverButtonTextActive]}>
                   {equipoLocal?.nombre}
@@ -716,7 +730,8 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.walkoverButton, walkoverWinner === 'visitante' && styles.walkoverButtonActive]}
-                onPress={() => setWalkoverWinner('visitante')}
+                onPress={() => isSuperAdmin && setWalkoverWinner('visitante')}
+                disabled={!isSuperAdmin}
               >
                 <Text style={[styles.walkoverButtonText, walkoverWinner === 'visitante' && styles.walkoverButtonTextActive]}>
                   {equipoVisitante?.nombre}
@@ -738,23 +753,25 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
           {jugadoresVisitante.map(jugador => renderPlayerEvents(jugador, eventosVisitante, false))}
         </View>
 
-        {/* Botones de Acción */}
-        <View style={styles.actionsSection}>
-          <View style={styles.actionsRow}>
-            {hasResult && (
+        {/* Botones de Acción - Solo para SuperAdmin */}
+        {isSuperAdmin && (
+          <View style={styles.actionsSection}>
+            <View style={styles.actionsRow}>
+              {hasResult && (
+                <Button
+                  title="Eliminar"
+                  onPress={handleDeleteResult}
+                  style={styles.deleteButton}
+                />
+              )}
               <Button
-                title="Eliminar"
-                onPress={handleDeleteResult}
-                style={styles.deleteButton}
+                title={hasResult ? "Actualizar" : "Guardar"}
+                onPress={handleSaveResult}
+                style={styles.saveButton}
               />
-            )}
-            <Button
-              title={hasResult ? "Actualizar" : "Guardar"}
-              onPress={handleSaveResult}
-              style={styles.saveButton}
-            />
+            </View>
           </View>
-        </View>
+        )}
 
         <View style={{ height: 40 }} />
       </ScrollView>

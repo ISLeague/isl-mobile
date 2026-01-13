@@ -20,7 +20,6 @@ import { LocalTab } from './components/LocalTab';
 import { SponsorTab } from './components/SponsorTab';
 import { TeamsTab } from './components/TeamsTab';
 import { GroupStageEmbed } from './components/GroupStageEmbed';
-import { TheBestEmbed } from './components/TheBestEmbed';
 import { MyTeamEmbed } from './components/MyTeamEmbed';
 import { FixtureEmbedImproved } from './components/FixtureEmbedImproved';
 import KnockoutEmbed from './components/KnockoutEmbed';
@@ -77,7 +76,6 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
       { id: 'stats', label: 'Stats Liga' },
       { id: 'fixture', label: 'Fixture' },
       { id: 'knockout', label: 'Knockout' },
-      { id: 'thebest', label: 'The Best' },
       { id: 'local', label: 'Local' },
     ];
 
@@ -439,11 +437,20 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
           } else {
             // FAN: Mi Equipo, Grupos, Fixture, Knockout, The Best, Local
             if (tab.id === 'miequipo') {
+              if (!idEdicionCategoria) {
+                return (
+                  <View key={tab.id} style={styles.pageWrapper}>
+                    <View style={styles.placeholderContainer}>
+                      <Text style={styles.placeholderText}>Error: ID de edición categoría requerido</Text>
+                    </View>
+                  </View>
+                );
+              }
               return (
                 <View key={tab.id} style={styles.pageWrapper}>
                   <MyTeamEmbed
                     navigation={navigation}
-                    edicionCategoriaId={selectedCategoria.id_categoria}
+                    edicionCategoriaId={idEdicionCategoria}
                   />
                 </View>
               );
@@ -482,12 +489,6 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
                   <LeagueStatsEmbed navigation={navigation} idEdicionCategoria={idEdicionCategoria} />
                 </View>
               );
-            } else if (tab.id === 'thebest') {
-              return (
-                <View key={tab.id} style={styles.pageWrapper}>
-                  <TheBestEmbed navigation={navigation} idEdicionCategoria={idEdicionCategoria} />
-                </View>
-              );
             } else if (tab.id === 'local') {
               return (
                 <View key={tab.id} style={styles.pageWrapper}>
@@ -521,7 +522,7 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
       {/* --- FOOTER - Solo para Fans --- */}
       {!isAdmin && (
         <View style={styles.footer}>
-          <SponsorSlider autoScroll={true} />
+          <SponsorSlider autoScroll={true} idEdicionCategoria={idEdicionCategoria} />
         </View>
       )}
 

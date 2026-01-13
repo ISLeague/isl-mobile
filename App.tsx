@@ -31,12 +31,10 @@ import { LocalDetailScreen } from './src/screens/admin/LocalDetailScreen';
 import { ManageCountriesScreen } from './src/screens/admin/ManageCountriesScreen';
 import { EditCountryScreen } from './src/screens/admin/EditCountryScreen';
 import { GroupStageScreen } from './src/screens/home/GroupStageScreen';
-import { TheBestScreen } from './src/screens/home/TheBestScreen';
 import { TeamDetailScreen } from './src/screens/home/TeamDetailScreen';
 import { PlayerFormScreen } from './src/screens/home/PlayerFormScreen';
 import { PlayerDetailScreen } from './src/screens/home/PlayerDetailScreen';
 import { MyTeamScreen } from './src/screens/home/MyTeamScreen';
-import { MatchDetailScreen } from './src/screens/home/MatchDetailScreen';
 import { PrivacySettingsScreen } from './src/screens/profile/PrivacySettingsScreen';
 import { CreateGroupScreen } from './src/screens/admin/CreateGroupScreen';
 import { CreateGroupsFlowScreen } from './src/screens/admin/CreateGroupsFlowScreen';
@@ -150,12 +148,10 @@ export default function App() {
           
           {/* Fase de Grupos & Rankings */}
           <Stack.Screen name="GroupStage" component={GroupStageScreen} />
-          <Stack.Screen name="TheBest" component={TheBestScreen} />
           <Stack.Screen name="TeamDetail" component={TeamDetailScreen} />
           <Stack.Screen name="PlayerForm" component={PlayerFormScreen} />
           <Stack.Screen name="PlayerDetail" component={PlayerDetailScreen} />
           <Stack.Screen name="MyTeam" component={MyTeamScreen} />
-          <Stack.Screen name="MatchDetail" component={MatchDetailScreen} />
           
           {/* Placeholders (Próximamente) */}
           <Stack.Screen name="ManageGroups" component={CategoryManagementScreen} />
