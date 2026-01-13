@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { AuthProvider } from './src/contexts/AuthContext';
+import { AuthProvider, useAuth } from './src/contexts/AuthContext';
 import { ToastProvider } from './src/contexts/ToastContext';
 import { ErrorBoundary } from './src/components/common';
 import { ThemeProvider } from './src/contexts/ThemeContext';
+import { usePushNotifications } from './src/hooks/usePushNotifications';
 import SplashScreen from './src/screens/SplashScreen';
 import { LoginScreen } from './src/screens/auth/LoginScreen';
 import { RegisterScreen } from './src/screens/auth/RegisterScreen';
@@ -35,6 +36,7 @@ import { TeamDetailScreen } from './src/screens/home/TeamDetailScreen';
 import { PlayerFormScreen } from './src/screens/home/PlayerFormScreen';
 import { PlayerDetailScreen } from './src/screens/home/PlayerDetailScreen';
 import { MyTeamScreen } from './src/screens/home/MyTeamScreen';
+import { FavoriteTeamsScreen } from './src/screens/home/FavoriteTeamsScreen';
 import { PrivacySettingsScreen } from './src/screens/profile/PrivacySettingsScreen';
 import { CreateGroupScreen } from './src/screens/admin/CreateGroupScreen';
 import { CreateGroupsFlowScreen } from './src/screens/admin/CreateGroupsFlowScreen';
@@ -59,31 +61,39 @@ import { BulkCreateTeamsScreen } from './src/screens/admin/BulkCreateTeamsScreen
 import { GrupoDetailScreen } from './src/screens/admin/GrupoDetailScreen';
 import { MoveTeamToGroupScreen } from './src/screens/admin/MoveTeamToGroupScreen';
 import { CreateKnockoutFlowScreen } from './src/screens/admin/CreateKnockoutFlowScreen';
-import { 
-  MinijuegosScreen, 
-  ImpostorMenuScreen, 
-  ImpostorLobbyScreen, 
-  ImpostorGameScreen 
+import {
+  MinijuegosScreen,
+  ImpostorMenuScreen,
+  ImpostorLobbyScreen,
+  ImpostorGameScreen
 } from './src/screens/minigames';
 
 const Stack = createNativeStackNavigator();
 
-export default function App() {
+// Component interno que maneja push notifications
+function AppNavigator() {
+  const { setDeviceToken } = useAuth();
+  const { expoPushToken } = usePushNotifications();
+
+  // Guardar el token en el contexto cuando se obtenga
+  useEffect(() => {
+    if (expoPushToken) {
+      console.log('📱 Guardando device token en contexto:', expoPushToken);
+      setDeviceToken(expoPushToken);
+    }
+  }, [expoPushToken, setDeviceToken]);
+
   return (
-    <ErrorBoundary>
-      <ThemeProvider>
-        <ToastProvider>
-          <AuthProvider>
-          <NavigationContainer>
-            <Stack.Navigator
-              screenOptions={{
-                headerShown: false,
-                animation: 'fade',
-              }}
-              initialRouteName="Splash"
-            >
-              {/* Splash */}
-              <Stack.Screen name="Splash" component={SplashScreen} />
+    <NavigationContainer>
+      <Stack.Navigator
+        screenOptions={{
+          headerShown: false,
+          animation: 'fade',
+        }}
+        initialRouteName="Splash"
+      >
+        {/* Splash */}
+        <Stack.Screen name="Splash" component={SplashScreen} />
           
           {/* Auth Stack */}
           <Stack.Screen name="Login" component={LoginScreen} />
@@ -158,18 +168,29 @@ export default function App() {
           <Stack.Screen name="PlayerForm" component={PlayerFormScreen} />
           <Stack.Screen name="PlayerDetail" component={PlayerDetailScreen} />
           <Stack.Screen name="MyTeam" component={MyTeamScreen} />
+          <Stack.Screen name="FavoriteTeams" component={FavoriteTeamsScreen} />
           
           {/* Placeholders (Próximamente) */}
           <Stack.Screen name="ManageGroups" component={CategoryManagementScreen} />
           <Stack.Screen name="Standings" component={CategoryManagementScreen} />
           <Stack.Screen name="ManageKnockout" component={CategoryManagementScreen} />
 
-          {/* Minijuegos */}
-          <Stack.Screen name="ImpostorMenu" component={ImpostorMenuScreen} />
-          <Stack.Screen name="ImpostorLobby" component={ImpostorLobbyScreen} />
-          <Stack.Screen name="ImpostorGame" component={ImpostorGameScreen} />
-        </Stack.Navigator>
-      </NavigationContainer>
+        {/* Minijuegos */}
+        <Stack.Screen name="ImpostorMenu" component={ImpostorMenuScreen} />
+        <Stack.Screen name="ImpostorLobby" component={ImpostorLobbyScreen} />
+        <Stack.Screen name="ImpostorGame" component={ImpostorGameScreen} />
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
+}
+
+export default function App() {
+  return (
+    <ErrorBoundary>
+      <ThemeProvider>
+        <ToastProvider>
+          <AuthProvider>
+            <AppNavigator />
           </AuthProvider>
         </ToastProvider>
       </ThemeProvider>

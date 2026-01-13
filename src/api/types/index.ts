@@ -48,6 +48,9 @@ export * from './rondas.types';
 // Sponsors
 export * from './sponsors.types';
 
+// Seguimiento Equipos
+export * from './seguimiento-equipos.types';
+
 // Torneos
 export * from './torneos.types';
 

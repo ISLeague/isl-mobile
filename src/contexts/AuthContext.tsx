@@ -11,6 +11,8 @@ interface AuthContextType {
   isGlobalAdmin: boolean;
   isFan: boolean;
   isGuest: boolean;
+  deviceToken: string | null;
+  setDeviceToken: (token: string | null) => void;
   login: (token: string, usuario: Usuario) => void;
   loginAsGuest: () => void;
   logout: () => void;
@@ -26,6 +28,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [usuario, setUsuario] = useState<Usuario | null>(null);
   const [usuarioReal, setUsuarioReal] = useState<Usuario | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  const [deviceToken, setDeviceToken] = useState<string | null>(null);
 
   const isGuest = usuario?.rol === 'invitado';
   const isAuthenticated = !!usuario && !!token && !isGuest;
@@ -100,6 +103,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isGlobalAdmin,
         isFan,
         isGuest,
+        deviceToken,
+        setDeviceToken,
         login,
         loginAsGuest,
         logout,

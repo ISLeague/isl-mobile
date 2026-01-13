@@ -89,6 +89,17 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
   const [imagenesEquipo, setImagenesEquipo] = useState<ImagenEquipo[]>([]);
   const [loadingImages, setLoadingImages] = useState(false);
 
+  // Estados para seguimiento de equipo
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [seguimientoId, setSeguimientoId] = useState<number | null>(null);
+  const [showPreferenciasModal, setShowPreferenciasModal] = useState(false);
+  const [preferencias, setPreferencias] = useState({
+    notificar_partidos: true,
+    notificar_resultados: true,
+    notificar_goles: false,
+    notificar_tarjetas: false,
+  });
+
   // Cargar datos del equipo, jugadores y estadísticas desde la API
   useEffect(() => {
     const fetchData = async () => {
@@ -146,6 +157,37 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
 
     fetchData();
   }, [equipoId]);
+
+  // Verificar si el usuario está siguiendo al equipo
+  useEffect(() => {
+    const checkFollowStatus = async () => {
+      if (!equipo || isAdmin) return; // Solo para fans
+
+      try {
+        const response = await api.seguimientoEquipos.list(equipo.id_edicion_categoria);
+        if (response.success && response.data?.equipos_favoritos) {
+          const seguimiento = response.data.equipos_favoritos.find(
+            (seg) => seg.equipo?.id_equipo === equipoId
+          );
+
+          if (seguimiento) {
+            setIsFollowing(true);
+            setSeguimientoId(seguimiento.id_seguimiento);
+            setPreferencias({
+              notificar_partidos: seguimiento.notificar_partidos,
+              notificar_resultados: seguimiento.notificar_resultados,
+              notificar_goles: seguimiento.notificar_goles,
+              notificar_tarjetas: seguimiento.notificar_tarjetas,
+            });
+          }
+        }
+      } catch (error) {
+        // Silently fail
+      }
+    };
+
+    checkFollowStatus();
+  }, [equipo, equipoId, isAdmin]);
 
   // Cargar imágenes del equipo cuando se navega al tab de fotos
   useEffect(() => {
@@ -466,6 +508,62 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
     );
   };
 
+  // Funciones de seguimiento de equipo
+  const handleToggleFollow = async () => {
+    if (!equipo) return;
+
+    if (isFollowing) {
+      // Dejar de seguir
+      Alert.alert(
+        'Dejar de seguir',
+        `¿Dejar de seguir a ${equipo.nombre}?`,
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Confirmar',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                if (seguimientoId) {
+                  await api.seguimientoEquipos.delete(seguimientoId);
+                  setIsFollowing(false);
+                  setSeguimientoId(null);
+                  showSuccess('Dejaste de seguir al equipo');
+                }
+              } catch (error) {
+                showError('Error al dejar de seguir');
+              }
+            },
+          },
+        ]
+      );
+    } else {
+      // Seguir equipo - mostrar modal de preferencias
+      setShowPreferenciasModal(true);
+    }
+  };
+
+  const handleConfirmFollow = async () => {
+    if (!equipo) return;
+
+    try {
+      const response = await api.seguimientoEquipos.create({
+        id_equipo: equipoId,
+        id_edicion_categoria: equipo.id_edicion_categoria,
+        ...preferencias,
+      });
+
+      if (response.success) {
+        setIsFollowing(true);
+        setSeguimientoId(response.data.seguimiento.id_seguimiento);
+        setShowPreferenciasModal(false);
+        showSuccess(`Ahora sigues a ${equipo.nombre}`);
+      }
+    } catch (error) {
+      showError('Error al seguir al equipo');
+    }
+  };
+
   const handleEditTeam = () => {
     navigation.navigate('EditTeam', { equipo });
   };
@@ -754,7 +852,15 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
                 <MaterialCommunityIcons name="pencil" size={24} color={colors.white} />
               </TouchableOpacity>
             </View>
-          ) : undefined
+          ) : (
+            <TouchableOpacity onPress={handleToggleFollow} style={styles.headerButton}>
+              <MaterialCommunityIcons
+                name={isFollowing ? 'heart' : 'heart-outline'}
+                size={28}
+                color={isFollowing ? '#FF6B6B' : colors.white}
+              />
+            </TouchableOpacity>
+          )
         }
       />
 
@@ -1264,6 +1370,115 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
                 </View>
               </View>
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal de Preferencias de Notificaciones */}
+      <Modal
+        visible={showPreferenciasModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowPreferenciasModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.preferenciasModalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Preferencias de Notificaciones</Text>
+              <TouchableOpacity
+                onPress={() => setShowPreferenciasModal(false)}
+                style={styles.modalCloseButton}
+              >
+                <MaterialCommunityIcons name="close" size={24} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.preferenciasSubtitle}>
+              Elige qué notificaciones quieres recibir de {equipo?.nombre}
+            </Text>
+
+            <View style={styles.preferenciasModalList}>
+              <View style={styles.preferenciaModalItem}>
+                <View style={styles.preferenciaModalInfo}>
+                  <MaterialCommunityIcons name="calendar" size={24} color={colors.primary} />
+                  <View style={styles.preferenciaModalTexts}>
+                    <Text style={styles.preferenciaModalLabel}>Partidos próximos</Text>
+                    <Text style={styles.preferenciaModalDesc}>
+                      Te avisaremos un día antes de cada partido
+                    </Text>
+                  </View>
+                </View>
+                <Switch
+                  value={preferencias.notificar_partidos}
+                  onValueChange={(val) => setPreferencias({ ...preferencias, notificar_partidos: val })}
+                  trackColor={{ false: colors.border, true: colors.primary }}
+                  thumbColor={colors.white}
+                />
+              </View>
+
+              <View style={styles.preferenciaModalItem}>
+                <View style={styles.preferenciaModalInfo}>
+                  <MaterialCommunityIcons name="trophy" size={24} color={colors.success} />
+                  <View style={styles.preferenciaModalTexts}>
+                    <Text style={styles.preferenciaModalLabel}>Resultados finales</Text>
+                    <Text style={styles.preferenciaModalDesc}>
+                      Cuando termine cada partido
+                    </Text>
+                  </View>
+                </View>
+                <Switch
+                  value={preferencias.notificar_resultados}
+                  onValueChange={(val) => setPreferencias({ ...preferencias, notificar_resultados: val })}
+                  trackColor={{ false: colors.border, true: colors.primary }}
+                  thumbColor={colors.white}
+                />
+              </View>
+
+              <View style={styles.preferenciaModalItem}>
+                <View style={styles.preferenciaModalInfo}>
+                  <MaterialCommunityIcons name="soccer" size={24} color={colors.warning} />
+                  <View style={styles.preferenciaModalTexts}>
+                    <Text style={styles.preferenciaModalLabel}>Goles en tiempo real</Text>
+                    <Text style={styles.preferenciaModalDesc}>
+                      Cada vez que tu equipo anote
+                    </Text>
+                  </View>
+                </View>
+                <Switch
+                  value={preferencias.notificar_goles}
+                  onValueChange={(val) => setPreferencias({ ...preferencias, notificar_goles: val })}
+                  trackColor={{ false: colors.border, true: colors.primary }}
+                  thumbColor={colors.white}
+                />
+              </View>
+
+              <View style={styles.preferenciaModalItem}>
+                <View style={styles.preferenciaModalInfo}>
+                  <MaterialCommunityIcons name="card" size={24} color={colors.error} />
+                  <View style={styles.preferenciaModalTexts}>
+                    <Text style={styles.preferenciaModalLabel}>Tarjetas</Text>
+                    <Text style={styles.preferenciaModalDesc}>
+                      Cuando un jugador reciba tarjeta
+                    </Text>
+                  </View>
+                </View>
+                <Switch
+                  value={preferencias.notificar_tarjetas}
+                  onValueChange={(val) => setPreferencias({ ...preferencias, notificar_tarjetas: val })}
+                  trackColor={{ false: colors.border, true: colors.primary }}
+                  thumbColor={colors.white}
+                />
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.confirmFollowButton}
+              onPress={handleConfirmFollow}
+              activeOpacity={0.7}
+            >
+              <MaterialCommunityIcons name="heart" size={20} color={colors.white} />
+              <Text style={styles.confirmFollowButtonText}>Seguir Equipo</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -2149,5 +2364,62 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: 'bold',
     color: colors.textSecondary,
+  },
+  preferenciasModalContainer: {
+    backgroundColor: colors.white,
+    borderRadius: 20,
+    padding: 24,
+    width: '90%',
+    maxWidth: 500,
+    maxHeight: '80%',
+  },
+  preferenciasSubtitle: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginBottom: 24,
+    textAlign: 'center',
+  },
+  preferenciasModalList: {
+    gap: 16,
+    marginBottom: 24,
+  },
+  preferenciaModalItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+  },
+  preferenciaModalInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  preferenciaModalTexts: {
+    flex: 1,
+  },
+  preferenciaModalLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: 2,
+  },
+  preferenciaModalDesc: {
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  confirmFollowButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 8,
+  },
+  confirmFollowButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.white,
   },
 });

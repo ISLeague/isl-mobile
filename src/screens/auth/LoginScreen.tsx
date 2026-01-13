@@ -22,7 +22,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { safeAsync, getUserFriendlyMessage } from '../../utils/errorHandling';
 
 export const LoginScreen = ({ navigation }: any) => {
-  const { login, loginAsGuest } = useAuth();
+  const { login, loginAsGuest, deviceToken } = useAuth();
   const { showError, showSuccess, showWarning } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -53,7 +53,12 @@ export const LoginScreen = ({ navigation }: any) => {
 
     const response = await safeAsync(
       async () => {
-        return await api.auth.login({ email, password });
+        console.log('🔑 Intentando login con device_token:', deviceToken);
+        return await api.auth.login({
+          email,
+          password,
+          device_token: deviceToken || undefined
+        });
       },
       'login',
       {
