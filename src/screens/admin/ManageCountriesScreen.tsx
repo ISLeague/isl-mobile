@@ -53,13 +53,22 @@ export const ManageCountriesScreen = ({ navigation }: any) => {
   };
 
   const handleCreatePais = async () => {
-    if (!nuevoNombre.trim()) {
+    const nombreLimpio = nuevoNombre.trim();
+    const codigoIsoLimpio = nuevoCodigoIso.trim().toUpperCase();
+    const emojiLimpio = nuevoEmoji.trim() || '🌍';
+
+    if (!nombreLimpio) {
       Alert.alert('Error', 'El nombre del país es requerido');
       return;
     }
 
-    if (!nuevoCodigoIso.trim()) {
+    if (!codigoIsoLimpio) {
       Alert.alert('Error', 'El código ISO del país es requerido');
+      return;
+    }
+
+    if (codigoIsoLimpio.length > 2) {
+      Alert.alert('Error', 'El código ISO debe tener máximo 2 caracteres (ej: PE, AR)');
       return;
     }
 
@@ -68,9 +77,9 @@ export const ManageCountriesScreen = ({ navigation }: any) => {
 
       // Crear país usando la API
       await api.paises.create({
-        nombre: nuevoNombre.trim(),
-        codigo_iso: nuevoCodigoIso.trim().toUpperCase(),
-        emoji: nuevoEmoji.trim() || '🌍',
+        nombre: nombreLimpio,
+        codigo_iso: codigoIsoLimpio,
+        emoji: emojiLimpio,
       });
 
       // Recargar la lista de países
@@ -80,7 +89,7 @@ export const ManageCountriesScreen = ({ navigation }: any) => {
       setNuevoCodigoIso('');
       setNuevoEmoji('');
       setIsCreating(false);
-      Alert.alert('¡Éxito!', `País "${nuevoNombre}" creado correctamente`);
+      Alert.alert('¡Éxito!', `País "${nombreLimpio}" creado correctamente`);
     } catch (error) {
       // console.error('Error creando país:', error);
       Alert.alert('Error', 'No se pudo crear el país. Intenta de nuevo.');
@@ -90,7 +99,7 @@ export const ManageCountriesScreen = ({ navigation }: any) => {
   };
 
   const handleEditPais = (pais: Pais) => {
-    navigation.navigate('EditCountry', { pais });
+    navigation.navigate('EditCountry', { pais, onUpdated: loadPaises });
   };
 
   const handleDeletePais = (pais: Pais) => {
@@ -102,8 +111,18 @@ export const ManageCountriesScreen = ({ navigation }: any) => {
         {
           text: 'Eliminar',
           style: 'destructive',
-          onPress: () => {
-            setPaises(paises.filter(p => p.id_pais !== pais.id_pais));
+          onPress: async () => {
+            try {
+              setLoading(true);
+              // Soft delete: marcar inactivo
+              await api.paises.update(pais.id_pais, { activo: false });
+              await loadPaises();
+              Alert.alert('Eliminado', `País "${pais.nombre}" eliminado (inactivo)`);
+            } catch (error) {
+              Alert.alert('Error', 'No se pudo eliminar el país. Intenta de nuevo.');
+            } finally {
+              setLoading(false);
+            }
           },
         },
       ]
@@ -195,12 +214,12 @@ export const ManageCountriesScreen = ({ navigation }: any) => {
 
             <TextInput
               style={styles.input}
-              placeholder="Código ISO (ej: PE, AR, BR)"
+              placeholder="Código ISO (ej: PE, AR)"
               value={nuevoCodigoIso}
-              onChangeText={setNuevoCodigoIso}
+              onChangeText={(text) => setNuevoCodigoIso(text.toUpperCase())}
               placeholderTextColor={colors.textLight}
               autoCapitalize="characters"
-              maxLength={3}
+              maxLength={2}
             />
 
             <TextInput
@@ -209,7 +228,7 @@ export const ManageCountriesScreen = ({ navigation }: any) => {
               value={nuevoEmoji}
               onChangeText={setNuevoEmoji}
               placeholderTextColor={colors.textLight}
-              maxLength={2}
+              maxLength={6} // permitir emoji (puede ocupar 2+ code units)
             />
 
             <View style={styles.formButtons}>

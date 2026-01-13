@@ -16,10 +16,12 @@ import api from '../../api';
 import { Torneo, Pais } from '../../api/types';
 import { Edicion } from '../../api/types/ediciones.types';
 import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
 
 export const TournamentDetailsScreen = ({ navigation, route }: any) => {
   const { torneo: initialTorneo, pais } = route.params;
   const { isSuperAdmin, usuario } = useAuth();
+  const { showSuccess, showError } = useToast();
   const [currentTorneo, setCurrentTorneo] = useState<Torneo>(initialTorneo);
 
   // Check if user can edit this tournament
@@ -99,6 +101,33 @@ export const TournamentDetailsScreen = ({ navigation, route }: any) => {
     navigation.navigate('EditTournament', { torneo: currentTorneo, pais });
   };
 
+  const handleDeleteTournament = () => {
+    Alert.alert(
+      'Eliminar Torneo',
+      `¿Estás seguro de que quieres eliminar el torneo "${currentTorneo.nombre}"? Esta acción eliminará también todas las ediciones y datos asociados y no se puede deshacer.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const response = await api.torneos.delete(currentTorneo.id_torneo);
+              if (response.success) {
+                showSuccess('Torneo eliminado exitosamente');
+                navigation.goBack();
+              } else {
+                showError(response.error || 'Error al eliminar el torneo');
+              }
+            } catch (error: any) {
+              showError(error.message || 'Error al eliminar el torneo');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleCreateEdition = () => {
     navigation.navigate('CreateEdition', { torneo: currentTorneo, pais });
   };
@@ -109,6 +138,33 @@ export const TournamentDetailsScreen = ({ navigation, route }: any) => {
 
   const handleEditEdition = (edicion: Edicion) => {
     navigation.navigate('EditEdition', { edicion, torneo: currentTorneo, pais });
+  };
+
+  const handleDeleteEdition = (edicion: Edicion) => {
+    Alert.alert(
+      'Eliminar Edición',
+      `¿Estás seguro de que quieres eliminar la edición ${edicion.numero} del torneo "${currentTorneo.nombre}"? Esta acción eliminará todas las categorías, equipos y partidos asociados.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const response = await api.ediciones.delete(edicion.id_edicion);
+              if (response.success) {
+                showSuccess('Edición eliminada exitosamente');
+                loadEdiciones(true);
+              } else {
+                showError(response.error || 'Error al eliminar la edición');
+              }
+            } catch (error: any) {
+              showError(error.message || 'Error al eliminar la edición');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const getEstadoBadgeStyle = (estado: string) => {
@@ -178,13 +234,22 @@ export const TournamentDetailsScreen = ({ navigation, route }: any) => {
         </TouchableOpacity>
 
         {canEditTournament && (
-          <TouchableOpacity
-            style={styles.editionEditButton}
-            onPress={() => handleEditEdition(edicion)}
-            activeOpacity={0.7}
-          >
-            <MaterialCommunityIcons name="pencil" size={18} color={colors.primary} />
-          </TouchableOpacity>
+          <>
+            <TouchableOpacity
+              style={styles.editionEditButton}
+              onPress={() => handleEditEdition(edicion)}
+              activeOpacity={0.7}
+            >
+              <MaterialCommunityIcons name="pencil" size={18} color={colors.primary} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.editionEditButton}
+              onPress={() => handleDeleteEdition(edicion)}
+              activeOpacity={0.7}
+            >
+              <MaterialCommunityIcons name="delete" size={18} color={colors.error} />
+            </TouchableOpacity>
+          </>
         )}
       </View>
     );
@@ -231,9 +296,14 @@ export const TournamentDetailsScreen = ({ navigation, route }: any) => {
         </View>
 
         {canEditTournament ? (
-          <TouchableOpacity style={styles.editButton} onPress={handleEditTournament}>
-            <MaterialCommunityIcons name="pencil" size={24} color={colors.primary} />
-          </TouchableOpacity>
+          <>
+            <TouchableOpacity style={styles.editButton} onPress={handleEditTournament}>
+              <MaterialCommunityIcons name="pencil" size={24} color={colors.primary} />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteTournament}>
+              <MaterialCommunityIcons name="delete" size={24} color={colors.error} />
+            </TouchableOpacity>
+          </>
         ) : (
           <View style={styles.editButton} />
         )}
@@ -475,6 +545,38 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
+  },
+  fabeditButton: {
+    position: 'absolute',
+    right: 20,
+    top: 60,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.white,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  deleteButton: {
+    position: 'absolute',
+    right: 20,
+    top: 110,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.white,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   fabIcon: {
     fontSize: 32,

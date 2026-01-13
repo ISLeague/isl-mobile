@@ -37,6 +37,7 @@ import { PlayerFormScreen } from './src/screens/home/PlayerFormScreen';
 import { PlayerDetailScreen } from './src/screens/home/PlayerDetailScreen';
 import { MyTeamScreen } from './src/screens/home/MyTeamScreen';
 import { FavoriteTeamsScreen } from './src/screens/home/FavoriteTeamsScreen';
+import { CamarografoScreen } from './src/screens/camarografo/CamarografoScreen';
 import { PrivacySettingsScreen } from './src/screens/profile/PrivacySettingsScreen';
 import { CreateGroupScreen } from './src/screens/admin/CreateGroupScreen';
 import { CreateGroupsFlowScreen } from './src/screens/admin/CreateGroupsFlowScreen';
@@ -56,6 +57,8 @@ import { EditSponsorScreen } from './src/screens/admin/EditSponsorScreen';
 import { TournamentAdminDashboardScreen } from './src/screens/admin/TournamentAdminDashboardScreen';
 import { CreateTournamentAdminScreen } from './src/screens/admin/CreateTournamentAdminScreen';
 import ResultPage from './src/screens/admin/ResultPage';
+import { PreMatchValidationScreen } from './src/screens/admin/PreMatchValidationScreen';
+import { MatchSubstitutionsScreen } from './src/screens/admin/MatchSubstitutionsScreen';
 import { CreateTeamScreen } from './src/screens/admin/CreateTeamScreen';
 import { BulkCreateTeamsScreen } from './src/screens/admin/BulkCreateTeamsScreen';
 import { GrupoDetailScreen } from './src/screens/admin/GrupoDetailScreen';
@@ -109,6 +112,10 @@ function AppNavigator() {
           <Stack.Screen name="EditCountry" component={EditCountryScreen} />
           <Stack.Screen name="TournamentAdminDashboard" component={TournamentAdminDashboardScreen} />
           <Stack.Screen name="CreateTournamentAdmin" component={CreateTournamentAdminScreen} />
+
+          {/* Camarografo Flow */}
+          <Stack.Screen name="Camarografo" component={CamarografoScreen} />
+
           <Stack.Screen name="CountrySelection" component={CountrySelectionScreen} />
           <Stack.Screen name="AdminTournaments" component={AdminTournamentsScreen} />
           <Stack.Screen name="CreateTournament" component={CreateTournamentScreen} />
@@ -124,6 +131,9 @@ function AppNavigator() {
           <Stack.Screen name="ManageTeams" component={ManageTeamsScreen} />
           <Stack.Screen name="ManageFixture" component={ManageFixtureScreen} />
           <Stack.Screen name="LoadResults" component={ResultPage} />
+          <Stack.Screen name="PreMatchValidation" component={PreMatchValidationScreen} />
+          <Stack.Screen name="MatchSubstitutions" component={MatchSubstitutionsScreen} />
+          <Stack.Screen name="ResultPage" component={ResultPage} />
           
           {/* Group Management */}
           <Stack.Screen name="CreateGroup" component={CreateGroupScreen} />

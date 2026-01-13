@@ -212,7 +212,7 @@ export const EditRondaScreen = ({ navigation, route }: any) => {
           <View style={styles.fieldContainer}>
             <Text style={styles.label}>Tipo de Ronda *</Text>
             <View style={styles.tipoContainer}>
-              {(['fase_grupos', 'eliminatorias', 'amistosa'] as const).map((tipoOption) => (
+              {(['fase_grupos', 'amistosa'] as const).map((tipoOption) => (
                 <TouchableOpacity
                   key={tipoOption}
                   style={[
@@ -280,20 +280,22 @@ export const EditRondaScreen = ({ navigation, route }: any) => {
             </View>
           )}
 
-          {/* Fecha (opcional) */}
-          <View style={styles.fieldContainer}>
-            <Text style={styles.label}>Fecha (opcional)</Text>
-            <TextInput
-              style={styles.input}
-              value={fecha}
-              onChangeText={setFecha}
-              placeholder="DD/MM/YYYY"
-              placeholderTextColor={colors.textSecondary}
-            />
-            <Text style={styles.helperText}>
-              Formato: DD/MM/YYYY (25/12/2024)
-            </Text>
-          </View>
+          {/* Fecha (opcional) - Solo para Amistosos */}
+          {tipo === 'amistosa' && (
+            <View style={styles.fieldContainer}>
+              <Text style={styles.label}>Fecha (opcional)</Text>
+              <TextInput
+                style={styles.input}
+                value={fecha}
+                onChangeText={setFecha}
+                placeholder="DD/MM/YYYY"
+                placeholderTextColor={colors.textSecondary}
+              />
+              <Text style={styles.helperText}>
+                Formato: DD/MM/YYYY (25/12/2024)
+              </Text>
+            </View>
+          )}
 
           {/* Orden */}
           <View style={styles.fieldContainer}>

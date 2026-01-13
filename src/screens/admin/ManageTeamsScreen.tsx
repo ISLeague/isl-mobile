@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -22,31 +23,40 @@ export const ManageTeamsScreen = ({ navigation, route }: any) => {
   const { showSuccess, showError, showWarning } = useToast();
   const [equipos, setEquipos] = useState<Equipo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  // Load equipos from API
-  useEffect(() => {
-    const loadEquipos = async () => {
-      const result = await safeAsync(
-        async () => {
-          const idEdicionCategoria = route.params?.idEdicionCategoria || torneo?.id_edicion_categoria;
-          if (!idEdicionCategoria) {
-            return [];
-          }
-          const equiposResponse = await api.equipos.list(idEdicionCategoria);
-          return equiposResponse.success && equiposResponse.data ? equiposResponse.data : [];
-        },
-        'ManageTeamsScreen - loadEquipos',
-        { fallbackValue: [] }
-      );
+  // Filtrar equipos por búsqueda
+  const equiposFiltrados = equipos.filter(equipo =>
+    equipo.nombre.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (equipo.nombre_corto && equipo.nombre_corto.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
 
-      if (result) {
-        setEquipos(result);
-      }
-      setLoading(false);
-    };
+  // Load equipos with refresh on focus
+  useFocusEffect(
+    useCallback(() => {
+      loadEquipos();
+    }, [route.params?.idEdicionCategoria, torneo?.id_edicion_categoria])
+  );
 
-    loadEquipos();
-  }, [route.params?.idEdicionCategoria, torneo?.id_edicion_categoria]);
+  const loadEquipos = async () => {
+    const result = await safeAsync(
+      async () => {
+        const idEdicionCategoria = route.params?.idEdicionCategoria || torneo?.id_edicion_categoria;
+        if (!idEdicionCategoria) {
+          return [];
+        }
+        const equiposResponse = await api.equipos.list(idEdicionCategoria);
+        return equiposResponse.success && equiposResponse.data ? equiposResponse.data : [];
+      },
+      'ManageTeamsScreen - loadEquipos',
+      { fallbackValue: [] }
+    );
+
+    if (result) {
+      setEquipos(result);
+    }
+    setLoading(false);
+  };
 
 
   const handleEditTeam = (equipo: Equipo) => {
@@ -211,6 +221,25 @@ export const ManageTeamsScreen = ({ navigation, route }: any) => {
           <Text style={styles.subtitle}>{torneo.nombre}</Text>
         </View>
 
+        {/* Search Bar */}
+        <View style={styles.searchContainer}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Buscar equipo..."
+            placeholderTextColor={colors.textLight}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity
+              style={styles.clearSearchButton}
+              onPress={() => setSearchQuery('')}
+            >
+              <Text style={styles.clearSearchText}>✕</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
         {/* Actions */}
         <View style={styles.actionsContainer}>
           <TouchableOpacity
@@ -232,10 +261,18 @@ export const ManageTeamsScreen = ({ navigation, route }: any) => {
         {/* Teams List */}
         <View style={styles.teamsSection}>
           <Text style={styles.sectionTitle}>
-            Equipos ({equipos.length})
+            Equipos ({equiposFiltrados.length}{searchQuery ? ` de ${equipos.length}` : ''})
           </Text>
 
-          {equipos.map((equipo) => (
+          {equiposFiltrados.length === 0 && searchQuery ? (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyStateText}>
+                No se encontraron equipos con "{searchQuery}"
+              </Text>
+            </View>
+          ) : null}
+
+          {equiposFiltrados.map((equipo) => (
             <View key={equipo.id_equipo} style={styles.teamCard}>
               <View style={styles.teamIcon}>
                 <Text style={styles.teamLogo}>{equipo.logo}</Text>
@@ -339,6 +376,39 @@ const styles = StyleSheet.create({
   },
   secondaryText: {
     color: colors.primary,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 20,
+    marginTop: 16,
+    backgroundColor: colors.white,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: colors.textPrimary,
+  },
+  clearSearchButton: {
+    padding: 8,
+  },
+  clearSearchText: {
+    fontSize: 16,
+    color: colors.textLight,
+  },
+  emptyState: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  emptyStateText: {
+    fontSize: 14,
+    color: colors.textLight,
+    textAlign: 'center',
   },
   teamsSection: {
     paddingHorizontal: 20,

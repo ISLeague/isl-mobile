@@ -13,4 +13,7 @@ export interface CreatePaisRequest {
   nombre: string;
   codigo_iso: string;
   emoji: string;
+  activo?: boolean;
 }
+
+export type UpdatePaisRequest = Partial<CreatePaisRequest>;

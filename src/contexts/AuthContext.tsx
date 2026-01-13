@@ -11,6 +11,7 @@ interface AuthContextType {
   isGlobalAdmin: boolean;
   isFan: boolean;
   isGuest: boolean;
+  isCamarografo: boolean;
   deviceToken: string | null;
   setDeviceToken: (token: string | null) => void;
   login: (token: string, usuario: Usuario) => void;
@@ -37,6 +38,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const isTournamentAdmin = usuario?.rol === 'admin' && !!usuario?.id_torneos && usuario.id_torneos.length > 0;
   const isGlobalAdmin = isAdmin && usuario?.id_pais === 0;
   const isFan = usuario?.rol === 'fan';
+  const isCamarografo = usuario?.rol === 'camarografo';
 
   const login = (newToken: string, newUsuario: Usuario) => {
     setToken(newToken);
@@ -103,6 +105,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isGlobalAdmin,
         isFan,
         isGuest,
+        isCamarografo,
         deviceToken,
         setDeviceToken,
         login,

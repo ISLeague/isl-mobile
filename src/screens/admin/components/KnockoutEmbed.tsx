@@ -355,15 +355,39 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
                   style={styles.actionButton}
                   onPress={() => handleEditPartido(partido)}
                 >
-                  <MaterialCommunityIcons name="pencil" size={16} color={colors.primary} />
-                  <Text style={styles.actionButtonText}>Editar Partido</Text>
+                  <MaterialCommunityIcons name="pencil" size={14} color={colors.primary} />
+                  <Text style={styles.actionButtonText}>Editar</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.actionButton}
+                  onPress={() => navigation.navigate('PreMatchValidation', {
+                    partido,
+                    ronda: { id_ronda: partido.id_ronda },
+                    equipoLocal: partido.equipo_local,
+                    equipoVisitante: partido.equipo_visitante,
+                  })}
+                >
+                  <MaterialCommunityIcons name="clipboard-check" size={14} color={colors.info} />
+                  <Text style={styles.actionButtonText}>Lista</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.actionButton}
+                  onPress={() => navigation.navigate('MatchSubstitutions', {
+                    partido,
+                    ronda: { id_ronda: partido.id_ronda },
+                    equipoLocal: partido.equipo_local,
+                    equipoVisitante: partido.equipo_visitante,
+                  })}
+                >
+                  <MaterialCommunityIcons name="swap-horizontal" size={14} color={colors.warning} />
+                  <Text style={styles.actionButtonText}>Cambios</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.actionButtonPrimary]}
                   onPress={() => handleLoadResult(partido)}
                 >
-                  <MaterialCommunityIcons name="scoreboard" size={16} color={colors.success} />
-                  <Text style={styles.actionButtonText}>Cargar Resultado</Text>
+                  <MaterialCommunityIcons name="scoreboard" size={14} color={colors.white} />
+                  <Text style={[styles.actionButtonText, styles.actionButtonTextPrimary]}>Resultado</Text>
                 </TouchableOpacity>
               </>
             ) : (
@@ -912,18 +936,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    gap: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 6,
     borderRadius: 8,
     backgroundColor: colors.white,
     borderWidth: 1,
     borderColor: colors.border,
   },
+  actionButtonPrimary: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
   actionButtonText: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '600',
     color: colors.textPrimary,
+  },
+  actionButtonTextPrimary: {
+    color: colors.white,
   },
   emptyRondasContainer: {
     alignItems: 'center',

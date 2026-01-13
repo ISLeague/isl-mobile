@@ -13,22 +13,15 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../../theme/colors';
 import { Equipo, Grupo } from '../../../api/types';
 
-interface Jugador {
+interface EquipoImport extends Partial<Equipo> {
   nombre: string;
-  dni: string;
-  fecha_nacimiento: string;
-  dorsal?: number;
-  es_refuerzo: boolean;
-}
-
-interface EquipoConJugadores extends Partial<Equipo> {
-  jugadores?: Jugador[];
+  logo?: string;
 }
 
 interface ImportTeamsModalProps {
   visible: boolean;
   onClose: () => void;
-  onImport: (teams: EquipoConJugadores[], grupoId: number) => void;
+  onImport: (teams: EquipoImport[], grupoId: number) => void;
   grupos: Grupo[];
   initialGrupoId?: number;
 }
@@ -41,117 +34,29 @@ const ImportTeamsModal: React.FC<ImportTeamsModalProps> = ({
   initialGrupoId,
 }) => {
   const [csvText, setCsvText] = useState('');
-  const [previewTeams, setPreviewTeams] = useState<EquipoConJugadores[]>([]);
+  const [previewTeams, setPreviewTeams] = useState<EquipoImport[]>([]);
   const [showPreview, setShowPreview] = useState(false);
   const [selectedGrupoId, setSelectedGrupoId] = useState(initialGrupoId || grupos[0]?.id_grupo);
   const [showGrupoPicker, setShowGrupoPicker] = useState(false);
-  const [expandedTeam, setExpandedTeam] = useState<number | null>(null);
 
-  const parseCSV = (text: string): EquipoConJugadores[] => {
+  const parseCSV = (text: string): EquipoImport[] => {
     try {
       const lines = text.trim().split('\n');
-      const teams: EquipoConJugadores[] = [];
-      let currentTeam: EquipoConJugadores | null = null;
+      const teams: EquipoImport[] = [];
 
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i].trim();
         if (!line) continue;
 
-        // Si la línea empieza con "EQUIPO:", es un nuevo equipo
-        if (line.toUpperCase().startsWith('EQUIPO:')) {
-          // Guardar el equipo anterior si existe
-          if (currentTeam) {
-            teams.push(currentTeam);
-          }
-          
-          // Crear nuevo equipo
-          const equipoData = line.substring(7).trim().split(',').map(p => p.trim());
-          currentTeam = {
-            nombre: equipoData[0],
-            logo: equipoData[1] || undefined,
-            jugadores: [],
-          };
+        const parts = line.split(',').map(p => p.trim());
+        if (parts.length < 1) {
+          throw new Error(`Línea ${i + 1}: formato incorrecto. Use: nombre, logo_url`);
         }
-        // Si la línea empieza con "JUGADOR:", es un jugador del equipo actual
-        else if (line.toUpperCase().startsWith('JUGADOR:')) {
-          if (!currentTeam) {
-            throw new Error(`Línea ${i + 1}: Se encontró un jugador antes de definir un equipo`);
-          }
-          
-          const jugadorData = line.substring(8).trim().split(',').map(p => p.trim());
-          
-          // Formato: JUGADOR: nombre, dni, DD/MM/YYYY, [dorsal], refuerzo
-          // Mínimo 4 campos (sin dorsal): nombre, dni, fecha, refuerzo
-          // Máximo 5 campos (con dorsal): nombre, dni, fecha, dorsal, refuerzo
-          
-          if (jugadorData.length < 4 || jugadorData.length > 5) {
-            throw new Error(
-              `Línea ${i + 1}: Formato incorrecto. Debe ser: JUGADOR: nombre, dni, DD/MM/YYYY, [dorsal], refuerzo`
-            );
-          }
 
-          const nombre = jugadorData[0];
-          const dni = jugadorData[1];
-          const fecha = jugadorData[2];
-          
-          let dorsal: number | undefined;
-          let refuerzoStr: string;
-          
-          // Si tiene 5 campos, el 4to es dorsal y el 5to es refuerzo
-          if (jugadorData.length === 5) {
-            const dorsalNum = parseInt(jugadorData[3]);
-            if (isNaN(dorsalNum) || dorsalNum < 1 || dorsalNum > 99) {
-              throw new Error(`Línea ${i + 1}: Dorsal debe ser un número entre 1 y 99`);
-            }
-            dorsal = dorsalNum;
-            refuerzoStr = jugadorData[4];
-          } else {
-            // Si tiene 4 campos, el 4to es refuerzo y no hay dorsal
-            refuerzoStr = jugadorData[3];
-          }
-
-          // Validar formato de fecha DD/MM/YYYY
-          const fechaRegex = /^\d{2}\/\d{2}\/\d{4}$/;
-          if (!fechaRegex.test(fecha)) {
-            throw new Error(`Línea ${i + 1}: Fecha debe estar en formato DD/MM/YYYY (ej: 15/05/2000)`);
-          }
-
-          // Validar DNI (7-10 dígitos)
-          if (!/^\d{7,10}$/.test(dni)) {
-            throw new Error(`Línea ${i + 1}: DNI debe tener entre 7 y 10 dígitos`);
-          }
-
-          // Validar refuerzo (0 o 1)
-          if (refuerzoStr !== '0' && refuerzoStr !== '1') {
-            throw new Error(`Línea ${i + 1}: Refuerzo debe ser 0 (no refuerzo) o 1 (refuerzo)`);
-          }
-
-          currentTeam.jugadores!.push({
-            nombre,
-            dni,
-            fecha_nacimiento: fecha,
-            dorsal,
-            es_refuerzo: refuerzoStr === '1',
-          });
-        }
-        // Si no tiene prefijo, asumimos que es formato simple de equipo
-        else if (!currentTeam) {
-          const parts = line.split(',').map(p => p.trim());
-          if (parts.length < 1) {
-            throw new Error(`Línea ${i + 1}: formato incorrecto`);
-          }
-          
-          teams.push({
-            nombre: parts[0],
-            logo: parts[1] || undefined,
-            jugadores: [],
-          });
-        }
-      }
-
-      // Agregar el último equipo si existe
-      if (currentTeam) {
-        teams.push(currentTeam);
+        teams.push({
+          nombre: parts[0],
+          logo: parts[1] || undefined,
+        });
       }
 
       return teams;
@@ -168,7 +73,7 @@ const ImportTeamsModal: React.FC<ImportTeamsModalProps> = ({
       }
 
       const teams = parseCSV(csvText);
-      
+
       if (teams.length === 0) {
         Alert.alert('Error', 'No se encontraron equipos válidos');
         return;
@@ -188,7 +93,7 @@ const ImportTeamsModal: React.FC<ImportTeamsModalProps> = ({
     }
 
     const selectedGrupo = grupos.find(g => g.id_grupo === selectedGrupoId);
-    
+
     Alert.alert(
       'Confirmar Importación',
       `¿Deseas importar ${previewTeams.length} equipo(s) al grupo "${selectedGrupo?.nombre}"?`,
@@ -235,34 +140,21 @@ const ImportTeamsModal: React.FC<ImportTeamsModalProps> = ({
                 <Text style={styles.infoText}>
                   <Text style={styles.infoBold}>Formato CSV:</Text>{'\n'}
                   {'\n'}
-                  <Text style={styles.infoBold}>Opción 1 - Solo equipos:</Text>{'\n'}
-                  nombre,logo_url{'\n'}
-                  {'\n'}
-                  <Text style={styles.infoBold}>Opción 2 - Equipos con jugadores:</Text>{'\n'}
-                  EQUIPO: nombre, logo_url{'\n'}
-                  JUGADOR: nombre, dni, DD/MM/YYYY, dorsal, refuerzo{'\n'}
-                  JUGADOR: nombre, dni, DD/MM/YYYY, refuerzo{'\n'}
+                  <Text style={styles.infoBold}>Líneas simples:</Text>{'\n'}
+                  nombre, logo_url{'\n'}
                   {'\n'}
                   <Text style={styles.infoBold}>Ejemplo:</Text>{'\n'}
-                  EQUIPO: Real Madrid, https://...{'\n'}
-                  JUGADOR: Lionel Messi, 12345678, 24/06/1987, 10, 0{'\n'}
-                  JUGADOR: Cristiano Ronaldo, 87654321, 05/02/1985, 1{'\n'}
-                  EQUIPO: Barcelona{'\n'}
-                  JUGADOR: Neymar Jr, 11223344, 05/02/1992, 11, 0{'\n'}
+                  Real Madrid, https://...{'\n'}
+                  Barcelona, https://...{'\n'}
+                  Atlético de Madrid{'\n'}
                   {'\n'}
-                  <Text style={styles.infoBold}>Campos obligatorios:</Text>{'\n'}
-                  • DNI: 7-10 dígitos{'\n'}
-                  • Fecha: DD/MM/YYYY{'\n'}
-                  • Refuerzo: 0 (no) o 1 (sí){'\n'}
-                  {'\n'}
-                  <Text style={styles.infoBold}>Campos opcionales:</Text>{'\n'}
-                  • Dorsal: 1-99 (si no se especifica, va sin dorsal)
+                  <Text style={styles.infoBold}>Nota:</Text> La URL del logo es opcional.
                 </Text>
               </View>
             </View>
 
             <Text style={styles.label}>Grupo destino:</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.grupoCard}
               onPress={() => setShowGrupoPicker(!showGrupoPicker)}
             >
@@ -331,11 +223,7 @@ const ImportTeamsModal: React.FC<ImportTeamsModalProps> = ({
                 <View style={styles.previewList}>
                   {previewTeams.map((team, index) => (
                     <View key={index} style={styles.previewTeamCard}>
-                      <TouchableOpacity 
-                        style={styles.previewTeamHeader}
-                        onPress={() => setExpandedTeam(expandedTeam === index ? null : index)}
-                        activeOpacity={0.7}
-                      >
+                      <View style={styles.previewTeamHeader}>
                         <MaterialCommunityIcons name="shield" size={24} color={colors.primary} />
                         <View style={styles.previewTeamInfo}>
                           <Text style={styles.previewTeamName}>{team.nombre}</Text>
@@ -344,46 +232,8 @@ const ImportTeamsModal: React.FC<ImportTeamsModalProps> = ({
                               Logo: {team.logo}
                             </Text>
                           )}
-                          {team.jugadores && team.jugadores.length > 0 && (
-                            <Text style={styles.previewTeamJugadores}>
-                              {team.jugadores.length} jugador(es)
-                            </Text>
-                          )}
                         </View>
-                        {team.jugadores && team.jugadores.length > 0 && (
-                          <MaterialCommunityIcons 
-                            name={expandedTeam === index ? "chevron-up" : "chevron-down"} 
-                            size={24} 
-                            color={colors.textSecondary} 
-                          />
-                        )}
-                      </TouchableOpacity>
-                      
-                      {expandedTeam === index && team.jugadores && team.jugadores.length > 0 && (
-                        <View style={styles.jugadoresList}>
-                          {team.jugadores.map((jugador, jIndex) => (
-                            <View key={jIndex} style={styles.jugadorItem}>
-                              <View style={styles.jugadorNumber}>
-                                <Text style={styles.jugadorNumberText}>
-                                  {jugador.dorsal || '-'}
-                                </Text>
-                              </View>
-                              <View style={styles.jugadorInfo}>
-                                <Text style={styles.jugadorName}>
-                                  {jugador.nombre}
-                                  {jugador.es_refuerzo && (
-                                    <Text style={styles.refuerzoBadge}> R</Text>
-                                  )}
-                                </Text>
-                                <Text style={styles.jugadorDni}>DNI: {jugador.dni}</Text>
-                                <Text style={styles.jugadorDate}>
-                                  Nac: {jugador.fecha_nacimiento}
-                                </Text>
-                              </View>
-                            </View>
-                          ))}
-                        </View>
-                      )}
+                      </View>
                     </View>
                   ))}
                 </View>
@@ -397,7 +247,7 @@ const ImportTeamsModal: React.FC<ImportTeamsModalProps> = ({
           </ScrollView>
         </View>
       </View>
-    </Modal>
+    </Modal >
   );
 };
 

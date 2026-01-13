@@ -200,7 +200,7 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
   ) => {
     const setter = isLocal ? setEventosLocal : setEventosVisitante;
     const eventos = isLocal ? eventosLocal : eventosVisitante;
-    
+
     const newEventos = eventos.map(e => {
       if (e.id_jugador === jugadorId) {
         const updated = { ...e, [field]: value };
@@ -212,9 +212,9 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
       }
       return e;
     });
-    
+
     setter(newEventos);
-    
+
     // Sincronizar goles de jugadores con marcador del equipo
     if (field === 'goles') {
       const totalGoles = newEventos.reduce((sum, e) => sum + e.goles, 0);
@@ -229,7 +229,7 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
   const toggleMVP = (isLocal: boolean, jugadorId: number) => {
     const setter = isLocal ? setEventosLocal : setEventosVisitante;
     const eventos = isLocal ? eventosLocal : eventosVisitante;
-    
+
     setter(eventos.map(e => ({
       ...e,
       isMVP: e.id_jugador === jugadorId ? !e.isMVP : false
@@ -362,7 +362,7 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
           navigation.goBack();
         }, 1000);
       } else {
-        showError('Error al guardar el resultado');
+        showError(response.message || 'Error al guardar el resultado');
       }
     } catch (error) {
       // console.error('Error saving result:', error);
@@ -374,17 +374,31 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
 
   const handleDeleteResult = () => {
     Alert.alert(
-      'Eliminar Resultado',
-      '¿Estás seguro de que quieres eliminar este resultado?',
+      'Borrar Resultado',
+      '¿Estás seguro de que quieres borrar el resultado de este partido? El partido volverá a estado Pendiente.',
       [
         { text: 'Cancelar', style: 'cancel' },
         {
-          text: 'Eliminar',
+          text: 'Borrar',
           style: 'destructive',
-          onPress: () => {
-            Alert.alert('Resultado Eliminado', '', [
-              { text: 'OK', onPress: () => navigation.goBack() }
-            ]);
+          onPress: async () => {
+            try {
+              setLoading(true);
+              const response = await api.partidos.resetResultado(partido.id_partido);
+              if (response.success) {
+                showSuccess('Resultado borrado correctamente');
+                setTimeout(() => {
+                  navigation.goBack();
+                }, 500);
+              } else {
+                showError(response.error || 'Error al borrar el resultado');
+              }
+            } catch (error: any) {
+              console.error('Error resetting result:', error);
+              showError(error.message || 'Error al borrar el resultado');
+            } finally {
+              setLoading(false);
+            }
           },
         },
       ]
@@ -399,14 +413,12 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
     return (
       <View key={jugadorId} style={styles.playerCard}>
         <View style={styles.playerHeader}>
-          {jugador.numero_camiseta && (
-            <View style={styles.playerNumberBadge}>
-              <Text style={styles.playerNumber}>#{jugador.numero_camiseta}</Text>
-            </View>
-          )}
+          <View style={styles.playerNumberBadge}>
+            <Text style={styles.playerNumber}>{jugador.numero_camiseta != null ? `#${jugador.numero_camiseta}` : 'X'}</Text>
+          </View>
           <Text style={styles.playerName} numberOfLines={2}>{jugador.nombre || jugador.nombre_completo}</Text>
         </View>
-        
+
         <View style={styles.playerEvents}>
           {/* Goles */}
           <TouchableOpacity
@@ -473,14 +485,14 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
 
     return (
       <Modal visible transparent animationType="fade" onRequestClose={() => setShowScoreModal(null)}>
-        <TouchableOpacity 
-          style={styles.modalOverlay} 
+        <TouchableOpacity
+          style={styles.modalOverlay}
           activeOpacity={1}
           onPress={() => setShowScoreModal(null)}
         >
           <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
             <View style={styles.modalHeader}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.modalBackButton}
                 onPress={() => setShowScoreModal(null)}
               >
@@ -526,14 +538,14 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
 
     return (
       <Modal visible transparent animationType="fade" onRequestClose={() => setShowEventModal(null)}>
-        <TouchableOpacity 
-          style={styles.modalOverlay} 
+        <TouchableOpacity
+          style={styles.modalOverlay}
           activeOpacity={1}
           onPress={() => setShowEventModal(null)}
         >
           <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
             <View style={styles.modalHeader}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.modalBackButton}
                 onPress={() => setShowEventModal(null)}
               >
@@ -610,7 +622,7 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
         title="Cargar Resultado"
         onBackPress={() => navigation.goBack()}
       />
-      
+
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Nombre de la Ronda */}
         <View style={styles.roundHeader}>
@@ -621,10 +633,10 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
         <View style={styles.mainScoreContainer}>
           {/* Equipo Local */}
           <View style={styles.teamSection}>
-            <Image 
-              source={equipoLocal?.logo ? { uri: equipoLocal.logo } : require('../../assets/InterLOGO.png')} 
-              style={styles.teamLogo} 
-              resizeMode="contain" 
+            <Image
+              source={equipoLocal?.logo ? { uri: equipoLocal.logo } : require('../../assets/InterLOGO.png')}
+              style={styles.teamLogo}
+              resizeMode="contain"
             />
             <Text style={styles.teamName}>{equipoLocal?.nombre}</Text>
           </View>
@@ -661,10 +673,10 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
 
           {/* Equipo Visitante */}
           <View style={styles.teamSection}>
-            <Image 
-              source={equipoVisitante?.logo ? { uri: equipoVisitante.logo } : require('../../assets/InterLOGO.png')} 
-              style={styles.teamLogo} 
-              resizeMode="contain" 
+            <Image
+              source={equipoVisitante?.logo ? { uri: equipoVisitante.logo } : require('../../assets/InterLOGO.png')}
+              style={styles.teamLogo}
+              resizeMode="contain"
             />
             <Text style={styles.teamName}>{equipoVisitante?.nombre}</Text>
           </View>

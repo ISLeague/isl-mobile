@@ -53,6 +53,7 @@ export const EditEditionScreen = ({ navigation, route }: any) => {
   const [fechaInicio, setFechaInicio] = useState(edicion.fecha_inicio.split('T')[0]);
   const [fechaFin, setFechaFin] = useState(edicion.fecha_fin.split('T')[0]);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Admins state
   const [assignedAdmins, setAssignedAdmins] = useState<AdminEdicionAsignacion[]>([]);
@@ -97,6 +98,33 @@ export const EditEditionScreen = ({ navigation, route }: any) => {
     }
   };
 
+  const handleDeleteEdition = () => {
+    Alert.alert(
+      'Eliminar Edición',
+      `¿Seguro que deseas eliminar la edición "${edicion.nombre}"? Esta acción no se puede deshacer.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setIsDeleting(true);
+              await api.ediciones.delete(edicion.id_edicion);
+              Alert.alert('Éxito', 'Edición eliminada correctamente', [
+                { text: 'OK', onPress: () => navigation.goBack() },
+              ]);
+            } catch (error) {
+              Alert.alert('Error', 'No se pudo eliminar la edición');
+            } finally {
+              setIsDeleting(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const loadAvailableAdmins = async () => {
     try {
       setLoadingAvailableAdmins(true);
@@ -110,6 +138,12 @@ export const EditEditionScreen = ({ navigation, route }: any) => {
     }
   };
 
+  const handleNumeroChange = (text: string) => {
+    // Only allow numbers and prevent empty/NaN values
+    const cleanedText = text.replace(/[^0-9]/g, '');
+    setNumero(cleanedText);
+  };
+
   const handleSaveEdition = async () => {
     if (!numero.trim() || !nombre.trim() || !fechaInicio.trim() || !fechaFin.trim()) {
       Alert.alert('Error', 'Todos los campos son obligatorios');
@@ -119,6 +153,12 @@ export const EditEditionScreen = ({ navigation, route }: any) => {
     const numeroValue = parseInt(numero.trim());
     if (isNaN(numeroValue) || numeroValue <= 0) {
       Alert.alert('Error', 'El número de edición debe ser un número válido');
+      return;
+    }
+
+    // Additional validation to prevent NaN
+    if (!isFinite(numeroValue)) {
+      Alert.alert('Error', 'El número de edición no es válido');
       return;
     }
 
@@ -293,7 +333,7 @@ export const EditEditionScreen = ({ navigation, route }: any) => {
             <TextInput
               style={styles.input}
               value={numero}
-              onChangeText={setNumero}
+              onChangeText={handleNumeroChange}
               placeholder="Ej: 2024, 2025"
               placeholderTextColor={colors.textSecondary}
               keyboardType="number-pad"
@@ -453,6 +493,23 @@ export const EditEditionScreen = ({ navigation, route }: any) => {
             </>
           )}
         </View>
+
+        {/* Delete Edition Button */}
+        <TouchableOpacity
+          style={[styles.deleteEditionButton, (isSaving || isDeleting) && styles.disabledButton]}
+          onPress={handleDeleteEdition}
+          disabled={isSaving || isDeleting}
+          activeOpacity={0.7}
+        >
+          {isDeleting ? (
+            <ActivityIndicator size="small" color={colors.white} />
+          ) : (
+            <>
+              <MaterialCommunityIcons name="trash-can-outline" size={20} color={colors.white} />
+              <Text style={styles.deleteEditionText}>Eliminar edición</Text>
+            </>
+          )}
+        </TouchableOpacity>
       </ScrollView>
 
       {/* Assign Admin Modal */}
@@ -597,6 +654,12 @@ export const EditEditionScreen = ({ navigation, route }: any) => {
         <View style={styles.savingOverlay}>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.savingText}>Guardando...</Text>
+        </View>
+      )}
+      {isDeleting && (
+        <View style={styles.savingOverlay}>
+          <ActivityIndicator size="large" color={colors.error} />
+          <Text style={styles.savingText}>Eliminando...</Text>
         </View>
       )}
     </SafeAreaView>
@@ -896,6 +959,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: colors.white,
+  },
+  deleteEditionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: colors.error,
+    marginHorizontal: 20,
+    marginTop: 16,
+    paddingVertical: 14,
+    borderRadius: 10,
+  },
+  deleteEditionText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.white,
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
   savingOverlay: {
     position: 'absolute',

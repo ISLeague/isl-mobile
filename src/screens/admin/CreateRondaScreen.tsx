@@ -12,7 +12,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
-import { Button } from '../../components/common';
+import { Button } from '../../components/common/Button';
+import { useToast } from '../../contexts/ToastContext';
+import api from '../../api';
+import { safeAsync } from '../../utils/errorHandling';
 
 interface CreateRondaScreenProps {
   navigation: any;
@@ -21,55 +24,96 @@ interface CreateRondaScreenProps {
 
 export const CreateRondaScreen: React.FC<CreateRondaScreenProps> = ({ navigation, route }) => {
   const { idEdicionCategoria, tipo: tipoParam, subtipo_eliminatoria } = route.params || {};
-  
+
   // Si viene con tipo en params (desde Knockout), úsalo y no permitas cambiarlo
   const tipoFijo = tipoParam || null;
   const esDesdeKnockout = tipoParam === 'eliminatorias';
-  
+
+  const { showSuccess } = useToast();
+  const [loading, setLoading] = useState(false);
   const [nombre, setNombre] = useState('');
   const [fecha, setFecha] = useState('');
-  const [tipo, setTipo] = useState<'fase_grupos' | 'eliminatorias' | 'amistosa'>(
-    tipoParam || 'fase_grupos'
+  const [tipo, setTipo] = useState<'fase_grupos' | 'amistosa'>(
+    (tipoParam === 'eliminatorias' ? 'fase_grupos' : tipoParam) || 'fase_grupos'
   );
-  const [subtipoEliminatoria, setSubtipoEliminatoria] = useState<'oro' | 'plata' | 'bronce'>(
-    subtipo_eliminatoria || 'oro'
-  );
+  const [vecesEnfrentamiento, setVecesEnfrentamiento] = useState('1');
   const [aplicarFechaAutomatica, setAplicarFechaAutomatica] = useState(false);
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     // Validaciones
     if (!nombre.trim()) {
       Alert.alert('Error', 'El nombre de la ronda es requerido');
       return;
     }
 
-    // Validar formato de fecha solo si hay fecha (DD/MM/YYYY)
-    if (fecha.trim()) {
-      const dateRegex = /^\d{2}\/\d{2}\/\d{4}$/;
-      if (!dateRegex.test(fecha)) {
-        Alert.alert('Error', 'El formato de la fecha debe ser DD/MM/YYYY (ej: 25/12/2025)');
-        return;
-      }
-    }
-
     const rondaData = {
       nombre,
-      fecha: fecha || undefined,
+      fecha: tipo === 'amistosa' ? (fecha.trim() || undefined) : undefined,
       tipo,
-      subtipo_eliminatoria: tipo === 'eliminatorias' ? subtipoEliminatoria : undefined,
+      veces_enfrentamiento: tipo === 'fase_grupos' ? parseInt(vecesEnfrentamiento) : undefined,
       aplicar_fecha_automatica: aplicarFechaAutomatica,
-      id_fase: 1, // TODO: Obtener el ID de fase correcto
       id_edicion_categoria: idEdicionCategoria,
       es_amistosa: tipo === 'amistosa',
+      orden: 1, // Valor por defecto para rondas creadas individualmente
     };
 
-    
-    // TODO: Llamar a la API para crear la ronda
-    // await api.fixture.createRonda(rondaData);
-    
-    Alert.alert('Éxito', `Ronda "${nombre}" creada exitosamente. Ahora puedes agregar partidos.`, [
-      { text: 'OK', onPress: () => navigation.goBack() }
-    ]);
+    setLoading(true);
+
+    const result = await safeAsync(
+      async () => {
+        // 1. Obtener la fase correcta
+        const fasesResponse = await api.fases.list(idEdicionCategoria);
+        const fase = fasesResponse.success && fasesResponse.data && fasesResponse.data.length > 0
+          ? fasesResponse.data.find((f: any) => f.tipo === 'grupo') || fasesResponse.data[0]
+          : null;
+
+        if (!fase || !fase.id_fase) {
+          throw new Error('No se encontró una fase válida');
+        }
+
+        // 2. Validar grupos si es fase de grupos
+        if (tipo === 'fase_grupos') {
+          const gruposResponse = await api.grupos.get(fase.id_fase);
+          const grupos = gruposResponse.success && gruposResponse.data ? gruposResponse.data.grupos || [] : [];
+
+          if (grupos.length === 0) {
+            throw new Error('No hay grupos creados en esta fase');
+          }
+
+          const firstGroupSize = grupos[0].equipos?.length || 0;
+          const allSameSize = grupos.every((g: any) => (g.equipos?.length || 0) === firstGroupSize);
+
+          if (!allSameSize) {
+            throw new Error('Todos los grupos deben tener la misma cantidad de equipos');
+          }
+
+          if (firstGroupSize === 0) {
+            throw new Error('Los grupos no tienen equipos asignados');
+          }
+        }
+
+        // 3. Crear la ronda
+        const rondaFinalData = {
+          ...rondaData,
+          id_fase: fase.id_fase,
+        };
+
+        return await api.rondas.create(rondaFinalData);
+      },
+      'CreateRonda - handleCreate',
+      {
+        fallbackValue: null,
+        onError: (error: any) => {
+          Alert.alert('Error', error.message || 'No se pudo crear la ronda');
+        }
+      }
+    );
+
+    if (result && result.success) {
+      showSuccess(`Ronda "${nombre}" creada exitosamente`);
+      navigation.goBack();
+    }
+    setLoading(false);
   };
 
   const getTipoIcon = (tipoRonda: string) => {
@@ -191,17 +235,8 @@ export const CreateRondaScreen: React.FC<CreateRondaScreenProps> = ({ navigation
           {/* Tipo de Ronda */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Tipo de Ronda *</Text>
-            {esDesdeKnockout && (
-              <Text style={styles.helpText}>Tipo fijado desde sección Knockout (Eliminatorias)</Text>
-            )}
             <View style={styles.tipoContainer}>
-              {(['fase_grupos', 'eliminatorias', 'amistosa'] as const)
-                .filter(tipoOption => {
-                  // Si es desde Knockout, solo mostrar eliminatorias
-                  if (esDesdeKnockout) return tipoOption === 'eliminatorias';
-                  // Si NO es desde Knockout, NO mostrar eliminatorias
-                  return tipoOption !== 'eliminatorias';
-                })
+              {(['fase_grupos', 'amistosa'] as const)
                 .map((tipoOption) => (
                   <TouchableOpacity
                     key={tipoOption}
@@ -228,76 +263,54 @@ export const CreateRondaScreen: React.FC<CreateRondaScreenProps> = ({ navigation
                   </TouchableOpacity>
                 ))}
             </View>
-            {!esDesdeKnockout && (
-              <Text style={styles.helpText}>
-                💡 Las rondas eliminatorias se crean desde la sección Knockout
-              </Text>
-            )}
+            <Text style={styles.helpText}>
+              💡 Las rondas eliminatorias se crean desde la sección Knockout
+            </Text>
           </View>
 
-          {/* Subtipo de Eliminatoria (solo si tipo === 'eliminatorias') */}
-          {tipo === 'eliminatorias' && (
+          {/* Veces que se enfrentan (solo para Fase de Grupos) */}
+          {tipo === 'fase_grupos' && (
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Categoría de Eliminatoria *</Text>
-              <View style={styles.tipoContainer}>
-                {(['oro', 'plata', 'bronce'] as const).map((subtipoOption) => {
-                  const subtipoColors = getSubtipoColors(subtipoOption);
-                  return (
-                    <TouchableOpacity
-                      key={subtipoOption}
-                      style={[
-                        styles.tipoButton,
-                        subtipoEliminatoria === subtipoOption && {
-                          backgroundColor: subtipoColors[0],
-                          borderColor: subtipoColors[1],
-                        },
-                      ]}
-                      onPress={() => setSubtipoEliminatoria(subtipoOption)}
-                      activeOpacity={0.7}
-                    >
-                      <MaterialCommunityIcons
-                        name={getSubtipoIcon(subtipoOption)}
-                        size={24}
-                        color={subtipoEliminatoria === subtipoOption ? colors.white : subtipoColors[1]}
-                      />
-                      <Text
-                        style={[
-                          styles.tipoButtonText,
-                          subtipoEliminatoria === subtipoOption && styles.tipoButtonTextSelected,
-                        ]}
-                      >
-                        {getSubtipoLabel(subtipoOption)}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
+              <Text style={styles.label}>¿Cuántas veces se enfrentan los equipos? *</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Ej: 1 (Ida), 2 (Ida y Vuelta)"
+                value={vecesEnfrentamiento}
+                onChangeText={setVecesEnfrentamiento}
+                keyboardType="numeric"
+                placeholderTextColor={colors.textLight}
+              />
+              <Text style={styles.helpText}>
+                Define cuántas veces jugará cada equipo contra sus rivales de grupo.
+              </Text>
             </View>
           )}
 
-          {/* Fecha (Opcional) */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Fecha (Opcional)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="DD/MM/YYYY (Ej: 25/12/2025)"
-              value={fecha}
-              onChangeText={setFecha}
-              placeholderTextColor={colors.textLight}
-              keyboardType="default"
-            />
-            {fecha && (
-              <TouchableOpacity
-                style={styles.clearButton}
-                onPress={() => setFecha('')}
-              >
-                <Text style={styles.clearButtonText}>Limpiar fecha</Text>
-              </TouchableOpacity>
-            )}
-            <Text style={styles.helpText}>
-              Formato: Día/Mes/Año (ej: 25/12/2025). La fecha es opcional.
-            </Text>
-          </View>
+          {/* Fecha (Opcional) - Solo para Amistosos */}
+          {tipo === 'amistosa' && (
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Fecha (Opcional)</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="DD/MM/YYYY (Ej: 25/12/2025)"
+                value={fecha}
+                onChangeText={setFecha}
+                placeholderTextColor={colors.textLight}
+                keyboardType="default"
+              />
+              {fecha && (
+                <TouchableOpacity
+                  style={styles.clearButton}
+                  onPress={() => setFecha('')}
+                >
+                  <Text style={styles.clearButtonText}>Limpiar fecha</Text>
+                </TouchableOpacity>
+              )}
+              <Text style={styles.helpText}>
+                Formato: Día/Mes/Año (ej: 25/12/2025). La fecha es opcional.
+              </Text>
+            </View>
+          )}
 
           {/* Switch: Aplicar fecha automáticamente */}
           {fecha.trim() && (

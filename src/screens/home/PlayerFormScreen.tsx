@@ -6,7 +6,7 @@ import { colors } from '../../theme/colors';
 import { Jugador } from '../../api/types/jugadores.types';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import api from '../../api';
-import { safeAsync } from '../../utils/errorHandling';
+import { safeAsync, parseApiError } from '../../utils/errorHandling';
 import { useToast } from '../../contexts/ToastContext';
 
 interface PlayerFormScreenProps {
@@ -20,6 +20,14 @@ export const PlayerFormScreen: React.FC<PlayerFormScreenProps> = ({ navigation, 
     jugador?: Jugador;
     mode: 'create' | 'edit';
   };
+
+  console.log('🔍 PlayerFormScreen params:', { equipoId, jugador, mode });
+
+  if (!equipoId) {
+    Alert.alert('Error', 'ID del equipo no proporcionado');
+    navigation.goBack();
+    return null;
+  }
 
   const { showSuccess, showError } = useToast();
 
@@ -36,6 +44,84 @@ export const PlayerFormScreen: React.FC<PlayerFormScreenProps> = ({ navigation, 
   const [savingStatus, setSavingStatus] = useState<string>('');
   const [showPieDominante, setShowPieDominante] = useState(false);
   const [fechaNacimiento, setFechaNacimiento] = useState(jugador?.fecha_nacimiento || '');
+
+  // Restricciones dinámicas
+  const [restrictions, setRestrictions] = useState<{
+    edad_minima?: number | null;
+    edad_maxima?: number | null;
+    permite_refuerzos?: boolean;
+    max_refuerzos?: number | null;
+    max_jugadores_por_equipo?: number | null;
+  } | null>(null);
+
+  // Cargar restricciones del equipo/categoría
+  React.useEffect(() => {
+    if (!equipoId) return;
+
+    const loadRestrictions = async () => {
+      try {
+        // 1. Obtener el equipo para saber su id_edicion_categoria
+        const equipoResponse = await api.equipos.getById(equipoId);
+        if (!equipoResponse || !equipoResponse.data) {
+          console.log("⚠️ No se encontró el equipo");
+          return;
+        }
+
+        const equipo = equipoResponse.data;
+        const idEdicionCategoria = equipo.id_edicion_categoria;
+
+        if (!idEdicionCategoria) {
+          console.log("⚠️ Equipo sin id_edicion_categoria");
+          return;
+        }
+
+        // 2. Obtener la edicion-categoria con la categoria anidada
+        const edicionCatResponse = await api.edicionCategorias.getById(idEdicionCategoria);
+        if (!edicionCatResponse || !edicionCatResponse.data) {
+          console.log("⚠️ No se encontró la edicion-categoria");
+          return;
+        }
+
+        const edicionCategoria = edicionCatResponse.data;
+        let categoria = edicionCategoria.categoria;
+
+        // Si la categoria no viene anidada, buscarla por separado
+        if (!categoria && edicionCategoria.id_categoria) {
+          console.log("📥 Buscando categoria por id:", edicionCategoria.id_categoria);
+          const catResponse = await api.categorias.get(edicionCategoria.id_categoria);
+          if (catResponse && catResponse.data) {
+            categoria = catResponse.data;
+          }
+        }
+
+        if (categoria) {
+          // La categoria tiene las restricciones base
+          // EdicionCategoria puede tener overrides para refuerzos
+          setRestrictions({
+            edad_minima: categoria.edad_minima,
+            edad_maxima: categoria.edad_maxima,
+            // Usar override si existe, sino usar valor base de categoria
+            permite_refuerzos: (edicionCategoria as any).permite_refuerzos_override ?? categoria.permite_refuerzos,
+            max_refuerzos: (edicionCategoria as any).max_refuerzos_override ?? categoria.max_refuerzos,
+            max_jugadores_por_equipo: edicionCategoria.max_jugadores_por_equipo
+          });
+          console.log("✅ Restricciones cargadas:", {
+            edad_minima: categoria.edad_minima,
+            edad_maxima: categoria.edad_maxima,
+            permite_refuerzos: (edicionCategoria as any).permite_refuerzos_override ?? categoria.permite_refuerzos,
+            max_refuerzos: (edicionCategoria as any).max_refuerzos_override ?? categoria.max_refuerzos,
+            max_jugadores_por_equipo: edicionCategoria.max_jugadores_por_equipo
+          });
+
+        } else {
+          console.log("⚠️ No se encontró la categoria:", edicionCategoria);
+        }
+      } catch (e) {
+        console.log("Error cargando restricciones", e);
+      }
+    };
+    loadRestrictions();
+  }, [equipoId]);
 
   const validateForm = (): boolean => {
     if (!nombreCompleto.trim()) {
@@ -73,12 +159,130 @@ export const PlayerFormScreen: React.FC<PlayerFormScreenProps> = ({ navigation, 
       return false;
     }
 
-    // Validar que el jugador sea mayor de 10 años y menor de 60 años
+    // Validar que el jugador sea mayor de 4 años (generico)
+    // const fecha = new Date(fechaNacimiento); // Ya declarada arriba
     const hoy = new Date();
-    const edad = hoy.getFullYear() - fecha.getFullYear();
-    if (edad < 10 || edad > 60) {
-      Alert.alert('Error', 'El jugador debe tener entre 10 y 60 años');
+    let edad = hoy.getFullYear() - fecha.getFullYear();
+    if (edad < 4) {
+      Alert.alert('Error', 'La edad no es válida');
       return false;
+    }
+
+    return true;
+  };
+
+  // Validación de Reglas de Negocio (Edad y Refuerzos)
+  const validateRules = async (): Promise<boolean> => {
+    // 1. Validar Edad
+    if (fechaNacimiento) {
+      const fecha = new Date(fechaNacimiento);
+      const hoy = new Date();
+      let edad = hoy.getFullYear() - fecha.getFullYear();
+      const m = hoy.getMonth() - fecha.getMonth();
+      if (m < 0 || (m === 0 && hoy.getDate() < fecha.getDate())) {
+        edad--;
+      }
+
+      // Restricciones de base (hardcoded safety net or dynamic)
+      const minAge = restrictions?.edad_minima ?? 4; // Minima absoluta razonable
+      const maxAge = restrictions?.edad_maxima;
+
+      if (edad < minAge) {
+        Alert.alert('Restricción de Edad', `El jugador debe tener al menos ${minAge} años.`);
+        return false;
+      }
+
+      // Si hay edad máxima
+      if (maxAge) {
+        if (!esRefuerzo) {
+          // Si NO es refuerzo, debe respetar la edad máxima exacta
+          // REGLA: Jugador normal <= maxAge
+          if (edad > maxAge) {
+            Alert.alert(
+              'Restricción de Edad',
+              `La edad máxima es ${maxAge} años.\n\nEste jugador tiene ${edad} años.\nMarca "Es refuerzo" si deseas inscribirlo como tal.`
+            );
+            return false;
+          }
+        } else {
+          // Si ES refuerzo
+          // REGLA: El refuerzo debe ser MAYOR a la edad máxima ("un año mayor")
+          // Interpretación: Permitido si edad > maxAge Y edad <= maxAge + 1 (o quizás más flexible?)
+          // El usuario dijo: "el refuerzo siempre es un año mayor a la edad maxima"
+          // Vamos a permitir hasta maxAge + 1
+
+          if (edad <= maxAge) {
+            Alert.alert(
+              'Restricción de Refuerzo',
+              `Para ser refuerzo, el jugador debe superar la edad máxima de la categoría (${maxAge} años).`
+            );
+            return false;
+          }
+
+          if (edad > maxAge + 1) {
+            Alert.alert(
+              'Restricción de Refuerzo',
+              `El refuerzo solo puede ser 1 año mayor a la edad máxima (${maxAge} años).\nEste jugador tiene ${edad} años (diferencia: ${edad - maxAge} años).`
+            );
+            return false;
+          }
+        }
+      }
+    }
+
+    // 2. Validar Maximo de Jugadores y Refuerzos
+    if (restrictions?.max_jugadores_por_equipo || restrictions?.max_refuerzos !== undefined) {
+      setSavingStatus('Verificando cupos...');
+      try {
+        const response = await api.jugadores.list(equipoId);
+        let jugadores: Jugador[] = [];
+        if (response.data && Array.isArray(response.data.jugadores)) {
+          jugadores = response.data.jugadores;
+        } else if (Array.isArray(response.data)) {
+          jugadores = response.data;
+        }
+
+        // --- Validar Maximo Jugadores ---
+        if (restrictions?.max_jugadores_por_equipo) {
+          // Contar total (excluyendo el actual si es edit)
+          const totalJugadores = jugadores.filter(j =>
+            mode === 'create' || (jugador && j.id_plantilla !== jugador.id_plantilla)
+          ).length;
+
+          // Si agregamos uno nuevo (create) o editamos (edit), el nuevo total sería totalJugadores + 1
+          if (totalJugadores + 1 > restrictions.max_jugadores_por_equipo) {
+            Alert.alert('Cupo Lleno', `El equipo ya tiene ${totalJugadores} jugadores. El máximo permitido es ${restrictions.max_jugadores_por_equipo}.`);
+            setSavingStatus('');
+            return false;
+          }
+        }
+
+        // --- Validar Refuerzos ---
+        if (esRefuerzo) {
+          if (restrictions && restrictions.permite_refuerzos === false) {
+            Alert.alert('Restricción', 'Esta categoría NO permite refuerzos.');
+            setSavingStatus('');
+            return false;
+          }
+
+          if (restrictions?.max_refuerzos !== undefined && restrictions?.max_refuerzos !== null) {
+            // Contar refuerzos existentes (excluyendo el actual si es edit)
+            const refuerzosCount = jugadores.filter(j =>
+              j.es_refuerzo &&
+              (mode === 'create' || (jugador && j.id_plantilla !== jugador.id_plantilla))
+            ).length;
+
+            if (refuerzosCount >= restrictions.max_refuerzos) {
+              Alert.alert('Cupo de Refuerzos Lleno', `El equipo ya tiene ${refuerzosCount} de ${restrictions.max_refuerzos} refuerzos permitidos.`);
+              setSavingStatus('');
+              return false;
+            }
+          }
+        }
+
+      } catch (e) {
+        console.log("Error verificando cupos", e);
+      }
     }
 
     return true;
@@ -86,6 +290,44 @@ export const PlayerFormScreen: React.FC<PlayerFormScreenProps> = ({ navigation, 
 
   const handleSave = async () => {
     if (!validateForm()) return;
+    if (!(await validateRules())) return;
+
+    // Validar que el número de camiseta no esté duplicado (solo si se proporciona un número)
+    if (numeroCamiseta && equipoId) {
+      const numCamiseta = parseInt(numeroCamiseta);
+
+      setSavingStatus('Verificando número de camiseta...');
+
+      try {
+        // Obtener todos los jugadores del equipo
+        const response = await api.jugadores.list(equipoId);
+        // La respuesta puede venir como array directo o dentro de un objeto data con propiedad jugadores
+        let jugadores: Jugador[] = [];
+        if (response.data && Array.isArray(response.data.jugadores)) {
+          jugadores = response.data.jugadores;
+        } else if (Array.isArray(response.data)) {
+          jugadores = response.data;
+        }
+
+        // Verificar si el número está duplicado (excluyendo el jugador actual si estamos editando)
+        const numeroDuplicado = jugadores.some((j: Jugador) =>
+          j.numero_camiseta === numCamiseta &&
+          (mode === 'create' || (jugador && j.id_plantilla !== jugador.id_plantilla))
+        );
+
+        if (numeroDuplicado) {
+          Alert.alert(
+            'Número no disponible',
+            `El número de camiseta ${numCamiseta} ya está asignado a otro jugador del equipo. Por favor elige otro.`
+          );
+          setSavingStatus('');
+          return;
+        }
+      } catch (error) {
+        console.error('Error verificando camiseta:', error);
+        // No bloquear si hay error en la verificación
+      }
+    }
 
     setLoading(true);
     setSavingStatus(mode === 'edit' ? 'Actualizando jugador...' : 'Guardando jugador...');
@@ -114,6 +356,7 @@ export const PlayerFormScreen: React.FC<PlayerFormScreenProps> = ({ navigation, 
           return response;
         } else {
           // Editar jugador existente
+          if (!jugador) return null;
           const response = await api.jugadores.update(jugador.id_plantilla, jugadorData);
           return response;
         }
@@ -121,11 +364,25 @@ export const PlayerFormScreen: React.FC<PlayerFormScreenProps> = ({ navigation, 
       'PlayerFormScreen - handleSave',
       {
         fallbackValue: null,
-        onError: (error) => {
+        onError: (error: any) => {
           // console.error('❌ [PlayerForm] Error al guardar:', error);
           setLoading(false);
           setSavingStatus('');
-          showError(error.message || 'No se pudo guardar el jugador', 'Error');
+
+          const message = parseApiError(error);
+
+          // Si es un conflicto (duplicado) o error de validación específico, mostrar Alert
+          // para asegurar que el usuario lo vea y pueda corregirlo
+          const isConflict = error?.response?.status === 409 ||
+            message.toLowerCase().includes('camiseta') ||
+            message.toLowerCase().includes('ya existe') ||
+            message.toLowerCase().includes('dni');
+
+          if (isConflict) {
+            Alert.alert('No se pudo guardar', message);
+          } else {
+            showError(message || 'No se pudo guardar el jugador', 'Error');
+          }
         }
       }
     );

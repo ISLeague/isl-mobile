@@ -4,6 +4,7 @@ import {
   CreateEdicionCategoriaResponse,
   EdicionCategoriaListParams,
   EdicionCategoriaListResponse,
+  EdicionCategoria,
 } from '../types/edicion-categorias.types';
 
 export const edicionCategoriasService = {
@@ -16,6 +17,21 @@ export const edicionCategoriasService = {
       { params: { ...params, action: 'list' } }
     );
     return response.data;
+  },
+
+  /**
+   * Get a single edicion-categoria by ID
+   */
+  getById: async (idEdicionCategoria: number): Promise<{ success: boolean; data: EdicionCategoria }> => {
+    // Use the list endpoint but filter for the specific ID
+    const response = await apiClient.get(
+      '/edicion-categorias',
+      { params: { id_edicion_categoria: idEdicionCategoria, action: 'list' } }
+    );
+    // The response structure is { data: { data: [...] } }
+    const items = response.data?.data?.data || response.data?.data || [];
+    const item = Array.isArray(items) ? items[0] : items;
+    return { success: true, data: item };
   },
 
   /**

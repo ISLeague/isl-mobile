@@ -246,7 +246,7 @@ export const ImagePickerInput: React.FC<ImagePickerInputProps> = ({
           <Image
             source={{ uri: value }}
             style={styles.preview}
-            resizeMode="cover"
+            resizeMode="contain"
           />
           <TouchableOpacity
             style={styles.removeButton}
@@ -499,16 +499,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.primary,
     marginLeft: 8,
-  },
-  sourceIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  sourceText: {
-    fontSize: 13,
-    color: colors.textLight,
-    marginLeft: 4,
   },
   helpText: {
     fontSize: 13,

@@ -267,6 +267,11 @@ export const CreatePartidoScreen = ({ navigation, route }: any) => {
               });
 
               await loadFixturesSinPartido();
+
+              // Volver a la vista de Fixture
+              setTimeout(() => {
+                navigation.goBack();
+              }, 500);
             }
           },
         },
@@ -404,6 +409,11 @@ export const CreatePartidoScreen = ({ navigation, route }: any) => {
 
                 // Reload fixtures
                 await loadFixturesSinPartido();
+
+                // Volver a la vista de Fixture
+                setTimeout(() => {
+                  navigation.goBack();
+                }, 500);
               }
             } catch (error) {
               setCreating(false);

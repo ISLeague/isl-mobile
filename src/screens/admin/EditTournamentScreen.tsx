@@ -122,18 +122,9 @@ export const EditTournamentScreen = ({ navigation, route }: any) => {
         {
           text: 'OK',
           onPress: () => {
-            // Navegar de vuelta pasando los datos actualizados para que se refresque la UI inmediatamente
-            const updatedTorneo = {
-              ...torneo,
-              nombre: nombre.trim(),
-              temporada: temporada.trim(),
-              activo,
-            };
-
-            navigation.navigate({
-              name: 'TournamentDetails',
-              params: { torneo: updatedTorneo },
-              merge: true,
+            navigation.navigate('AdminTournaments', {
+              pais,
+              refresh: true
             });
           },
         },

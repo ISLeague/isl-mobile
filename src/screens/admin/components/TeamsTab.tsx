@@ -9,6 +9,7 @@ import {
   Alert,
   ActivityIndicator,
   RefreshControl,
+  TextInput,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../../theme/colors';
@@ -37,6 +38,13 @@ export const TeamsTab: React.FC<TeamsTabProps> = ({
   const [equipos, setEquipos] = useState<Equipo[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Filtrar equipos por búsqueda
+  const equiposFiltrados = equipos.filter(equipo =>
+    equipo.nombre.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (equipo.nombre_corto && equipo.nombre_corto.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
 
   useEffect(() => {
     loadEquipos();
@@ -130,6 +138,25 @@ export const TeamsTab: React.FC<TeamsTabProps> = ({
         <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
       }
     >
+      {/* Buscador */}
+      {equipos.length > 0 && (
+        <View style={styles.searchContainer}>
+          <MaterialCommunityIcons name="magnify" size={20} color={colors.textSecondary} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Buscar equipo..."
+            placeholderTextColor={colors.textLight}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <MaterialCommunityIcons name="close-circle" size={20} color={colors.textSecondary} />
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
       {/* Botones de acción - Solo para admins */}
       {isAdmin && equipos.length > 0 && !maxEquiposAlcanzado && (
         <View style={styles.actionButtonsContainer}>
@@ -164,9 +191,14 @@ export const TeamsTab: React.FC<TeamsTabProps> = ({
       {/* Lista de equipos */}
       {equipos.length === 0 ? (
         renderEmpty()
+      ) : equiposFiltrados.length === 0 ? (
+        <View style={styles.noResultsContainer}>
+          <MaterialCommunityIcons name="magnify-close" size={48} color={colors.textSecondary} />
+          <Text style={styles.noResultsText}>No se encontraron equipos con "{searchQuery}"</Text>
+        </View>
       ) : (
         <View style={styles.teamsGrid}>
-          {equipos.map((equipo) => (
+          {equiposFiltrados.map((equipo) => (
             <TouchableOpacity
               key={equipo.id_equipo}
               style={styles.teamCard}
@@ -404,5 +436,37 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: colors.primary,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 16,
+    gap: 10,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    color: colors.textPrimary,
+    paddingVertical: 0,
+  },
+  noResultsContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+    gap: 12,
+  },
+  noResultsText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
   },
 });

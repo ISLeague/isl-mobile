@@ -115,6 +115,12 @@ export const LoginScreen = ({ navigation }: any) => {
             // Admin sin torneos asignados (no debería pasar)
             showError('Admin sin torneos asignados', 'Error');
           }
+        } else if (rol === 'camarografo') {
+          // console.log('🔄 Navegando a Camarografo');
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'Camarografo' }],
+          });
         } else {
           // console.log('🔄 Navegando a Main (Fan/Jugador)');
           // Fan o jugador → Main (tabs)

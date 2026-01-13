@@ -166,6 +166,10 @@ export const safeTry = <T,>(
  * Parsea errores de API
  */
 export const parseApiError = (error: any): string => {
+  if (error?.response?.data?.error?.message) {
+    return error.response.data.error.message;
+  }
+
   if (error?.response?.data?.message) {
     return error.response.data.message;
   }

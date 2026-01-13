@@ -39,7 +39,7 @@ export const CreateTournamentScreen = ({ navigation, route }: any) => {
 
     const result = await safeAsync(
       async () => {
-       
+
 
         const response = await api.torneos.create({
           nombre: nombre.trim(),
@@ -65,7 +65,12 @@ export const CreateTournamentScreen = ({ navigation, route }: any) => {
 
     if (result && result.success) {
       showSuccess(`Torneo "${nombre}" creado correctamente`, '¡Éxito!');
-      setTimeout(() => navigation.goBack(), 1500);
+
+      // Volver a la lista de torneos y refrescar
+      navigation.navigate('AdminTournaments', {
+        pais,
+        refresh: true
+      });
     }
   };
 

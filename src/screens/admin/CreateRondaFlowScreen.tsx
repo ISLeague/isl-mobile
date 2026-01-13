@@ -41,8 +41,8 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
 
   // Step 1: Create Ronda
   const [nombre, setNombre] = useState('');
-  const [tipo, setTipo] = useState<'fase_grupos' | 'eliminatorias' | 'amistosa'>('fase_grupos');
-  const [subtipoEliminatoria, setSubtipoEliminatoria] = useState<'oro' | 'plata' | 'bronce'>('oro');
+  const [tipo, setTipo] = useState<'fase_grupos' | 'amistosa'>('fase_grupos');
+  const [vecesEnfrentamiento, setVecesEnfrentamiento] = useState('1');
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
   const [orden, setOrden] = useState('1');
@@ -73,11 +73,11 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
       setCreatedRondaId(rondaData.id_ronda);
       setCreatedFaseId(rondaData.id_fase);
       setNombre(rondaData.nombre);
-      setTipo(rondaData.tipo);
+      setTipo(rondaData.tipo === 'eliminatorias' ? 'fase_grupos' : rondaData.tipo);
       setFechaInicio(rondaData.fecha_inicio);
       setFechaFin(rondaData.fecha_fin);
       setOrden(rondaData.orden?.toString() || '1');
-      
+
       console.log('🔧 Inicializando con ronda existente:', {
         id_ronda: rondaData.id_ronda,
         nombre: rondaData.nombre,
@@ -237,14 +237,50 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
       return;
     }
 
+    // Validar que todos los grupos tengan el mismo tamaño (solo para Fase de Grupos)
+    if (tipo === 'fase_grupos') {
+      const gruposResult = await safeAsync(
+        async () => await api.grupos.get(fasesResult.id_fase),
+        'CreateRondaFlow - getGrupos',
+        { fallbackValue: null }
+      );
+
+      if (gruposResult && gruposResult.success && gruposResult.data) {
+        const grupos = gruposResult.data.grupos || [];
+        if (grupos.length > 0) {
+          const firstGroupSize = grupos[0].equipos?.length || 0;
+          const allSameSize = grupos.every((g: any) => (g.equipos?.length || 0) === firstGroupSize);
+
+          if (!allSameSize) {
+            Alert.alert(
+              'Error de Validación',
+              'Todos los grupos deben tener la misma cantidad de equipos para generar el fixture automáticamente.'
+            );
+            setLoading(false);
+            return;
+          }
+
+          if (firstGroupSize === 0) {
+            Alert.alert('Error', 'Los grupos no tienen equipos asignados.');
+            setLoading(false);
+            return;
+          }
+        } else {
+          Alert.alert('Error', 'No hay grupos creados en esta fase.');
+          setLoading(false);
+          return;
+        }
+      }
+    }
+
     const rondaData = {
       nombre: nombre.trim(),
       id_fase: fasesResult.id_fase,
       tipo,
-      subtipo_eliminatoria: tipo === 'eliminatorias' ? subtipoEliminatoria : undefined,
+      veces_enfrentamiento: tipo === 'fase_grupos' ? parseInt(vecesEnfrentamiento) : undefined,
       es_amistosa: tipo === 'amistosa',
-      fecha_inicio: fechaInicio.trim() || undefined,
-      fecha_fin: fechaFin.trim() || undefined,
+      fecha_inicio: tipo === 'amistosa' ? (fechaInicio.trim() || undefined) : undefined,
+      fecha_fin: tipo === 'amistosa' ? (fechaFin.trim() || undefined) : undefined,
       orden: parseInt(orden),
     };
 
@@ -300,7 +336,7 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
     const fixtureData: any = {
       id_ronda: createdRondaId,
       tipo_generacion: tipoGeneracion,
-      ida_vuelta: tipo === 'fase_grupos' ? idaVuelta : false,
+      ida_vuelta: tipo === 'fase_grupos' ? (parseInt(vecesEnfrentamiento) > 1) : false,
     };
 
     // Solo agregar cantidad_partidos si es amistosa
@@ -395,8 +431,11 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
       return !details || !details.fecha || !details.hora || !details.id_cancha;
     });
 
-    if (completeFixtures.length === 0) {
-      Alert.alert('Error', 'No hay partidos con fecha, hora y cancha asignados');
+    if (!validateFriendlyRoundDuplicates()) {
+      Alert.alert(
+        'Error de Validación',
+        'Un equipo no puede jugar más de una vez en la misma jornada de amistosos. Revisa la generación del fixture.'
+      );
       return;
     }
 
@@ -410,7 +449,7 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
       const details = fixtureDetails[fixture.fixture_id];
 
       const tipoPartido: 'clasificacion' | 'eliminatoria' | 'amistoso' =
-        tipo === 'amistosa' ? 'amistoso' : tipo === 'eliminatorias' ? 'eliminatoria' : 'clasificacion';
+        tipo === 'amistosa' ? 'amistoso' : 'clasificacion';
 
       const partidoData = {
         id_fixture: fixture.fixture_id,
@@ -490,13 +529,13 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
           },
           {
             text: 'Volver',
-            onPress: () => navigation.goBack(),
+            onPress: () => navigation.navigate('AdminFixture', { idEdicionCategoria }),
           },
         ]
       );
     } else {
-      // All fixtures were created, go back
-      navigation.goBack();
+      // All fixtures were created, go to fixture
+      navigation.navigate('AdminFixture', { idEdicionCategoria });
     }
   };
 
@@ -562,20 +601,6 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.tipoButton, tipo === 'eliminatorias' && styles.tipoButtonActive]}
-          onPress={() => setTipo('eliminatorias')}
-        >
-          <MaterialCommunityIcons
-            name="trophy-variant"
-            size={24}
-            color={tipo === 'eliminatorias' ? colors.white : colors.primary}
-          />
-          <Text style={[styles.tipoButtonText, tipo === 'eliminatorias' && styles.tipoButtonTextActive]}>
-            Eliminatorias
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
           style={[styles.tipoButton, tipo === 'amistosa' && styles.tipoButtonActive]}
           onPress={() => setTipo('amistosa')}
         >
@@ -590,50 +615,39 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
         </TouchableOpacity>
       </View>
 
-      {tipo === 'eliminatorias' && (
-        <>
-          <Text style={styles.fieldLabel}>Subtipo de Eliminatoria *</Text>
-          <View style={styles.subtipoButtons}>
-            <TouchableOpacity
-              style={[styles.subtipoButton, subtipoEliminatoria === 'oro' && styles.subtipoButtonOro]}
-              onPress={() => setSubtipoEliminatoria('oro')}
-            >
-              <Text style={styles.subtipoButtonText}>Oro</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.subtipoButton, subtipoEliminatoria === 'plata' && styles.subtipoButtonPlata]}
-              onPress={() => setSubtipoEliminatoria('plata')}
-            >
-              <Text style={styles.subtipoButtonText}>Plata</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.subtipoButton, subtipoEliminatoria === 'bronce' && styles.subtipoButtonBronce]}
-              onPress={() => setSubtipoEliminatoria('bronce')}
-            >
-              <Text style={styles.subtipoButtonText}>Bronce</Text>
-            </TouchableOpacity>
-          </View>
-        </>
+      {tipo === 'fase_grupos' && (
+        <Input
+          label="¿Cuántas veces se enfrentan los equipos? *"
+          placeholder="Ej: 1 (Ida), 2 (Ida y Vuelta)"
+          value={vecesEnfrentamiento}
+          onChangeText={setVecesEnfrentamiento}
+          keyboardType="numeric"
+          leftIcon={<MaterialCommunityIcons name="repeat" size={20} color={colors.textLight} />}
+        />
       )}
 
-      <DatePickerInput
-        label="Fecha de Inicio"
-        value={fechaInicio}
-        onChangeDate={setFechaInicio}
-        placeholder="Seleccionar fecha de inicio"
-        defaultToToday
-      />
 
-      <DatePickerInput
-        label="Fecha de Fin"
-        value={fechaFin}
-        onChangeDate={setFechaFin}
-        placeholder="Seleccionar fecha de fin"
-        minimumDate={fechaInicio ? new Date(fechaInicio) : undefined}
-        defaultToToday
-      />
+
+      {tipo === 'amistosa' && (
+        <>
+          <DatePickerInput
+            label="Fecha de Inicio"
+            value={fechaInicio}
+            onChangeDate={setFechaInicio}
+            placeholder="Seleccionar fecha de inicio"
+            defaultToToday
+          />
+
+          <DatePickerInput
+            label="Fecha de Fin"
+            value={fechaFin}
+            onChangeDate={setFechaFin}
+            placeholder="Seleccionar fecha de fin"
+            minimumDate={fechaInicio ? new Date(fechaInicio) : undefined}
+            defaultToToday
+          />
+        </>
+      )}
 
       <Input
         label="Orden *"
@@ -667,7 +681,7 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
       <View style={styles.infoBox}>
         <MaterialCommunityIcons name="information" size={24} color={colors.info} />
         <Text style={styles.infoText}>
-          {rondaData 
+          {rondaData
             ? `Genera automáticamente los fixtures para la ronda "${nombre}"`
             : 'Selecciona cómo quieres generar los partidos de esta ronda'
           }
