@@ -20,4 +20,14 @@ export const paisesService = {
     const response = await apiClient.post('/paises-create', data);
     return response.data.data;
   },
+
+  /**
+   * Actualizar un país
+   */
+  update: async (id_pais: number, data: Partial<CreatePaisRequest>) => {
+    const response = await apiClient.patch('/paises-create', data, {
+      params: { id_pais },
+    });
+    return response.data.data;
+  },
 };

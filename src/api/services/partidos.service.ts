@@ -40,11 +40,13 @@ export const partidosService = {
 
   /**
    * Obtener resultado completo de un partido con estadísticas
+   * @param id - ID del partido
+   * @param soloPresentes - Si true, solo devuelve jugadores que asistieron al partido
    */
-  getResultado: async (id: number) => {
-    console.log("id del partido ", id)
+  getResultado: async (id: number, soloPresentes: boolean = true) => {
+    console.log("id del partido ", id, "solo presentes: ", soloPresentes)
     const response = await apiClient.get('/partidos', {
-      params: { id, action: 'resultado' } // consolidated
+      params: { id, action: 'resultado', solo_presentes: soloPresentes } // consolidated
     });
     console.log("respuuetssa ", response.data)
     return response.data;
@@ -173,8 +175,19 @@ export const partidosService = {
    * Eliminar un partido
    */
   delete: async (id: number) => {
+    // Intentamos con id_partido y action por si acaso, pero normalmente REST usa query param 'id'
     const response = await apiClient.delete('/partidos', {
-      params: { id_partido: id }
+      params: { id, action: 'delete' }
+    });
+    return response.data;
+  },
+
+  /**
+   * Borrar/Resetear resultado de un partido (vuelve a estado Pendiente)
+   */
+  resetResultado: async (id_partido: number) => {
+    const response = await apiClient.post('/partidos', { id_partido }, {
+      params: { action: 'reset-resultado' }
     });
     return response.data;
   },

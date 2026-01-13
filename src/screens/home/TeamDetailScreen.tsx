@@ -46,6 +46,21 @@ const getBadgeColor = (posicion?: string) => {
 
 export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, route }) => {
   const { equipoId } = route.params as { equipoId: number };
+  console.log('🔍 TeamDetailScreen - equipoId from params:', equipoId);
+
+  // Validar que equipoId sea válido
+  if (!equipoId) {
+    console.error('❌ TeamDetailScreen: equipoId is undefined or invalid');
+    return (
+      <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text style={{ fontSize: 16, color: 'red' }}>Error: ID de equipo no válido</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: 20 }}>
+          <Text style={{ color: '#1976D2' }}>Volver</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
+
   const { isAdmin, isSuperAdmin } = useAuth();
   const pagerRef = useRef<PagerView>(null);
   const scrollX = useRef(new Animated.Value(0)).current;
@@ -105,9 +120,25 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
         }
 
         // Load players by team ID
+        // Load players by team ID
         const jugadoresResponse = await api.jugadores.list(equipoId);
-        if (jugadoresResponse.success && jugadoresResponse.data.jugadores) {
-          setJugadores(jugadoresResponse.data.jugadores);
+        let jugadoresList: Jugador[] = [];
+
+        // Manejar estructura de respuesta variable (array directo o { data: { jugadores: [] } })
+        if (jugadoresResponse.data && Array.isArray(jugadoresResponse.data.jugadores)) {
+          jugadoresList = jugadoresResponse.data.jugadores;
+        } else if (Array.isArray(jugadoresResponse.data)) {
+          jugadoresList = jugadoresResponse.data;
+        } else if (jugadoresResponse.jugadores && Array.isArray(jugadoresResponse.jugadores)) {
+          // Caso borde donde retornan objeto con propiedad jugadores directo
+          jugadoresList = jugadoresResponse.jugadores;
+        } else if (Array.isArray(jugadoresResponse)) {
+          // Caso borde donde retorna array directamente la promesa
+          jugadoresList = jugadoresResponse as unknown as Jugador[];
+        }
+
+        if (jugadoresList.length > 0) {
+          setJugadores(jugadoresList);
         }
 
         // Load detailed team statistics if we have the id_edicion_categoria
@@ -199,8 +230,21 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
           }
         );
 
-        if (jugadoresResponse && jugadoresResponse.success && jugadoresResponse.data.jugadores) {
-          const newJugadores = jugadoresResponse.data.jugadores;
+        let newJugadores: Jugador[] = [];
+        // Manejar estructura de respuesta variable (array directo o { data: { jugadores: [] } })
+        if (jugadoresResponse && jugadoresResponse.data && Array.isArray(jugadoresResponse.data.jugadores)) {
+          newJugadores = jugadoresResponse.data.jugadores;
+        } else if (jugadoresResponse && Array.isArray(jugadoresResponse.data)) {
+          newJugadores = jugadoresResponse.data;
+        } else if (jugadoresResponse && jugadoresResponse.jugadores && Array.isArray(jugadoresResponse.jugadores)) {
+          newJugadores = jugadoresResponse.jugadores;
+        } else if (Array.isArray(jugadoresResponse)) {
+          newJugadores = jugadoresResponse as unknown as Jugador[];
+        }
+
+        if (newJugadores.length > 0 || (newJugadores.length === 0 && Array.isArray(newJugadores))) {
+          // Si obtuvimos un array (aunque vacío), seteamos el estado
+          // para soportar el caso de borrar todos los jugadores
           setJugadores(newJugadores);
 
           // Mostrar modal de resultados si se agregó un nuevo jugador
@@ -250,6 +294,7 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
   };
 
   const handleAddPlayer = () => {
+    console.log('🔍 handleAddPlayer - equipoId:', equipoId);
     navigation.navigate('PlayerForm', { equipoId, mode: 'create' });
   };
 
@@ -367,7 +412,7 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
 
 
         // Intentar recargar la lista de jugadores
-        let newPlayers: Jugador[] = [];
+        let newPlayersVal: Jugador[] = [];
         if (successful > 0) {
           setImportStatus('Recargando lista de jugadores...');
 
@@ -381,15 +426,25 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
               fallbackValue: null,
               onError: (error) => {
                 // console.error('⚠️ [ImportCSV] Error al recargar jugadores:', error);
-                // No mostrar error al usuario, solo loguear
-                // Los resultados se mostrarán de todos modos
               }
             }
           );
 
-          if (jugadoresResponse && jugadoresResponse.success && jugadoresResponse.data.jugadores) {
-            newPlayers = jugadoresResponse.data.jugadores;
-            setJugadores(newPlayers);
+          if (jugadoresResponse) {
+            if (jugadoresResponse.data && Array.isArray(jugadoresResponse.data.jugadores)) {
+              newPlayersVal = jugadoresResponse.data.jugadores;
+            } else if (Array.isArray(jugadoresResponse.data)) {
+              newPlayersVal = jugadoresResponse.data;
+            } else if (jugadoresResponse.jugadores && Array.isArray(jugadoresResponse.jugadores)) {
+              newPlayersVal = jugadoresResponse.jugadores;
+            } else if (Array.isArray(jugadoresResponse)) {
+              newPlayersVal = jugadoresResponse as unknown as Jugador[];
+            }
+          }
+
+          if (newPlayersVal.length > 0) {
+            newPlayers = newPlayersVal; // update reference for modal
+            setJugadores(newPlayersVal);
           }
         }
 
@@ -626,7 +681,9 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
               styles.playerNumberBadge,
               { backgroundColor: getBadgeColor(jugador.posicion) }
             ]}>
-              <Text style={styles.playerNumberText}>#{jugador.numero_camiseta}</Text>
+              <Text style={styles.playerNumberText}>
+                {jugador.numero_camiseta != null ? `#${jugador.numero_camiseta}` : 'X'}
+              </Text>
             </View>
             <View style={styles.playerInfo}>
               <View style={styles.playerNameRow}>
@@ -879,8 +936,8 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
                                   resultado === 'G'
                                     ? colors.success
                                     : resultado === 'E'
-                                    ? colors.textLight
-                                    : colors.error,
+                                      ? colors.textLight
+                                      : colors.error,
                               },
                             ]}
                           >

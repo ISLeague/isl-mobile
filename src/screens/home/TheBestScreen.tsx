@@ -6,10 +6,12 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
+  Alert,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { GradientHeader, Card } from '../../components/common';
 import { colors } from '../../theme/colors';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface TheBestScreenProps {
   navigation: any;
@@ -86,6 +88,40 @@ const mockPorcentajeDerrotas: RankingItem[] = [
 ];
 
 export const TheBestScreen: React.FC<TheBestScreenProps> = ({ navigation }) => {
+  const { isGuest } = useAuth();
+
+  // Check if user is logged out
+  if (isGuest) {
+    return (
+      <View style={styles.container}>
+        <GradientHeader title="The Best" onBackPress={() => navigation.goBack()} />
+        <View style={styles.guestContainer}>
+          <MaterialCommunityIcons name="star-off-outline" size={80} color={colors.primary} />
+          <Text style={styles.guestTitle}>Contenido no disponible</Text>
+          <Text style={styles.guestText}>
+            Debes iniciar sesión para ver las estadísticas y rankings
+          </Text>
+          <TouchableOpacity
+            style={styles.guestButton}
+            onPress={() => {
+              Alert.alert(
+                'Iniciar Sesión',
+                '¿Deseas ir a la pantalla de inicio de sesión?',
+                [
+                  { text: 'Cancelar', style: 'cancel' },
+                  { text: 'Iniciar Sesión', onPress: () => navigation.navigate('Login') },
+                ]
+              );
+            }}
+            activeOpacity={0.8}
+          >
+            <MaterialCommunityIcons name="login" size={24} color={colors.white} />
+            <Text style={styles.guestButtonText}>Iniciar Sesión</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
   // Formatear nombre: mostrar "Nombre A." (primera letra del apellido)
   const formatPlayerName = (nombreCompleto: string) => {
     const partes = nombreCompleto.trim().split(' ');
@@ -389,5 +425,45 @@ const styles = StyleSheet.create({
   },
   bottomSpacing: {
     height: 20,
+  },
+  guestContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  guestTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+    marginTop: 24,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  guestText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 32,
+    lineHeight: 20,
+  },
+  guestButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+    paddingVertical: 16,
+    paddingHorizontal: 40,
+    borderRadius: 30,
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  guestButtonText: {
+    color: colors.white,
+    fontSize: 18,
+    fontWeight: '700',
   },
 });

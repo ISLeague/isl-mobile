@@ -36,8 +36,9 @@ export const SponsorSlider: React.FC<SponsorSliderProps> = ({
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const sponsorWidth = width - 40; // Ancho completo menos padding
 
-  const [sponsors, setSponsors] = useState<Sponsor[]>([]);
+  const [sponsors, setSponsors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
     loadSponsors();
@@ -48,7 +49,9 @@ export const SponsorSlider: React.FC<SponsorSliderProps> = ({
     const result = await safeAsync(
       async () => {
         const response = await api.sponsors.list(idEdicionCategoria);
-        return response.success && response.data?.sponsors ? response.data.sponsors : [];
+        const sponsors = response.success && response.data?.sponsors ? response.data.sponsors : [];
+        // Filter out sponsors without valid logos
+        return sponsors.filter(sponsor => sponsor.logo && sponsor.logo.trim() !== '');
       },
       'loadSponsors',
       {
@@ -58,11 +61,13 @@ export const SponsorSlider: React.FC<SponsorSliderProps> = ({
     );
 
     setSponsors(result || []);
+    setInitialized(true);
     setLoading(false);
   };
 
   useEffect(() => {
-    if (autoScroll && sponsors.length > 0) {
+    // Solo iniciar autoScroll si hay más de un sponsor
+    if (autoScroll && sponsors.length > 1) {
       intervalRef.current = setInterval(() => {
         if (scrollViewRef.current) {
           // Avanzar al siguiente sponsor
@@ -93,10 +98,15 @@ export const SponsorSlider: React.FC<SponsorSliderProps> = ({
     }
   };
 
-  if (loading) {
+  if (loading || !initialized) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="small" color={colors.primary} />
+        <View style={styles.skeletonItem}>
+          <View style={styles.skeletonLogo} />
+        </View>
+        <View style={styles.skeletonItem}>
+          <View style={styles.skeletonLogo} />
+        </View>
       </View>
     );
   }
@@ -127,7 +137,7 @@ export const SponsorSlider: React.FC<SponsorSliderProps> = ({
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
-        scrollEnabled={false}
+        scrollEnabled={sponsors.length > 1}
         contentContainerStyle={styles.scrollContent}
       >
         {sponsors.map((sponsor) => (
@@ -159,6 +169,28 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
+    flexDirection: 'row',
+    gap: 10,
+  },
+  skeletonItem: {
+    height: 80,
+    backgroundColor: colors.backgroundGray,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 10,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+    width: width - 40,
+  },
+  skeletonLogo: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: colors.borderLight,
+    borderRadius: 4,
   },
   emptyContainer: {
     height: 80,
@@ -199,11 +231,12 @@ const styles = StyleSheet.create({
     height: 80,
     backgroundColor: colors.white,
     borderRadius: 8,
-    justifyContent: 'flex-start',
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: 5,
-    paddingBottom: 20,
+    padding: 10,
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
   },

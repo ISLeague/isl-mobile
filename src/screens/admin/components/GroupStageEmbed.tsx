@@ -390,6 +390,10 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps & { refreshTrigger?:
   };
 
   const handleTeamPress = (equipoId: number) => {
+    if (!equipoId) {
+      console.warn('⚠️ handleTeamPress called with invalid equipoId:', equipoId);
+      return;
+    }
     try {
       navigation.navigate('TeamDetail', { equipoId });
     } catch (error) {
@@ -466,12 +470,13 @@ export const GroupStageEmbed: React.FC<GroupStageEmbedProps & { refreshTrigger?:
 
   const renderEquipoRow = (clasificacion: Clasificacion & { equipo: Equipo }, grupo: Grupo, index: number) => {
     // Usar una key única basada en id_equipo, id_grupo e index para evitar duplicados
-    const uniqueKey = `${grupo.id_grupo}-${clasificacion.id_equipo ?? 'none'}-${index}`;
+    const equipoId = clasificacion.equipo?.id_equipo || clasificacion.id_equipo;
+    const uniqueKey = `${grupo.id_grupo}-${equipoId ?? 'none'}-${index}`;
 
     const content = (
       <TouchableOpacity
         style={styles.tableRow}
-        onPress={() => handleTeamPress(clasificacion.id_equipo)}
+        onPress={() => handleTeamPress(equipoId)}
         activeOpacity={0.7}
         accessible={true}
       >

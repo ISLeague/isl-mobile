@@ -65,7 +65,21 @@ export const CreateTournamentScreen = ({ navigation, route }: any) => {
 
     if (result && result.success) {
       showSuccess(`Torneo "${nombre}" creado correctamente`, '¡Éxito!');
-      setTimeout(() => navigation.goBack(), 1500);
+
+      const nuevoTorneo = result.data || null;
+
+      // Notificar al padre (si pasó callback) y refrescar pantalla previa
+      if (route.params?.onCreated) {
+        route.params.onCreated(nuevoTorneo);
+      }
+
+      // Manda flag de refresco al stack anterior y vuelve inmediatamente
+      navigation.navigate({
+        name: 'TournamentDetails',
+        params: { refresh: Date.now() },
+        merge: true,
+      });
+      navigation.goBack();
     }
   };
 

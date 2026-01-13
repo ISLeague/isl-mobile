@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -30,20 +31,24 @@ interface FixtureEmbedImprovedProps {
   idEdicionCategoria?: number;
 }
 
-export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({ 
-  navigation, 
-  isAdmin = false, 
-  idEdicionCategoria 
+export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
+  navigation,
+  isAdmin = false,
+  idEdicionCategoria
 }) => {
   const { showError, showInfo } = useToast();
   const showErrorRef = useRef(showError);
   const showInfoRef = useRef(showInfo);
-  
+
   // Actualizar las refs cuando cambien las funciones
   useEffect(() => {
     showErrorRef.current = showError;
     showInfoRef.current = showInfo;
+    showInfoRef.current = showInfo;
   }, [showError, showInfo]);
+
+  const hasInitializedRef = useRef(false);
+
   const [rondas, setRondas] = useState<Ronda[]>([]);
   const [partidos, setPartidos] = useState<Partido[]>([]);
   const [canchas, setCanchas] = useState<Cancha[]>([]);
@@ -69,21 +74,21 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
     setLoading(true);
     const result = await safeAsync(
       async () => {
-        if(!idEdicionCategoria) {
+        if (!idEdicionCategoria) {
           throw new Error('idEdicionCategoria es requerido para cargar el fixture');
         }
-        
+
         let currentIdFase: number;
         try {
           const fasesResponse = await api.fases.getFaseGrupos(idEdicionCategoria);
-          
+
           const allFases = fasesResponse.success && fasesResponse.data ? fasesResponse.data : [];
-         
-          
+
+
           if (allFases.length === 0) {
             throw new Error('No se encontraron fases de grupo para esta edición categoría');
           }
-          
+
           currentIdFase = allFases[0].id_fase;
           console.log('Estableciendo idFase:', currentIdFase);
           setIdFase(currentIdFase);
@@ -116,7 +121,7 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
           })
           .map((r: Ronda) => ({ ...r, id_fase: currentIdFase }))
           .sort((a: Ronda, b: Ronda) => b.orden - a.orden);
-        
+
         console.log('📊 Rondas finales después del filtro:', sortedRondas.length);
 
         // Load partidos from API (now with nested team, cancha, and ronda data)
@@ -174,22 +179,24 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
       setPartidos(result.partidos);
       setCanchas(result.canchas);
 
-      if (result.closestRondaId !== null) {
+      if (result.closestRondaId !== null && !hasInitializedRef.current) {
         setExpandedRondas({ [result.closestRondaId]: true });
+        hasInitializedRef.current = true;
       }
     }
     console.log('✅ loadData completado, loading=false');
     setLoading(false);
   }, [idEdicionCategoria]); // Removido showError de dependencias
 
-  // Single data loading effect - only on mount and when idEdicionCategoria changes
-  // No useFocusEffect to avoid constant reloads when navigating
-  useEffect(() => {
-    if (idEdicionCategoria) {
-      console.log('🔄 useEffect inicial, llamando loadData...');
-      loadData();
-    }
-  }, [idEdicionCategoria]);
+  // Auto-refresh when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      if (idEdicionCategoria) {
+        console.log('🔄 useFocusEffect active: reloading fixture data...');
+        loadData();
+      }
+    }, [idEdicionCategoria, loadData])
+  );
 
   const loadFixturesSinPartido = useCallback(async (rondaId: number) => {
     if (!isAdmin) return;
@@ -493,10 +500,10 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
 
     // Determinar ganador considerando penales
     const hasResult = partido.marcador_local !== null && partido.marcador_local !== undefined &&
-                      partido.marcador_visitante !== null && partido.marcador_visitante !== undefined;
+      partido.marcador_visitante !== null && partido.marcador_visitante !== undefined;
 
     const hayPenales = partido.penales_local !== null && partido.penales_local !== undefined &&
-                       partido.penales_visitante !== null && partido.penales_visitante !== undefined;
+      partido.penales_visitante !== null && partido.penales_visitante !== undefined;
 
     let ganador: 'local' | 'visitante' | 'empate' | null = null;
 
@@ -585,10 +592,10 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
           </View>
 
           <View style={styles.equipoRow}>
-            <Image 
-              source={partido.equipo_visitante.logo ? { uri: partido.equipo_visitante.logo } : require('../../../assets/InterLOGO.png')} 
-              style={styles.equipoLogo} 
-              resizeMode="cover" 
+            <Image
+              source={partido.equipo_visitante.logo ? { uri: partido.equipo_visitante.logo } : require('../../../assets/InterLOGO.png')}
+              style={styles.equipoLogo}
+              resizeMode="cover"
             />
             <Text style={[
               styles.equipoNombre,
@@ -621,16 +628,50 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
         </View>
 
         {isAdmin && (
-          <TouchableOpacity
-            style={styles.loadResultButton}
-            onPress={(e) => {
-              e.stopPropagation();
-              handleLoadResult(partido);
-            }}
-          >
-            <MaterialCommunityIcons name="scoreboard" size={16} color={colors.primary} />
-            <Text style={styles.loadResultText}>Cargar Resultado</Text>
-          </TouchableOpacity>
+          <View style={styles.adminActionsRow}>
+            <TouchableOpacity
+              style={styles.adminActionButton}
+              onPress={(e) => {
+                e.stopPropagation();
+                navigation.navigate('PreMatchValidation', {
+                  partido,
+                  ronda: { id_ronda: partido.id_ronda },
+                  equipoLocal: partido.equipo_local,
+                  equipoVisitante: partido.equipo_visitante,
+                });
+              }}
+            >
+              <MaterialCommunityIcons name="clipboard-check" size={14} color={colors.primary} />
+              <Text style={styles.adminActionText}>Lista</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.adminActionButton}
+              onPress={(e) => {
+                e.stopPropagation();
+                navigation.navigate('MatchSubstitutions', {
+                  partido,
+                  ronda: { id_ronda: partido.id_ronda },
+                  equipoLocal: partido.equipo_local,
+                  equipoVisitante: partido.equipo_visitante,
+                });
+              }}
+            >
+              <MaterialCommunityIcons name="swap-horizontal" size={14} color={colors.primary} />
+              <Text style={styles.adminActionText}>Cambios</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.adminActionButton, styles.adminActionButtonPrimary]}
+              onPress={(e) => {
+                e.stopPropagation();
+                handleLoadResult(partido);
+              }}
+            >
+              <MaterialCommunityIcons name="scoreboard" size={14} color={colors.white} />
+              <Text style={[styles.adminActionText, styles.adminActionTextPrimary]}>Resultado</Text>
+            </TouchableOpacity>
+          </View>
         )}
       </TouchableOpacity>
     );
@@ -699,7 +740,7 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
       };
 
       const jsonString = JSON.stringify(exportData, null, 2);
-      
+
       await Share.share({
         message: `Ronda: ${ronda.nombre}\n\n${jsonString}`,
         title: `Exportar ${ronda.nombre}`,
@@ -828,13 +869,13 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
                   <MaterialCommunityIcons name="pencil" size={18} color={colors.primary} />
                   <Text style={styles.rondaActionText}>Editar</Text>
                 </TouchableOpacity>
-                
+
                 {/* Mostrar botón de generar fixtures si no tiene fixtures */}
                 {(() => {
                   const fixtures = fixturesSinPartido[ronda.id_ronda] || [];
                   const hasFixtures = fixtures.some(j => j.fixtures.length > 0);
                   const hasPartidos = getPartidosByRonda(ronda.id_ronda).length > 0;
-                  
+
                   if (!hasFixtures && !hasPartidos) {
                     return (
                       <TouchableOpacity
@@ -849,7 +890,7 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
                       </TouchableOpacity>
                     );
                   }
-                  
+
                   return (
                     <TouchableOpacity
                       style={styles.rondaActionButton}
@@ -860,7 +901,7 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
                     </TouchableOpacity>
                   );
                 })()}
-                
+
                 <TouchableOpacity
                   style={styles.rondaActionButton}
                   onPress={(e) => handleExportRonda(e, ronda)}
@@ -892,7 +933,7 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
                         <Text style={styles.emptyStateSubtitle}>
                           Genera fixtures para poder crear partidos en esta ronda
                         </Text>
-                        
+
                         <View style={styles.emptyStateActions}>
                           <TouchableOpacity
                             style={[styles.emptyStateButton, styles.emptyStateButtonPrimary]}
@@ -901,12 +942,12 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
                             <MaterialCommunityIcons name="auto-fix" size={20} color={colors.white} />
                             <Text style={styles.emptyStateButtonText}>Generar Automáticamente</Text>
                           </TouchableOpacity>
-                          
+
                           <TouchableOpacity
                             style={[styles.emptyStateButton, styles.emptyStateButtonSecondary]}
-                            onPress={() => navigation.navigate('ManageFixture', { 
-                              ronda, 
-                              idEdicionCategoria 
+                            onPress={() => navigation.navigate('ManageFixture', {
+                              ronda,
+                              idEdicionCategoria
                             })}
                           >
                             <MaterialCommunityIcons name="pencil-plus" size={20} color={colors.primary} />
@@ -946,8 +987,8 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
         id_fase: ronda.id_fase
       }
     });
-    
-    navigation.navigate('CreateRondaFlow', { 
+
+    navigation.navigate('CreateRondaFlow', {
       idEdicionCategoria,
       step: 2, // Ir directamente al paso 2 (generación de fixtures)
       rondaData: {
@@ -1364,6 +1405,41 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: colors.primary,
+  },
+  adminActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  adminActionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    backgroundColor: colors.backgroundGray,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  adminActionButtonPrimary: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  adminActionText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  adminActionTextPrimary: {
+    color: colors.white,
   },
   emptyContainer: {
     flex: 1,

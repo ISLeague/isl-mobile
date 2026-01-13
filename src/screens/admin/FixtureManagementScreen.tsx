@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -90,19 +91,18 @@ export const FixtureManagementScreen: React.FC<FixtureManagementScreenProps> = (
       setClasificaciones(result.clasificaciones);
       setClosestRondaId(result.closestRondaId);
 
-      if (result.closestRondaId !== null) {
+      // Expand closest ronda only on first load (when no rondas are expanded)
+      if (Object.keys(expandedRondas).length === 0 && result.closestRondaId !== null) {
         setExpandedRondas({ [result.closestRondaId]: true });
       }
-
-      if (result.sortedRondas.length > 0) {
-        showInfo(`${result.sortedRondas.length} rondas cargadas`);
-      }
     }
-  }, [showError, showInfo, idEdicionCategoria]);
+  }, [showError, idEdicionCategoria]);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, []) // Empty deps - always run on focus
+  );
 
 
 

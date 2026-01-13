@@ -152,7 +152,9 @@ export const MyTeamScreen: React.FC<Props> = ({ navigation }) => {
         <Text style={styles.playerName}>{item.nombre_completo}</Text>
         <View style={styles.playerNumber}>
           <MaterialCommunityIcons name="numeric" size={14} color={colors.textSecondary} />
-          <Text style={styles.playerNumberText}>{item.numero_camiseta}</Text>
+          <Text style={styles.playerNumberText}>
+            {item.numero_camiseta != null ? item.numero_camiseta : 'X'}
+          </Text>
         </View>
       </View>
       <MaterialCommunityIcons name="chevron-right" size={24} color={colors.textSecondary} />

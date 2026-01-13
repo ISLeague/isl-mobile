@@ -56,6 +56,8 @@ import { EditSponsorScreen } from './src/screens/admin/EditSponsorScreen';
 import { TournamentAdminDashboardScreen } from './src/screens/admin/TournamentAdminDashboardScreen';
 import { CreateTournamentAdminScreen } from './src/screens/admin/CreateTournamentAdminScreen';
 import ResultPage from './src/screens/admin/ResultPage';
+import { PreMatchValidationScreen } from './src/screens/admin/PreMatchValidationScreen';
+import { MatchSubstitutionsScreen } from './src/screens/admin/MatchSubstitutionsScreen';
 import { CreateTeamScreen } from './src/screens/admin/CreateTeamScreen';
 import { BulkCreateTeamsScreen } from './src/screens/admin/BulkCreateTeamsScreen';
 import { GrupoDetailScreen } from './src/screens/admin/GrupoDetailScreen';
@@ -116,6 +118,9 @@ export default function App() {
           <Stack.Screen name="ManageTeams" component={ManageTeamsScreen} />
           <Stack.Screen name="ManageFixture" component={ManageFixtureScreen} />
           <Stack.Screen name="LoadResults" component={ResultPage} />
+          <Stack.Screen name="PreMatchValidation" component={PreMatchValidationScreen} />
+          <Stack.Screen name="MatchSubstitutions" component={MatchSubstitutionsScreen} />
+          <Stack.Screen name="ResultPage" component={ResultPage} />
           
           {/* Group Management */}
           <Stack.Screen name="CreateGroup" component={CreateGroupScreen} />

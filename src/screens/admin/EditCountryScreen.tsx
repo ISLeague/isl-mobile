@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Alert, ScrollView } from 'react-native';
 import { GradientHeader, Input, Button } from '../../components/common';
 import { colors } from '../../theme/colors';
 import { Pais } from '../../api/types';
+import api from '../../api';
 
 interface EditCountryScreenProps {
   navigation: any;
@@ -10,25 +11,33 @@ interface EditCountryScreenProps {
 }
 
 export const EditCountryScreen: React.FC<EditCountryScreenProps> = ({ navigation, route }) => {
-  const { pais } = route.params as { pais: Pais };
+  const { pais, onUpdated } = route.params as { pais: Pais; onUpdated?: () => void };
   
   const [nombre, setNombre] = useState(pais.nombre);
   const [emoji, setEmoji] = useState(pais.emoji || '');
+  const [loading, setLoading] = useState(false);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!nombre.trim()) {
       Alert.alert('Error', 'El nombre del país es obligatorio');
       return;
     }
 
-    // TODO: Llamar a la API para actualizar el país
-    
-    Alert.alert('Éxito', 'País actualizado correctamente', [
-      {
-        text: 'OK',
-        onPress: () => navigation.goBack(),
-      },
-    ]);
+    try {
+      setLoading(true);
+      await api.paises.update(pais.id_pais, {
+        nombre: nombre.trim(),
+        emoji: emoji.trim() || '🌍',
+      });
+      if (onUpdated) onUpdated();
+      Alert.alert('Éxito', 'País actualizado correctamente', [
+        { text: 'OK', onPress: () => navigation.goBack() },
+      ]);
+    } catch (error) {
+      Alert.alert('Error', 'No se pudo actualizar el país');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDelete = () => {
@@ -85,6 +94,7 @@ export const EditCountryScreen: React.FC<EditCountryScreenProps> = ({ navigation
           onPress={handleSave}
           variant="primary"
           style={styles.button}
+          loading={loading}
         />
 
         <Button

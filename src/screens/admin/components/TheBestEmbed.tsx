@@ -86,7 +86,7 @@ export const TheBestEmbed: React.FC<TheBestEmbedProps> = ({ navigation, idEdicio
         <MaterialCommunityIcons name="star-off-outline" size={80} color={colors.primary} />
         <Text style={styles.guestTitle}>Contenido no disponible</Text>
         <Text style={styles.guestText}>
-          Debes iniciar sesión o crear una cuenta para ver las estadísticas y rankings completos
+          Debes iniciar sesión para ver las estadísticas y rankings completos
         </Text>
         <TouchableOpacity
           style={styles.guestButton}

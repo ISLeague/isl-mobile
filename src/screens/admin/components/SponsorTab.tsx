@@ -21,6 +21,7 @@ interface SponsorTabProps {
   onCreateSponsor?: () => void;
   onEditSponsor?: (sponsor: Sponsor) => void;
   onDeleteSponsor?: (idSponsor: number) => void;
+  refreshTrigger?: number;
 }
 
 export const SponsorTab: React.FC<SponsorTabProps> = ({
@@ -28,6 +29,7 @@ export const SponsorTab: React.FC<SponsorTabProps> = ({
   onCreateSponsor,
   onEditSponsor,
   onDeleteSponsor,
+  refreshTrigger,
 }) => {
   const { isAdmin } = useAuth();
   const [sponsors, setSponsors] = useState<Sponsor[]>([]);
@@ -36,7 +38,7 @@ export const SponsorTab: React.FC<SponsorTabProps> = ({
 
   useEffect(() => {
     loadSponsors();
-  }, []);
+  }, [idEdicionCategoria, refreshTrigger]);
 
   const loadSponsors = async () => {
     setLoading(true);

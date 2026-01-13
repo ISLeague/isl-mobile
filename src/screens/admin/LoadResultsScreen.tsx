@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useToast } from '../../contexts/ToastContext';
 import { colors } from '../../theme/colors';
 import { Button } from '../../components/common/Button';
 import { GradientHeader } from '../../components/common';
@@ -21,6 +22,7 @@ import { safeAsync } from '../../utils/errorHandling';
 
 export const LoadResultsScreen = ({ navigation, route }: any) => {
   const { torneo } = route.params;
+  const { showSuccess, showError } = useToast();
   const [selectedMatch, setSelectedMatch] = useState<any>(null);
   const [marcadorLocal, setMarcadorLocal] = useState('');
   const [marcadorVisitante, setMarcadorVisitante] = useState('');
@@ -36,17 +38,17 @@ export const LoadResultsScreen = ({ navigation, route }: any) => {
     const loadData = async () => {
       const result = await safeAsync(
         async () => {
-          const [partidosResponse, equiposResponse, jugadoresResponse] = await Promise.all([
+          const [partidosResponse, equiposResponse] = await Promise.all([
             api.partidos.list(),
             route.params?.idEdicionCategoria ? api.equipos.list(route.params.idEdicionCategoria) : Promise.resolve({ success: true, data: [] }),
-            api.jugadores.list(),
+            // api.jugadores.list() removido de carga inicial para evitar error de argumentos
           ]);
 
           const partidosData = partidosResponse.success && partidosResponse.data ? partidosResponse.data : [];
           const equiposData = equiposResponse.success && equiposResponse.data ? equiposResponse.data : [];
-          const jugadoresData = jugadoresResponse.success && jugadoresResponse.data ? jugadoresResponse.data : [];
+          // const jugadoresData = ... (cargado bajo demanda)
 
-          return { partidos: partidosData, equipos: equiposData, jugadores: jugadoresData };
+          return { partidos: partidosData, equipos: equiposData, jugadores: [] };
         },
         'LoadResultsScreen - loadData',
         { fallbackValue: { partidos: [], equipos: [], jugadores: [] } }
@@ -55,7 +57,7 @@ export const LoadResultsScreen = ({ navigation, route }: any) => {
       if (result) {
         setPartidos(result.partidos);
         setEquipos(result.equipos);
-        setJugadores(result.jugadores);
+        // setJugadores(result.jugadores); Inicialmente vacio o cargado luego
       }
       setLoading(false);
     };
@@ -80,19 +82,43 @@ export const LoadResultsScreen = ({ navigation, route }: any) => {
   const handleSelectMatch = (partido: any) => {
     const local = getEquipoById(partido.id_equipo_local);
     const visitante = getEquipoById(partido.id_equipo_visitante);
-    
+
     setSelectedMatch({
       ...partido,
       equipo_local: local,
       equipo_visitante: visitante,
     });
-    setMarcadorLocal('');
-    setMarcadorVisitante('');
+    setMarcadorLocal(partido.marcador_local !== undefined && partido.marcador_local !== null ? partido.marcador_local.toString() : '');
+    setMarcadorVisitante(partido.marcador_visitante !== undefined && partido.marcador_visitante !== null ? partido.marcador_visitante.toString() : '');
     setEventos([]);
+
+    // Cargar jugadores de los equipos seleccionados
+    const loadSquads = async () => {
+      try {
+        const [localResp, visitResp] = await Promise.all([
+          api.jugadores.list(local?.id_equipo || 0),
+          api.jugadores.list(visitante?.id_equipo || 0)
+        ]);
+
+        let allPlayers: Jugador[] = [];
+        // Helper para extraer array
+        const extract = (r: any) => {
+          if (r.data && Array.isArray(r.data.jugadores)) return r.data.jugadores;
+          if (Array.isArray(r.data)) return r.data;
+          return [];
+        };
+
+        allPlayers = [...extract(localResp), ...extract(visitResp)];
+        setJugadores(allPlayers);
+      } catch (e) {
+        console.log("Error cargando jugadores", e);
+      }
+    };
+    loadSquads();
   };
 
   const handleAddEvento = (tipo: string, equipo: 'local' | 'visitante') => {
-    const jugadores = equipo === 'local' 
+    const jugadores = equipo === 'local'
       ? getJugadoresByEquipo(selectedMatch.id_equipo_local)
       : getJugadoresByEquipo(selectedMatch.id_equipo_visitante);
 
@@ -118,27 +144,92 @@ export const LoadResultsScreen = ({ navigation, route }: any) => {
     );
   };
 
-  const handleSaveResult = () => {
+  const handleSaveResult = async () => {
     if (!marcadorLocal || !marcadorVisitante) {
       Alert.alert('Error', 'Debes ingresar ambos marcadores');
       return;
     }
 
-    Alert.alert(
-      '¡Resultado Guardado!',
-      `${selectedMatch.equipo_local.nombre} ${marcadorLocal} - ${marcadorVisitante} ${selectedMatch.equipo_visitante.nombre}\n\nEventos registrados: ${eventos.length}`,
-      [
-        {
-          text: 'OK',
-          onPress: () => {
-            setSelectedMatch(null);
-            setMarcadorLocal('');
-            setMarcadorVisitante('');
-            setEventos([]);
-          },
-        },
-      ]
+    const success = await safeAsync(
+      async () => {
+        // Usar endpoint de legado por ahora ya que la UI de eventos es básica
+        // TODO: Migrar a registrarResultado con estadísticas completas
+        await api.partidos.resultado({
+          partido_id: selectedMatch.id_partido,
+          goles_local: parseInt(marcadorLocal),
+          goles_visitante: parseInt(marcadorVisitante)
+        });
+        return true;
+      },
+      'saveResult',
+      {
+        severity: 'high',
+        fallbackValue: false,
+        onError: (error) => showError('No se pudo guardar el resultado')
+      }
     );
+
+    if (success) {
+      Alert.alert(
+        '¡Resultado Guardado!',
+        `${selectedMatch.equipo_local.nombre} ${marcadorLocal} - ${marcadorVisitante} ${selectedMatch.equipo_visitante.nombre}`,
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              // Recargar datos globalmente si es necesario, o actualizar localmente
+              // Aquí simplificamos reseteando selección
+              const updatedPartidos = partidos.map(p =>
+                p.id_partido === selectedMatch.id_partido
+                  ? { ...p, estado_partido: 'Finalizado', marcador_local: parseInt(marcadorLocal), marcador_visitante: parseInt(marcadorVisitante) }
+                  : p
+              );
+              setPartidos(updatedPartidos);
+              setSelectedMatch(null);
+            },
+          },
+        ]
+      );
+    }
+  };
+
+  const handleResetResult = () => {
+    Alert.alert(
+      'Borrar Resultado',
+      '¿Estás seguro que quieres borrar el resultado? El partido volverá a estar pendiente.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Borrar',
+          style: 'destructive',
+          onPress: async () => {
+            const success = await safeAsync(
+              async () => {
+                await api.partidos.resetResultado(selectedMatch.id_partido);
+                return true;
+              },
+              'resetResult',
+              {
+                severity: 'medium',
+                fallbackValue: false,
+                onError: () => showError('No se pudo borrar el resultado')
+              }
+            );
+
+            if (success) {
+              showSuccess('Resultado borrado');
+              const updatedPartidos = partidos.map(p =>
+                p.id_partido === selectedMatch.id_partido
+                  ? { ...p, estado_partido: 'Pendiente', marcador_local: null, marcador_visitante: null }
+                  : p
+              );
+              setPartidos(updatedPartidos);
+              setSelectedMatch(null);
+            }
+          }
+        }
+      ]
+    )
   };
 
   if (!selectedMatch) {
@@ -158,7 +249,7 @@ export const LoadResultsScreen = ({ navigation, route }: any) => {
 
           <View style={styles.matchesSection}>
             <Text style={styles.sectionTitle}>Partidos Pendientes</Text>
-            
+
             {partidosPendientes.map((partido) => {
               const local = getEquipoById(partido.id_equipo_local);
               const visitante = getEquipoById(partido.id_equipo_visitante);
@@ -325,6 +416,15 @@ export const LoadResultsScreen = ({ navigation, route }: any) => {
             onPress={handleSaveResult}
             style={styles.saveButton}
           />
+          {selectedMatch.estado_partido === 'Finalizado' || (selectedMatch.marcador_local !== null && selectedMatch.marcador_local !== undefined) ? (
+            <TouchableOpacity
+              style={styles.deleteResultButton}
+              onPress={handleResetResult}
+            >
+              <MaterialCommunityIcons name="trash-can-outline" size={20} color={colors.error} />
+              <Text style={styles.deleteResultText}>Borrar Resultado</Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
 
         <View style={{ height: 40 }} />
@@ -597,6 +697,23 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     backgroundColor: colors.success,
+  },
+  deleteResultButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 16,
+    padding: 12,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: colors.error,
+    borderRadius: 8,
+    backgroundColor: '#FFF5F5',
+  },
+  deleteResultText: {
+    color: colors.error,
+    fontWeight: '600',
+    fontSize: 14,
   },
 });
 

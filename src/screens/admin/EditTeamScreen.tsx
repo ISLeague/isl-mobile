@@ -91,7 +91,9 @@ export const EditTeamScreen: React.FC<EditTeamScreenProps> = ({ navigation, rout
             try {
               await api.equipos.delete(equipo.id_equipo);
               showSuccess('Equipo eliminado exitosamente');
-              navigation.navigate('AdminTournaments'); // O donde sea pertinente
+              // Volver a la lista de equipos (CategoryManagement -> TeamDetail -> EditTeam)
+              // Hacemos pop(2) para saltarnos TeamDetail del equipo borrado
+              navigation.pop(2);
             } catch (error) {
               // console.error('Error deleting team:', error);
               showError('Error al eliminar el equipo');

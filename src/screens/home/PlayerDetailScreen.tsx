@@ -147,7 +147,7 @@ export const PlayerDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             <View style={styles.profileInfo}>
               <View style={styles.numberRow}>
                 <View style={styles.numberBadge}>
-                  <Text style={styles.numberText}>#{detalleData.numero_camiseta || '-'}</Text>
+                  <Text style={styles.numberText}>{detalleData.numero_camiseta != null ? `#${detalleData.numero_camiseta}` : 'X'}</Text>
                 </View>
                 <View style={styles.badgesRow}>
                   {esRefuerzo && (

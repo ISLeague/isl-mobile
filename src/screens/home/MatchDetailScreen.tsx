@@ -6,12 +6,12 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Card, GradientHeader } from '../../components/common';
 import { colors } from '../../theme/colors';
-import { Partido, EventoPartido, Jugador } from '../../types';
-import { mockPartidos, mockEquipos, mockEventos, mockJugadores, mockCanchas, mockLocales, mockPlantillas } from '../../data/mockData';
+import api from '../../api';
 
 interface MatchDetailScreenProps {
   navigation: any;
@@ -20,57 +20,116 @@ interface MatchDetailScreenProps {
 
 export const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({ navigation, route }) => {
   const { partidoId } = route.params;
-  const [partido, setPartido] = useState<Partido | null>(null);
-  const [eventos, setEventos] = useState<(EventoPartido & { jugador?: Jugador })[]>([]);
+  const [partido, setPartido] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [localDetails, setLocalDetails] = useState<any>(null);
+  const [canchaDetails, setCanchaDetails] = useState<any>(null);
 
   // Formatear nombre: mostrar "Nombre A." (primera letra del apellido)
   const formatPlayerName = (nombreCompleto: string) => {
+    if (!nombreCompleto) return '';
     const partes = nombreCompleto.trim().split(' ');
     if (partes.length === 1) {
       return partes[0]; // Si solo hay una palabra, mostrarla completa
     }
-    
+
     const nombre = partes[0];
     const apellidoInicial = partes[partes.length - 1].charAt(0).toUpperCase();
     return `${nombre} ${apellidoInicial}.`;
   };
 
   useEffect(() => {
-    // Buscar el partido
-    const foundPartido = mockPartidos.find(p => p.id_partido === partidoId);
-    if (foundPartido) {
-      // Agregar información de equipos
-      const equipoLocal = mockEquipos.find(e => e.id_equipo === foundPartido.id_equipo_local);
-      const equipoVisitante = mockEquipos.find(e => e.id_equipo === foundPartido.id_equipo_visitante);
-      const cancha = mockCanchas.find(c => c.id_cancha === foundPartido.id_cancha);
-      const local = cancha ? mockLocales.find(l => l.id_local === cancha.id_local) : undefined;
-
-      setPartido({
-        ...foundPartido,
-        equipo_local: equipoLocal,
-        equipo_visitante: equipoVisitante,
-        cancha: { ...cancha, local } as any,
-      });
-
-      // Buscar eventos del partido
-      const partidoEventos = mockEventos
-        .filter(e => e.id_partido === partidoId)
-        .map(e => ({
-          ...e,
-          jugador: mockJugadores.find(j => j.id_jugador === e.id_jugador),
-        }))
-        .sort((a, b) => a.minuto - b.minuto);
-
-      setEventos(partidoEventos);
-    }
+    fetchMatchDetail();
   }, [partidoId]);
 
-  if (!partido || !partido.equipo_local || !partido.equipo_visitante) {
+  const fetchMatchDetail = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await api.partidos.getResultado(partidoId, false);
+
+      if (response) {
+        setPartido(response);
+      } else {
+        setError('No se pudo encontrar la información del partido');
+      }
+    } catch (err) {
+      console.error('[MatchDetailScreen] Error fetching match detail:', err);
+      setError('Error al cargar los detalles del partido');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Extraer datos del objeto de respuesta consolidado (permitir valores undefined mientras carga)
+  const matchInfo = partido?.data?.partido;
+  const resultInfo = partido?.data?.resultado;
+  const equipoLocal = partido?.data?.equipo_local;
+  const equipoVisitante = partido?.data?.equipo_visitante;
+  const cancha = partido?.data?.cancha;
+
+  // Fetch local details to get estadio
+  useEffect(() => {
+    const fetchLocalDetails = async () => {
+      try {
+        // 1) Si ya viene el id_local en la cancha
+        if (cancha?.id_local) {
+          const respLocal = await api.locales.get(cancha.id_local);
+          setLocalDetails(respLocal.data);
+          return;
+        }
+
+        // 2) Si no viene, intentar obtener la cancha completa para sacar id_local
+        if (!canchaDetails && cancha?.id_cancha) {
+          const respCancha = await api.canchas.get(cancha.id_cancha);
+          setCanchaDetails(respCancha.data);
+          if (respCancha.data?.id_local) {
+            const respLocal = await api.locales.get(respCancha.data.id_local);
+            setLocalDetails(respLocal.data);
+          }
+          return;
+        }
+
+        // 3) Si ya tenemos canchaDetails y tiene id_local
+        if (canchaDetails?.id_local) {
+          const respLocal = await api.locales.get(canchaDetails.id_local);
+          setLocalDetails(respLocal.data);
+        }
+      } catch (error) {
+        console.log('Error fetching local details:', error);
+      }
+    };
+
+    fetchLocalDetails();
+  }, [cancha?.id_local, cancha?.id_cancha, canchaDetails?.id_local]);
+
+  if (loading) {
     return (
       <View style={styles.container}>
         <GradientHeader title="Detalles del Partido" onBackPress={() => navigation.goBack()} />
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Cargando...</Text>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Cargando detalles...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (error || !partido) {
+    return (
+      <View style={styles.container}>
+        <GradientHeader title="Detalles del Partido" onBackPress={() => navigation.goBack()} />
+        <View style={styles.loadingContainer}>
+          <MaterialCommunityIcons name="alert-circle-outline" size={48} color={colors.error} />
+          <Text style={styles.loadingText}>{error || 'Partido no encontrado'}</Text>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={fetchMatchDetail}
+          >
+            <Text style={styles.retryButtonText}>Reintentar</Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -81,24 +140,27 @@ export const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({ navigation
   };
 
   const renderResultado = () => {
-    const isEmpate = partido.marcador_local === partido.marcador_visitante && partido.estado_partido === 'Finalizado';
-    const hayPenales = partido.penales_local !== undefined && partido.penales_visitante !== undefined;
-    
-    // Determinar ganador
-    let ganadorId: number | null = null;
-    if (partido.estado_partido === 'Finalizado') {
-      if (hayPenales) {
-        ganadorId = (partido.penales_local ?? 0) > (partido.penales_visitante ?? 0) 
-          ? partido.id_equipo_local 
-          : (partido.penales_local ?? 0) < (partido.penales_visitante ?? 0)
-          ? partido.id_equipo_visitante
-          : null;
-      } else if (!isEmpate) {
-        ganadorId = (partido.marcador_local ?? 0) > (partido.marcador_visitante ?? 0)
-          ? partido.id_equipo_local
-          : partido.id_equipo_visitante;
-      }
+    // Add null checks to prevent undefined errors
+    if (!resultInfo || !matchInfo || !equipoLocal || !equipoVisitante) {
+      return (
+        <Card style={styles.resultCard}>
+          <Text style={styles.loadingText}>Información del partido no disponible</Text>
+        </Card>
+      );
     }
+
+    // Additional null check for estado property
+    if (!matchInfo.estado) {
+      return (
+        <Card style={styles.resultCard}>
+          <Text style={styles.loadingText}>Estado del partido no disponible</Text>
+        </Card>
+      );
+    }
+
+    const isEmpate = resultInfo.marcador_local === resultInfo.marcador_visitante && matchInfo.estado === 'Finalizado';
+    const hayPenales = resultInfo.fue_a_penales;
+    const ganador = resultInfo.ganador;
 
     return (
       <Card style={styles.resultCard}>
@@ -106,16 +168,16 @@ export const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({ navigation
         <View style={styles.estadoContainer}>
           <View style={[
             styles.estadoBadge,
-            partido.estado_partido === 'Finalizado' ? styles.estadoFinalizado :
-            partido.estado_partido === 'En curso' ? styles.estadoEnCurso :
-            styles.estadoPendiente
+            matchInfo.estado === 'Finalizado' ? styles.estadoFinalizado :
+              matchInfo.estado === 'En curso' ? styles.estadoEnCurso :
+                styles.estadoPendiente
           ]}>
-            <Text style={styles.estadoText}>{partido.estado_partido}</Text>
+            <Text style={styles.estadoText}>{matchInfo.estado}</Text>
           </View>
-          {partido.fecha && (
+          {matchInfo.fecha && (
             <Text style={styles.fechaText}>
-              {partido.fecha.split('-').reverse().join('/')}
-              {partido.hora && ` • ${partido.hora}`}
+              {matchInfo.fecha.split('-').reverse().join('/')}
+              {matchInfo.hora && ` • ${matchInfo.hora}`}
             </Text>
           )}
         </View>
@@ -123,48 +185,51 @@ export const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({ navigation
         {/* Equipos y Marcador */}
         <View style={styles.matchupContainer}>
           {/* Equipo Local */}
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.teamContainer}
-            onPress={() => goToTeamDetail(partido.equipo_local!.id_equipo)}
+            onPress={() => goToTeamDetail(equipoLocal.id_equipo)}
             activeOpacity={0.7}
           >
             <Image
-              source={partido.equipo_local?.logo ? { uri: partido.equipo_local.logo } : require('../../assets/InterLOGO.png')}
+              source={equipoLocal.logo ? { uri: equipoLocal.logo } : require('../../assets/InterLOGO.png')}
               style={styles.teamLogo}
               resizeMode="cover"
             />
             <Text style={styles.teamName} numberOfLines={2}>
-              {partido.equipo_local?.nombre}
+              {equipoLocal.nombre || 'Equipo Local'}
             </Text>
           </TouchableOpacity>
 
           {/* Marcador */}
           <View style={styles.scoreContainer}>
-            {partido.estado_partido === 'Finalizado' ? (
+            {matchInfo.estado === 'Finalizado' ? (
               <>
                 <View style={styles.scoreBox}>
                   <Text style={[
-                    ganadorId === partido.id_equipo_local ? styles.scoreTextGanador : styles.scoreTextPerdedor
+                    ganador === 'local' ? styles.scoreTextGanador : styles.scoreTextPerdedor
                   ]}>
-                    {partido.marcador_local}
+                    {resultInfo.marcador_local}
                   </Text>
                   <Text style={styles.vsTextNegro}>-</Text>
                   <Text style={[
-                    ganadorId === partido.id_equipo_visitante ? styles.scoreTextGanador : styles.scoreTextPerdedor
+                    ganador === 'visitante' ? styles.scoreTextGanador : styles.scoreTextPerdedor
                   ]}>
-                    {partido.marcador_visitante}
+                    {resultInfo.marcador_visitante}
                   </Text>
                 </View>
                 {hayPenales && (
                   <View style={styles.penalesBox}>
                     <Text style={styles.penalesLabel}>Penales</Text>
                     <Text style={styles.penalesText}>
-                      ({partido.penales_local} - {partido.penales_visitante})
+                      ({resultInfo.penales_local} - {resultInfo.penales_visitante})
                     </Text>
                   </View>
                 )}
                 {isEmpate && !hayPenales && (
                   <Text style={styles.empateText}>Empate</Text>
+                )}
+                {resultInfo.walkover && (
+                  <Text style={[styles.empateText, { color: colors.error }]}>WO - {resultInfo.walkover_motivo || 'No presentado'}</Text>
                 )}
               </>
             ) : (
@@ -173,31 +238,31 @@ export const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({ navigation
           </View>
 
           {/* Equipo Visitante */}
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.teamContainer}
-            onPress={() => goToTeamDetail(partido.equipo_visitante!.id_equipo)}
+            onPress={() => goToTeamDetail(equipoVisitante.id_equipo)}
             activeOpacity={0.7}
           >
             <Image
-              source={partido.equipo_visitante?.logo ? { uri: partido.equipo_visitante.logo } : require('../../assets/InterLOGO.png')}
+              source={equipoVisitante.logo ? { uri: equipoVisitante.logo } : require('../../assets/InterLOGO.png')}
               style={styles.teamLogo}
               resizeMode="cover"
             />
             <Text style={styles.teamName} numberOfLines={2}>
-              {partido.equipo_visitante?.nombre}
+              {equipoVisitante.nombre || 'Equipo Visitante'}
             </Text>
           </TouchableOpacity>
         </View>
 
-        {/* Información de Cancha - DESTACADA */}
-        {partido.cancha && (
+        {/* Información de Cancha */}
+        {cancha && (
           <View style={styles.canchaDestacada}>
             <MaterialCommunityIcons name="stadium" size={24} color={colors.primary} />
             <View style={styles.canchaInfo}>
-              <Text style={styles.canchaNombre}>{partido.cancha.nombre}</Text>
-              {partido.cancha.local && (
-                <Text style={styles.canchaLocal}>{partido.cancha.local.nombre}</Text>
-              )}
+              <Text style={styles.canchaNombre}>
+                {localDetails?.nombre || 'Local'}
+              </Text>
+              <Text style={styles.canchaLocal}>{cancha?.nombre || 'Cancha no disponible'}</Text>
             </View>
           </View>
         )}
@@ -205,54 +270,77 @@ export const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({ navigation
     );
   };
 
-  const renderEvento = (evento: EventoPartido & { jugador?: Jugador }, index: number) => {
-    const getEventoIcon = () => {
-      switch (evento.tipo_evento) {
-        case 'gol': return 'soccer';
-        case 'amarilla': return 'card';
-        case 'roja': return 'card';
-        case 'asistencia': return 'shoe-cleat';
-        case 'cambio': return 'swap-horizontal';
-        default: return 'information';
-      }
-    };
+  const renderTablaJugadores = (jugadores: any[], equipo: any) => {
+    const statsJugadoresConAccion = (jugadores || []).filter(j =>
+      (j.goles || 0) > 0 || (j.asistencias || 0) > 0 || (j.tarjetas_amarillas || 0) > 0 || (j.tarjetas_rojas || 0) > 0 || j.es_mvp
+    );
 
-    const getEventoColor = () => {
-      switch (evento.tipo_evento) {
-        case 'gol': return colors.success;
-        case 'amarilla': return '#FFD700';
-        case 'roja': return colors.error;
-        case 'asistencia': return colors.info;
-        default: return colors.textSecondary;
-      }
-    };
+    if (statsJugadoresConAccion.length === 0) return null;
 
     return (
-      <View key={index} style={styles.eventoItem}>
-        <View style={styles.eventoMinuto}>
-          <Text style={styles.eventoMinutoText}>{evento.minuto}'</Text>
+      <View style={styles.statsTeamContainer}>
+        <View style={styles.statsTeamHeader}>
+          <Image
+            source={equipo?.logo ? { uri: equipo.logo } : require('../../assets/InterLOGO.png')}
+            style={styles.statsTeamLogo}
+            resizeMode="cover"
+          />
+          <Text style={styles.statsTeamTitle}>{equipo?.nombre || 'Equipo'}</Text>
         </View>
-        <View style={[styles.eventoIconContainer, { backgroundColor: getEventoColor() }]}>
-          <MaterialCommunityIcons name={getEventoIcon()} size={18} color={colors.white} />
+
+        <View style={styles.statsTableHeader}>
+          <Text style={[styles.statsHeaderCell, styles.statsNombreCell]}>Jugador</Text>
+          <Text style={styles.statsHeaderCell}>G</Text>
+          <Text style={styles.statsHeaderCell}>A</Text>
+          <Text style={styles.statsHeaderCell}>YC</Text>
+          <Text style={styles.statsHeaderCell}>RC</Text>
+          <Text style={styles.statsHeaderCell}>MVP</Text>
         </View>
-        <View style={styles.eventoInfo}>
-          <Text style={styles.eventoTipo}>
-            {evento.tipo_evento === 'gol' && '⚽ Gol'}
-            {evento.tipo_evento === 'amarilla' && '🟨 Tarjeta Amarilla'}
-            {evento.tipo_evento === 'roja' && '🟥 Tarjeta Roja'}
-            {evento.tipo_evento === 'asistencia' && '👟 Asistencia'}
-            {evento.tipo_evento === 'cambio' && '🔄 Cambio'}
-          </Text>
-          {evento.jugador && (
-            <Text style={styles.eventoJugador}>{evento.jugador.nombre_completo}</Text>
-          )}
-        </View>
+
+        {statsJugadoresConAccion.map((jugador, index) => (
+          <View key={index} style={styles.statsTableRow}>
+            <Text style={[styles.statsCell, styles.statsNombreCell]}>
+              {formatPlayerName(jugador.nombre)}
+            </Text>
+            <Text style={styles.statsCell}>{jugador.goles || '-'}</Text>
+            <Text style={styles.statsCell}>{jugador.asistencias || '-'}</Text>
+            <View style={styles.statsCell}>
+              {(jugador.tarjetas_amarillas || 0) > 0 ? (
+                <View style={styles.tarjetasContainer}>
+                  {[...Array(jugador.tarjetas_amarillas || 0)].map((_, i) => (
+                    <View key={i} style={styles.tarjetaAmarilla} />
+                  ))}
+                </View>
+              ) : (
+                <Text style={styles.statsCellText}>-</Text>
+              )}
+            </View>
+            <View style={styles.statsCell}>
+              {(jugador.tarjetas_rojas || 0) > 0 ? (
+                <View style={styles.tarjetasContainer}>
+                  {[...Array(jugador.tarjetas_rojas || 0)].map((_, i) => (
+                    <View key={i} style={styles.tarjetaRoja} />
+                  ))}
+                </View>
+              ) : (
+                <Text style={styles.statsCellText}>-</Text>
+              )}
+            </View>
+            <Text style={styles.statsCell}>{jugador.es_mvp ? '⭐' : '-'}</Text>
+          </View>
+        ))}
       </View>
     );
   };
 
   const renderEstadisticasJugadores = () => {
-    if (eventos.length === 0) {
+    const jugadoresLocal = equipoLocal.estadisticas_jugadores || [];
+    const jugadoresVisitante = equipoVisitante.estadisticas_jugadores || [];
+
+    const tieneStats = jugadoresLocal.some((j: any) => j.goles > 0 || j.asistencias > 0 || j.tarjetas_amarillas > 0 || j.tarjetas_rojas > 0 || j.es_mvp) ||
+      jugadoresVisitante.some((j: any) => j.goles > 0 || j.asistencias > 0 || j.tarjetas_amarillas > 0 || j.tarjetas_rojas > 0 || j.es_mvp);
+
+    if (!tieneStats) {
       return (
         <Card style={styles.statsCard}>
           <Text style={styles.sectionTitle}>Estadísticas</Text>
@@ -261,121 +349,14 @@ export const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({ navigation
       );
     }
 
-    // Agrupar eventos por jugador
-    const jugadoresStats = eventos.reduce((acc: any[], evento) => {
-      const jugador = mockJugadores.find(j => j.id_jugador === evento.id_jugador);
-      if (!jugador) return acc;
-      
-      // Buscar el equipo del jugador a través de plantillas
-      const plantilla = mockPlantillas.find(p => p.id_jugador === jugador.id_jugador && p.activo_en_equipo);
-      if (!plantilla) return acc;
-      
-      let jugadorStats = acc.find(j => j.id_jugador === jugador.id_jugador);
-      if (!jugadorStats) {
-        jugadorStats = {
-          id_jugador: jugador.id_jugador,
-          id_equipo: plantilla.id_equipo,
-          nombre: jugador.nombre_completo,
-          G: 0,
-          A: 0,
-          YC: 0,
-          RC: 0,
-          MVP: false,
-        };
-        acc.push(jugadorStats);
-      }
-      
-      if (evento.tipo_evento === 'gol') jugadorStats.G++;
-      if (evento.tipo_evento === 'asistencia') jugadorStats.A++;
-      if (evento.tipo_evento === 'amarilla') jugadorStats.YC++;
-      if (evento.tipo_evento === 'roja') jugadorStats.RC++;
-      
-      return acc;
-    }, []);
-
-    // Separar por equipo usando id_equipo del jugador
-    const jugadoresLocal = jugadoresStats.filter(j => j.id_equipo === partido.id_equipo_local);
-    const jugadoresVisitante = jugadoresStats.filter(j => j.id_equipo === partido.id_equipo_visitante);
-
-    // Marcar MVP al jugador con más goles en todo el partido
-    if (jugadoresStats.length > 0) {
-      const mvp = jugadoresStats.reduce((max, j) => (j.G > max.G ? j : max));
-      if (mvp.G > 0) mvp.MVP = true;
-    }
-
-    const renderTablaJugadores = (jugadores: any[], equipo: any) => {
-      if (jugadores.length === 0) return null;
-
-      return (
-        <View style={styles.statsTeamContainer}>
-          {/* Header con logo y nombre del equipo */}
-          <View style={styles.statsTeamHeader}>
-            <Image
-              source={equipo?.logo ? { uri: equipo.logo } : require('../../assets/InterLOGO.png')}
-              style={styles.statsTeamLogo}
-              resizeMode="cover"
-            />
-            <Text style={styles.statsTeamTitle}>{equipo?.nombre || 'Equipo'}</Text>
-          </View>
-          
-          {/* Header de tabla */}
-          <View style={styles.statsTableHeader}>
-            <Text style={[styles.statsHeaderCell, styles.statsNombreCell]}>Jugador</Text>
-            <Text style={styles.statsHeaderCell}>G</Text>
-            <Text style={styles.statsHeaderCell}>A</Text>
-            <Text style={styles.statsHeaderCell}>YC</Text>
-            <Text style={styles.statsHeaderCell}>RC</Text>
-            <Text style={styles.statsHeaderCell}>MVP</Text>
-          </View>
-
-          {/* Filas de jugadores */}
-          {jugadores.map((jugador, index) => (
-            <View key={index} style={styles.statsTableRow}>
-              <Text style={[styles.statsCell, styles.statsNombreCell]}>
-                {formatPlayerName(jugador.nombre)}
-              </Text>
-              <Text style={styles.statsCell}>{jugador.G || '-'}</Text>
-              <Text style={styles.statsCell}>{jugador.A || '-'}</Text>
-              <View style={styles.statsCell}>
-                {jugador.YC > 0 ? (
-                  <View style={styles.tarjetasContainer}>
-                    {[...Array(jugador.YC)].map((_, i) => (
-                      <View key={i} style={styles.tarjetaAmarilla} />
-                    ))}
-                  </View>
-                ) : (
-                  <Text style={styles.statsCellText}>-</Text>
-                )}
-              </View>
-              <View style={styles.statsCell}>
-                {jugador.RC > 0 ? (
-                  <View style={styles.tarjetasContainer}>
-                    {[...Array(jugador.RC)].map((_, i) => (
-                      <View key={i} style={styles.tarjetaRoja} />
-                    ))}
-                  </View>
-                ) : (
-                  <Text style={styles.statsCellText}>-</Text>
-                )}
-              </View>
-              <Text style={styles.statsCell}>{jugador.MVP ? '⭐' : '-'}</Text>
-            </View>
-          ))}
-        </View>
-      );
-    };
-
     return (
       <Card style={styles.statsCard}>
         <Text style={styles.sectionTitle}>Estadísticas</Text>
-        
-        {renderTablaJugadores(jugadoresLocal, partido.equipo_local)}
-        
+        {renderTablaJugadores(jugadoresLocal, equipoLocal)}
         {jugadoresLocal.length > 0 && jugadoresVisitante.length > 0 && (
           <View style={styles.statsDivider} />
         )}
-        
-        {renderTablaJugadores(jugadoresVisitante, partido.equipo_visitante)}
+        {renderTablaJugadores(jugadoresVisitante, equipoVisitante)}
       </Card>
     );
   };
@@ -383,22 +364,15 @@ export const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({ navigation
   return (
     <View style={styles.container}>
       <GradientHeader title="Detalles del Partido" onBackPress={() => navigation.goBack()} />
-      
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {renderResultado()}
-
-        {partido.estado_partido === 'Finalizado' && eventos.length > 0 && (
-          <>
-            {renderEstadisticasJugadores()}
-          </>
-        )}
-
-        {partido.estado_partido === 'Pendiente' && (
+        {matchInfo.estado === 'Finalizado' && renderEstadisticasJugadores()}
+        {matchInfo.estado === 'Pendiente' && (
           <Card style={styles.infoCard}>
             <MaterialCommunityIcons name="calendar-clock" size={48} color={colors.primary} />
             <Text style={styles.infoCardTitle}>Partido Próximo</Text>
             <Text style={styles.infoCardText}>
-              Este partido aún no se ha jugado. Vuelve después del {new Date(partido.fecha).toLocaleDateString('es-ES')} para ver los resultados.
+              Este partido aún no se ha jugado. Vuelve el {matchInfo.fecha ? matchInfo.fecha.split('-').reverse().join('/') : ''} para ver los resultados.
             </Text>
           </Card>
         )}
@@ -416,10 +390,23 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 20,
   },
   loadingText: {
     fontSize: 16,
     color: colors.textSecondary,
+    marginTop: 12,
+  },
+  retryButton: {
+    marginTop: 20,
+    backgroundColor: colors.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: colors.white,
+    fontWeight: '600',
   },
   scrollView: {
     flex: 1,
@@ -483,29 +470,20 @@ const styles = StyleSheet.create({
   },
   scoreContainer: {
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 10,
+    minWidth: 100,
   },
   scoreBox: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  scoreText: {
-    fontSize: 48,
-    fontWeight: '800',
-    color: colors.primary,
-  },
-  scoreTextNegro: {
-    fontSize: 48,
-    fontWeight: '800',
-    color: colors.textPrimary,
-  },
   scoreTextGanador: {
-    fontSize: 48,
-    fontWeight: '600',
+    fontSize: 40,
+    fontWeight: '800',
     color: colors.textPrimary,
   },
   scoreTextPerdedor: {
-    fontSize: 48,
+    fontSize: 40,
     fontWeight: '600',
     color: colors.textSecondary,
   },
@@ -513,7 +491,6 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '600',
     color: colors.textSecondary,
-    marginHorizontal: 12,
   },
   vsTextNegro: {
     fontSize: 24,
@@ -540,17 +517,27 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.textPrimary,
     marginTop: 8,
+    textAlign: 'center',
   },
-  infoContainer: {
+  canchaDestacada: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingTop: 12,
+    gap: 12,
+    marginTop: 20,
+    paddingTop: 20,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
-  infoText: {
+  canchaInfo: {
+    flex: 1,
+  },
+  canchaNombre: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  canchaLocal: {
     fontSize: 13,
     color: colors.textSecondary,
   },
@@ -564,72 +551,89 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     marginBottom: 16,
   },
-  statRow: {
+  noStatsText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  statsTeamContainer: {
+    marginBottom: 20,
+  },
+  statsTeamHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
+    marginBottom: 12,
+  },
+  statsTeamLogo: {
+    width: 40,
+    height: 40,
+    borderRadius: 6,
+    marginRight: 8,
+  },
+  statsTeamTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  statsTableHeader: {
+    flexDirection: 'row',
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+    paddingBottom: 8,
+    marginBottom: 8,
   },
-  statLabel: {
-    fontSize: 14,
+  statsHeaderCell: {
+    fontSize: 12,
     fontWeight: '600',
     color: colors.textSecondary,
     flex: 1,
     textAlign: 'center',
   },
-  statValue: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    width: 60,
-    textAlign: 'center',
+  statsNombreCell: {
+    flex: 2,
   },
-  eventosCard: {
-    padding: 20,
-    marginBottom: 16,
-  },
-  eventoItem: {
+  statsTableRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+    paddingVertical: 6,
   },
-  eventoMinuto: {
-    width: 45,
-    alignItems: 'center',
-  },
-  eventoMinutoText: {
+  statsCell: {
     fontSize: 14,
-    fontWeight: '700',
     color: colors.textPrimary,
-  },
-  eventoIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  eventoInfo: {
+    textAlign: 'center',
+    paddingVertical: 8,
     flex: 1,
   },
-  eventoTipo: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textPrimary,
-    marginBottom: 2,
-  },
-  eventoJugador: {
-    fontSize: 13,
+  statsCellText: {
     color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  tarjetasContainer: {
+    flexDirection: 'row',
+    gap: 2,
+  },
+  tarjetaAmarilla: {
+    width: 8,
+    height: 12,
+    backgroundColor: colors.warning,
+    borderRadius: 2,
+  },
+  tarjetaRoja: {
+    width: 8,
+    height: 12,
+    backgroundColor: colors.error,
+    borderRadius: 2,
+  },
+  statsDivider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginVertical: 12,
   },
   infoCard: {
-    padding: 32,
-    alignItems: 'center',
+    padding: 20,
     marginBottom: 16,
   },
   infoCardTitle: {
@@ -644,122 +648,5 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
-  },
-  canchaDestacada: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-    marginTop: 20,
-    paddingTop: 20,
-    borderTopWidth: 2,
-    borderTopColor: colors.primary,
-    backgroundColor: colors.backgroundGray,
-    padding: 16,
-    borderRadius: 12,
-  },
-  canchaInfo: {
-    flex: 1,
-  },
-  canchaNombre: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginBottom: 4,
-  },
-  canchaLocal: {
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
-  statsTeamContainer: {
-    marginBottom: 20,
-  },
-  statsTeamHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-    gap: 12,
-  },
-  statsTeamLogo: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-  },
-  statsTeamTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  statsTableHeader: {
-    flexDirection: 'row',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    backgroundColor: colors.backgroundGray,
-    borderRadius: 8,
-    marginBottom: 4,
-  },
-  statsHeaderCell: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.textSecondary,
-    textAlign: 'center',
-    width: 40,
-  },
-  statsNombreCell: {
-    flex: 1,
-    textAlign: 'left',
-    width: 'auto',
-  },
-  statsTableRow: {
-    flexDirection: 'row',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  statsCell: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textPrimary,
-    textAlign: 'center',
-    width: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  statsCellText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textPrimary,
-  },
-  tarjetasContainer: {
-    flexDirection: 'row',
-    gap: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tarjetaAmarilla: {
-    width: 8,
-    height: 12,
-    backgroundColor: '#FFD700',
-    borderRadius: 2,
-  },
-  tarjetaRoja: {
-    width: 8,
-    height: 12,
-    backgroundColor: colors.error,
-    borderRadius: 2,
-  },
-  statsDivider: {
-    height: 1,
-    backgroundColor: colors.border,
-    marginVertical: 20,
-  },
-  noStatsText: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    fontStyle: 'italic',
-    marginTop: 8,
   },
 });

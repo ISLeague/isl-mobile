@@ -47,7 +47,7 @@ export const GrupoDetailScreen: React.FC<GrupoDetailScreenProps> = ({ route, nav
   }, [clasificacionesParam]);
 
   const handleTeamPress = (idEquipo: number) => {
-    navigation.navigate('TeamDetail', { idEquipo });
+    navigation.navigate('TeamDetail', { equipoId: idEquipo });
   };
 
   return (

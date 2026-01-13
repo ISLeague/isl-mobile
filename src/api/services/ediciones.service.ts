@@ -46,6 +46,19 @@ export const edicionesService = {
     );
     return response.data;
   },
+
+  /**
+   * Delete an existing edicion
+   */
+  delete: async (id_edicion: number): Promise<any> => {
+    const response = await apiClient.delete(
+      '/ediciones',
+      {
+        params: { id_edicion, action: 'delete' },
+      }
+    );
+    return response.data;
+  },
 };
 
 export default edicionesService;

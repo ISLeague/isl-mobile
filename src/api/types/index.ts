@@ -63,3 +63,9 @@ export * from './admin-edicion';
 // Admin Categorias
 
 export * from './admin-categoria'
+
+// Asistencia Partido
+export * from './asistencia.types';
+
+// Cambios Partido
+export * from './cambios.types';

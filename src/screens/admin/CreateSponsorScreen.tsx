@@ -30,8 +30,6 @@ export const CreateSponsorScreen: React.FC<CreateSponsorScreenProps> = ({ naviga
   const [tipo, setTipo] = useState<TipoSponsor>('oficial');
   const [descripcion, setDescripcion] = useState('');
   const [orden, setOrden] = useState('1');
-  const [fechaInicio, setFechaInicio] = useState('');
-  const [fechaFin, setFechaFin] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleCreate = async () => {
@@ -59,8 +57,6 @@ export const CreateSponsorScreen: React.FC<CreateSponsorScreenProps> = ({ naviga
       descripcion: descripcion || undefined,
       id_edicion_categoria: idEdicionCategoria,
       orden: parseInt(orden) || 1,
-      fecha_inicio: fechaInicio || undefined,
-      fecha_fin: fechaFin || undefined,
     };
 
     setLoading(true);
@@ -185,34 +181,7 @@ export const CreateSponsorScreen: React.FC<CreateSponsorScreenProps> = ({ naviga
             </Text>
           </View>
 
-          {/* Fechas */}
-          <View style={styles.row}>
-            <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
-              <DatePickerInput
-                label="Fecha Inicio"
-                value={fechaInicio}
-                onChangeDate={setFechaInicio}
-              />
-            </View>
-            <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
-              <DatePickerInput
-                label="Fecha Fin"
-                value={fechaFin}
-                onChangeDate={setFechaFin}
-              />
-            </View>
-          </View>
 
-          {/* Vista previa del logo */}
-          {logo.trim() && (
-            <View style={styles.previewContainer}>
-              <Text style={styles.previewLabel}>Vista Previa:</Text>
-              <View style={styles.logoPreview}>
-                <MaterialCommunityIcons name="image" size={48} color={colors.textLight} />
-                <Text style={styles.previewUrl} numberOfLines={2}>{logo}</Text>
-              </View>
-            </View>
-          )}
 
           {/* Botón de crear */}
           <View style={styles.buttonContainer}>
@@ -280,30 +249,6 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: 6,
     lineHeight: 16,
-  },
-  previewContainer: {
-    marginBottom: 24,
-  },
-  previewLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textPrimary,
-    marginBottom: 12,
-  },
-  logoPreview: {
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    borderRadius: 12,
-    padding: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  previewUrl: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginTop: 12,
-    textAlign: 'center',
   },
   buttonContainer: {
     marginTop: 16,

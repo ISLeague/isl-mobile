@@ -76,10 +76,9 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
       // Fans e invitados ven todo (invitados verán mensajes al intentar acceder)
       { id: 'miequipo', label: 'Mi Equipo' },
       { id: 'grupos', label: 'Grupos' },
-      { id: 'stats', label: 'The Best' },
       { id: 'fixture', label: 'Fixture' },
       { id: 'knockout', label: 'Knockout' },
-      { id: 'thebest', label: 'The Best' },
+      { id: 'stats', label: 'The Best' },
       { id: 'local', label: 'Local' },
     ];
 
@@ -228,6 +227,16 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
       `Se ha aplicado el tema ${preset === 'red' ? 'Rojo' : preset === 'blue' ? 'Azul' : 'Rosa'} para todos los usuarios.`,
       [{ text: 'OK' }]
     );
+  };
+
+  const handleDeleteSponsor = async (idSponsor: number) => {
+    try {
+      await api.sponsors.delete(idSponsor);
+      // Refresh sponsors list by triggering a re-render
+      setRefreshLocalTab(prev => prev + 1);
+    } catch (error) {
+      Alert.alert('Error', 'No se pudo eliminar el sponsor');
+    }
   };
 
   return (
@@ -416,7 +425,7 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
             } else if (tab.id === 'stats') {
               return (
                 <View key={tab.id} style={styles.pageWrapper}>
-                  <LeagueStatsEmbed navigation={navigation} idEdicionCategoria={idEdicionCategoria} />
+                  <TheBestEmbed navigation={navigation} idEdicionCategoria={idEdicionCategoria} />
                 </View>
               );
             } else if (tab.id === 'local') {
@@ -447,7 +456,9 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
                   <SponsorTab
                     idEdicionCategoria={idEdicionCategoria || 1}
                     onCreateSponsor={() => navigation.navigate('CreateSponsor', { idEdicionCategoria: idEdicionCategoria || 1 })}
-                    onEditSponsor={(sponsor) => navigation.navigate('EditSponsor  ', { sponsor })}
+                    onEditSponsor={(sponsor) => navigation.navigate('EditSponsor', { sponsor })}
+                    onDeleteSponsor={handleDeleteSponsor}
+                    refreshTrigger={refreshLocalTab}
                   />
                 </View>
               );
@@ -493,12 +504,6 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
                 </View>
               );
             } else if (tab.id === 'stats') {
-              return (
-                <View key={tab.id} style={styles.pageWrapper}>
-                  <LeagueStatsEmbed navigation={navigation} idEdicionCategoria={idEdicionCategoria} />
-                </View>
-              );
-            } else if (tab.id === 'thebest') {
               return (
                 <View key={tab.id} style={styles.pageWrapper}>
                   <TheBestEmbed navigation={navigation} idEdicionCategoria={idEdicionCategoria} />
