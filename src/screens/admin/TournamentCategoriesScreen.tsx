@@ -28,10 +28,7 @@ export const TournamentCategoriesScreen = ({ navigation, route }: any) => {
   const { isSuperAdmin, usuario } = useAuth();
 
   // Check if user can assign categories to this edition
-  const canAssignCategories =
-    isSuperAdmin ||
-    (usuario?.id_torneos && usuario.id_torneos.includes(torneo.id_torneo)) ||
-    (usuario?.id_ediciones && usuario.id_ediciones.includes(edicion.id_edicion));
+  const canAssignCategories = isSuperAdmin 
 
   const [assignedCategorias, setAssignedCategorias] = useState<EdicionCategoria[]>([]);
   const [allCategorias, setAllCategorias] = useState<Categoria[]>([]);
@@ -243,16 +240,18 @@ export const TournamentCategoriesScreen = ({ navigation, route }: any) => {
         </View>
 
         {/* Info Banner */}
-        <View style={styles.infoBanner}>
-          <MaterialCommunityIcons
-            name="information"
-            size={20}
-            color={colors.primary}
-          />
-          <Text style={styles.infoBannerText}>
-            Asigna categorías globales a esta edición. Solo puedes asignar categorías ya creadas.
-          </Text>
-        </View>
+        {isSuperAdmin && (
+          <View style={styles.infoBanner}>
+            <MaterialCommunityIcons
+              name="information"
+              size={20}
+              color={colors.primary}
+            />
+            <Text style={styles.infoBannerText}>
+              Asigna categorías globales a esta edición. Solo puedes asignar categorías ya creadas.
+            </Text>
+          </View>
+        )}
 
         {/* Assigned Categories */}
         <View style={styles.categoriesSection}>
