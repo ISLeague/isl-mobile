@@ -125,7 +125,7 @@ export const AdminTournamentsScreen = ({ navigation, route }: any) => {
 
     } catch (error: any) {
       // console.error('❌❌❌ [AdminTournaments] Error en loadTorneos - ESTE ES EL ERROR QUE CAUSA EL ALERT:', error);
-     
+
       setTorneos([]);
       Alert.alert('Error', 'No se pudieron cargar los torneos. Intenta de nuevo.');
     } finally {
@@ -137,6 +137,15 @@ export const AdminTournamentsScreen = ({ navigation, route }: any) => {
   const handleRefresh = useCallback(() => {
     loadTorneos(true);
   }, []);
+
+  // Recargar cuando volvemos de Create/Edit con refresh: true
+  useEffect(() => {
+    if (route.params?.refresh) {
+      loadTorneos(true);
+      // Limpiar el parámetro para evitar bucles
+      navigation.setParams({ refresh: undefined });
+    }
+  }, [route.params?.refresh]);
 
   const handleCreateTournament = () => {
     navigation.navigate('CreateTournament', { pais });

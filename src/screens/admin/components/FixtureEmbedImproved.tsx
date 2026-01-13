@@ -376,12 +376,7 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
 
     return (
       <View style={styles.fixturesSection}>
-        <View style={styles.fixturesSectionHeader}>
-          <MaterialCommunityIcons name="calendar-clock" size={20} color={colors.info} />
-          <Text style={styles.fixturesSectionTitle}>
-            Fixtures sin partido ({allFixtures.length})
-          </Text>
-        </View>
+        {/* Fixtures sin partido label removed */}
 
         {fixtures.map((jornada) => (
           <View key={jornada.jornada} style={styles.jornadaGroup}>

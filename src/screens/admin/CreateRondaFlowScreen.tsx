@@ -237,6 +237,42 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
       return;
     }
 
+    // Validar que todos los grupos tengan el mismo tamaño (solo para Fase de Grupos)
+    if (tipo === 'fase_grupos') {
+      const gruposResult = await safeAsync(
+        async () => await api.grupos.get(fasesResult.id_fase),
+        'CreateRondaFlow - getGrupos',
+        { fallbackValue: null }
+      );
+
+      if (gruposResult && gruposResult.success && gruposResult.data) {
+        const grupos = gruposResult.data.grupos || [];
+        if (grupos.length > 0) {
+          const firstGroupSize = grupos[0].equipos?.length || 0;
+          const allSameSize = grupos.every((g: any) => (g.equipos?.length || 0) === firstGroupSize);
+
+          if (!allSameSize) {
+            Alert.alert(
+              'Error de Validación',
+              'Todos los grupos deben tener la misma cantidad de equipos para generar el fixture automáticamente.'
+            );
+            setLoading(false);
+            return;
+          }
+
+          if (firstGroupSize === 0) {
+            Alert.alert('Error', 'Los grupos no tienen equipos asignados.');
+            setLoading(false);
+            return;
+          }
+        } else {
+          Alert.alert('Error', 'No hay grupos creados en esta fase.');
+          setLoading(false);
+          return;
+        }
+      }
+    }
+
     const rondaData = {
       nombre: nombre.trim(),
       id_fase: fasesResult.id_fase,
@@ -300,7 +336,7 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
     const fixtureData: any = {
       id_ronda: createdRondaId,
       tipo_generacion: tipoGeneracion,
-      ida_vuelta: tipo === 'fase_grupos' ? idaVuelta : false,
+      ida_vuelta: tipo === 'fase_grupos' ? (parseInt(vecesEnfrentamiento) > 1) : false,
     };
 
     // Solo agregar cantidad_partidos si es amistosa
@@ -395,8 +431,11 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
       return !details || !details.fecha || !details.hora || !details.id_cancha;
     });
 
-    if (completeFixtures.length === 0) {
-      Alert.alert('Error', 'No hay partidos con fecha, hora y cancha asignados');
+    if (!validateFriendlyRoundDuplicates()) {
+      Alert.alert(
+        'Error de Validación',
+        'Un equipo no puede jugar más de una vez en la misma jornada de amistosos. Revisa la generación del fixture.'
+      );
       return;
     }
 
@@ -490,13 +529,13 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
           },
           {
             text: 'Volver',
-            onPress: () => navigation.goBack(),
+            onPress: () => navigation.navigate('AdminFixture', { idEdicionCategoria }),
           },
         ]
       );
     } else {
-      // All fixtures were created, go back
-      navigation.goBack();
+      // All fixtures were created, go to fixture
+      navigation.navigate('AdminFixture', { idEdicionCategoria });
     }
   };
 

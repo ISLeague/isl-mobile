@@ -39,7 +39,7 @@ export const CreateTournamentScreen = ({ navigation, route }: any) => {
 
     const result = await safeAsync(
       async () => {
-       
+
 
         const response = await api.torneos.create({
           nombre: nombre.trim(),
@@ -66,20 +66,11 @@ export const CreateTournamentScreen = ({ navigation, route }: any) => {
     if (result && result.success) {
       showSuccess(`Torneo "${nombre}" creado correctamente`, '¡Éxito!');
 
-      const nuevoTorneo = result.data || null;
-
-      // Notificar al padre (si pasó callback) y refrescar pantalla previa
-      if (route.params?.onCreated) {
-        route.params.onCreated(nuevoTorneo);
-      }
-
-      // Manda flag de refresco al stack anterior y vuelve inmediatamente
-      navigation.navigate({
-        name: 'TournamentDetails',
-        params: { refresh: Date.now() },
-        merge: true,
+      // Volver a la lista de torneos y refrescar
+      navigation.navigate('AdminTournaments', {
+        pais,
+        refresh: true
       });
-      navigation.goBack();
     }
   };
 

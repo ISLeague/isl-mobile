@@ -12,7 +12,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
-import { Button } from '../../components/common';
+import { Button } from '../../components/common/Button';
+import { useToast } from '../../contexts/ToastContext';
+import api from '../../api';
+import { safeAsync } from '../../utils/errorHandling';
 
 interface CreateRondaScreenProps {
   navigation: any;
@@ -26,6 +29,8 @@ export const CreateRondaScreen: React.FC<CreateRondaScreenProps> = ({ navigation
   const tipoFijo = tipoParam || null;
   const esDesdeKnockout = tipoParam === 'eliminatorias';
 
+  const { showSuccess } = useToast();
+  const [loading, setLoading] = useState(false);
   const [nombre, setNombre] = useState('');
   const [fecha, setFecha] = useState('');
   const [tipo, setTipo] = useState<'fase_grupos' | 'amistosa'>(
@@ -34,20 +39,11 @@ export const CreateRondaScreen: React.FC<CreateRondaScreenProps> = ({ navigation
   const [vecesEnfrentamiento, setVecesEnfrentamiento] = useState('1');
   const [aplicarFechaAutomatica, setAplicarFechaAutomatica] = useState(false);
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     // Validaciones
     if (!nombre.trim()) {
       Alert.alert('Error', 'El nombre de la ronda es requerido');
       return;
-    }
-
-    // Validar formato de fecha solo si hay fecha (DD/MM/YYYY)
-    if (fecha.trim()) {
-      const dateRegex = /^\d{2}\/\d{2}\/\d{4}$/;
-      if (!dateRegex.test(fecha)) {
-        Alert.alert('Error', 'El formato de la fecha debe ser DD/MM/YYYY (ej: 25/12/2025)');
-        return;
-      }
     }
 
     const rondaData = {
@@ -56,18 +52,68 @@ export const CreateRondaScreen: React.FC<CreateRondaScreenProps> = ({ navigation
       tipo,
       veces_enfrentamiento: tipo === 'fase_grupos' ? parseInt(vecesEnfrentamiento) : undefined,
       aplicar_fecha_automatica: aplicarFechaAutomatica,
-      id_fase: 1, // TODO: Obtener el ID de fase correcto
       id_edicion_categoria: idEdicionCategoria,
       es_amistosa: tipo === 'amistosa',
+      orden: 1, // Valor por defecto para rondas creadas individualmente
     };
 
+    setLoading(true);
 
-    // TODO: Llamar a la API para crear la ronda
-    // await api.fixture.createRonda(rondaData);
+    const result = await safeAsync(
+      async () => {
+        // 1. Obtener la fase correcta
+        const fasesResponse = await api.fases.list(idEdicionCategoria);
+        const fase = fasesResponse.success && fasesResponse.data && fasesResponse.data.length > 0
+          ? fasesResponse.data.find((f: any) => f.tipo === 'grupo') || fasesResponse.data[0]
+          : null;
 
-    Alert.alert('Éxito', `Ronda "${nombre}" creada exitosamente. Ahora puedes agregar partidos.`, [
-      { text: 'OK', onPress: () => navigation.goBack() }
-    ]);
+        if (!fase || !fase.id_fase) {
+          throw new Error('No se encontró una fase válida');
+        }
+
+        // 2. Validar grupos si es fase de grupos
+        if (tipo === 'fase_grupos') {
+          const gruposResponse = await api.grupos.get(fase.id_fase);
+          const grupos = gruposResponse.success && gruposResponse.data ? gruposResponse.data.grupos || [] : [];
+
+          if (grupos.length === 0) {
+            throw new Error('No hay grupos creados en esta fase');
+          }
+
+          const firstGroupSize = grupos[0].equipos?.length || 0;
+          const allSameSize = grupos.every((g: any) => (g.equipos?.length || 0) === firstGroupSize);
+
+          if (!allSameSize) {
+            throw new Error('Todos los grupos deben tener la misma cantidad de equipos');
+          }
+
+          if (firstGroupSize === 0) {
+            throw new Error('Los grupos no tienen equipos asignados');
+          }
+        }
+
+        // 3. Crear la ronda
+        const rondaFinalData = {
+          ...rondaData,
+          id_fase: fase.id_fase,
+        };
+
+        return await api.rondas.create(rondaFinalData);
+      },
+      'CreateRonda - handleCreate',
+      {
+        fallbackValue: null,
+        onError: (error: any) => {
+          Alert.alert('Error', error.message || 'No se pudo crear la ronda');
+        }
+      }
+    );
+
+    if (result && result.success) {
+      showSuccess(`Ronda "${nombre}" creada exitosamente`);
+      navigation.goBack();
+    }
+    setLoading(false);
   };
 
   const getTipoIcon = (tipoRonda: string) => {
