@@ -191,6 +191,8 @@ export const LoginScreen = ({ navigation }: any) => {
               error={errors.email}
               keyboardType="email-address"
               autoCapitalize="none"
+              autoComplete="email"
+              textContentType="emailAddress"
               leftIcon={<MaterialCommunityIcons name="email-outline" size={20} color="#666" />}
             />
 
@@ -204,6 +206,8 @@ export const LoginScreen = ({ navigation }: any) => {
               }}
               error={errors.password}
               isPassword
+              autoComplete="password"
+              textContentType="password"
               leftIcon={<MaterialCommunityIcons name="lock-outline" size={20} color="#666" />}
             />
 

@@ -93,11 +93,8 @@ export const CreateCanchaScreen = ({ navigation, route }: any) => {
     if (returnTo && returnParams) {
       navigation.navigate(returnTo, returnParams);
     } else {
-      // Otherwise, navigate to LocalDetailScreen as usual
-      navigation.navigate('LocalDetailScreen', {
-        idLocal,
-        refresh: true // Para que recargue las canchas
-      });
+      // Otherwise, go back to the previous screen
+      navigation.goBack();
     }
   };
 

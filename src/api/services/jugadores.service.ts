@@ -45,6 +45,16 @@ export const jugadoresService = {
   },
 
   /**
+   * Actualizar un jugador existente
+   */
+  update: async (id_plantilla: number, data: Partial<CreateJugadorRequest>) => {
+    const response = await apiClient.patch('/jugadores', { ...data, id_plantilla }, {
+      params: { action: 'update' },
+    });
+    return response.data;
+  },
+
+  /**
    * Crear jugadores en masa desde CSV
    */
   createBulk: async (idEquipo: number, csvFile: any) => {

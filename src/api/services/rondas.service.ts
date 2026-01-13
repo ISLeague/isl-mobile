@@ -78,7 +78,10 @@ export const rondasService = {
   },
 
   delete: async (id: number) => {
-    const response = await apiClient.delete('/rondas', { params: { id, action: 'delete' } });
+    const response = await apiClient.delete('/rondas', { 
+      params: { action: 'delete' },
+      data: { id_ronda: id }
+    });
     return response.data;
   },
 };

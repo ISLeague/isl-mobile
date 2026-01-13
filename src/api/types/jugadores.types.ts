@@ -33,7 +33,8 @@ export interface EstadisticasHistoricas {
 }
 
 export interface Jugador {
-  id_jugador: number;
+  id_plantilla: number; // ID en plantilla_equipos (primary key)
+  id_jugador?: number;  // Alias para compatibilidad
   nombre_completo: string;
   dni: string;
   numero_camiseta?: number;

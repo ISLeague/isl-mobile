@@ -44,12 +44,12 @@ export const PlayerFormScreen: React.FC<PlayerFormScreenProps> = ({ navigation, 
     }
 
     if (!dni.trim()) {
-      Alert.alert('Error', 'El DNI es obligatorio');
+      Alert.alert('Error', 'El documento de identidad es obligatorio');
       return false;
     }
 
-    if (dni.length < 7 || dni.length > 10) {
-      Alert.alert('Error', 'El DNI debe tener entre 7 y 10 caracteres');
+    if (dni.length < 3 || dni.length > 20) {
+      Alert.alert('Error', 'El documento debe tener entre 3 y 20 caracteres');
       return false;
     }
 
@@ -113,8 +113,9 @@ export const PlayerFormScreen: React.FC<PlayerFormScreenProps> = ({ navigation, 
           const response = await api.jugadores.create(jugadorData);
           return response;
         } else {
-          // TODO: Implementar edición de jugador
-          return { success: true };
+          // Editar jugador existente
+          const response = await api.jugadores.update(jugador.id_plantilla, jugadorData);
+          return response;
         }
       },
       'PlayerFormScreen - handleSave',

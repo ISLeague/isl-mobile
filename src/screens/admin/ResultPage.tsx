@@ -201,7 +201,7 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
     const setter = isLocal ? setEventosLocal : setEventosVisitante;
     const eventos = isLocal ? eventosLocal : eventosVisitante;
     
-    setter(eventos.map(e => {
+    const newEventos = eventos.map(e => {
       if (e.id_jugador === jugadorId) {
         const updated = { ...e, [field]: value };
         // Si hay 2 amarillas, activar automáticamente la roja
@@ -211,7 +211,19 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
         return updated;
       }
       return e;
-    }));
+    });
+    
+    setter(newEventos);
+    
+    // Sincronizar goles de jugadores con marcador del equipo
+    if (field === 'goles') {
+      const totalGoles = newEventos.reduce((sum, e) => sum + e.goles, 0);
+      if (isLocal) {
+        setGolesLocal(totalGoles);
+      } else {
+        setGolesVisitante(totalGoles);
+      }
+    }
   };
 
   const toggleMVP = (isLocal: boolean, jugadorId: number) => {

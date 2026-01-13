@@ -2,6 +2,7 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { HomeScreen } from '../screens/home/HomeScreen';
 import { ProfileScreen } from '../screens/profile/ProfileScreen';
+import { MinijuegosScreen } from '../screens/minigames';
 import { colors } from '../theme/colors';
 import { Platform, View, Text, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -43,6 +44,7 @@ export const MainNavigator = () => {
           tabBarLabel: ({ focused }) => {
             let label = '';
             if (route.name === 'Home') label = 'Ligas';
+            else if (route.name === 'Minigames') label = 'Minijuegos';
             else if (route.name === 'Profile') label = 'Perfil';
 
             return (
@@ -64,6 +66,8 @@ export const MainNavigator = () => {
             
             if (route.name === 'Home') {
               iconName = focused ? 'trophy' : 'trophy-outline';
+            } else if (route.name === 'Minigames') {
+              iconName = focused ? 'gamepad-variant' : 'gamepad-variant-outline';
             } else {
               iconName = focused ? 'account' : 'account-outline';
             }
@@ -79,6 +83,7 @@ export const MainNavigator = () => {
         })}
       >
         <Tab.Screen name="Home" component={HomeScreen} />
+        <Tab.Screen name="Minigames" component={MinijuegosScreen} />
         <Tab.Screen name="Profile" component={ProfileScreen} />
       </Tab.Navigator>
     </>

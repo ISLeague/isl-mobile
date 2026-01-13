@@ -53,6 +53,7 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
   const [tipoGeneracion, setTipoGeneracion] = useState<'round_robin' | 'amistoso_aleatorio' | 'amistoso_intergrupos'>('round_robin');
   const [idaVuelta, setIdaVuelta] = useState(false);
   const [cantidadPartidos, setCantidadPartidos] = useState('');
+  const [totalEquipos, setTotalEquipos] = useState<number>(0);
   const [fixtureResponse, setFixtureResponse] = useState<FixtureGenerateResponse | null>(null);
 
   // Step 3: Assign Details to Fixtures
@@ -91,6 +92,34 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
       loadCanchas();
     }
   }, [currentStep]);
+
+  // Cargar número de equipos EN GRUPOS al inicio
+  useEffect(() => {
+    const loadEquiposEnGrupos = async () => {
+      try {
+        // Primero obtener la fase de grupos
+        const fasesResponse = await api.fases.getFaseGrupos(idEdicionCategoria);
+        if (fasesResponse.success && fasesResponse.data && fasesResponse.data.length > 0) {
+          const idFase = fasesResponse.data[0].id_fase;
+          // Obtener grupos con equipos
+          const gruposResponse = await api.grupos.get(idFase);
+          if (gruposResponse.success && gruposResponse.data?.grupos) {
+            // Contar total de equipos en todos los grupos
+            let totalEnGrupos = 0;
+            gruposResponse.data.grupos.forEach((grupo: any) => {
+              totalEnGrupos += grupo.equipos?.length || 0;
+            });
+            setTotalEquipos(totalEnGrupos);
+          }
+        }
+      } catch (error) {
+        console.log('Error cargando equipos en grupos:', error);
+      }
+    };
+    if (idEdicionCategoria) {
+      loadEquiposEnGrupos();
+    }
+  }, [idEdicionCategoria]);
 
   // Restore state when coming back from creating locales/canchas
   useEffect(() => {
@@ -594,6 +623,7 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
         value={fechaInicio}
         onChangeDate={setFechaInicio}
         placeholder="Seleccionar fecha de inicio"
+        defaultToToday
       />
 
       <DatePickerInput
@@ -602,6 +632,7 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
         onChangeDate={setFechaFin}
         placeholder="Seleccionar fecha de fin"
         minimumDate={fechaInicio ? new Date(fechaInicio) : undefined}
+        defaultToToday
       />
 
       <Input
@@ -737,14 +768,24 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
       )}
 
       {tipo === 'amistosa' && (
-        <Input
-          label="Cantidad de Partidos *"
-          placeholder="Ej: 10"
-          value={cantidadPartidos}
-          onChangeText={setCantidadPartidos}
-          keyboardType="numeric"
-          leftIcon={<MaterialCommunityIcons name="soccer-field" size={20} color={colors.textLight} />}
-        />
+        <>
+          <Input
+            label="Cantidad de Partidos *"
+            placeholder="Ej: 10"
+            value={cantidadPartidos}
+            onChangeText={setCantidadPartidos}
+            keyboardType="numeric"
+            leftIcon={<MaterialCommunityIcons name="soccer-field" size={20} color={colors.textLight} />}
+          />
+          {totalEquipos > 0 && (
+            <View style={styles.suggestionBox}>
+              <MaterialCommunityIcons name="lightbulb-outline" size={18} color={colors.info} />
+              <Text style={styles.suggestionText}>
+                Sugerencia: {Math.floor(totalEquipos / 2)} partidos para que cada equipo juegue una vez ({totalEquipos} equipos en grupos)
+              </Text>
+            </View>
+          )}
+        </>
       )}
 
       <View style={styles.buttonRow}>
@@ -1174,6 +1215,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.primary,
     lineHeight: 20,
+  },
+  suggestionBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF8E1',
+    padding: 12,
+    borderRadius: 8,
+    marginTop: -8,
+    marginBottom: 16,
+    gap: 8,
+  },
+  suggestionText: {
+    flex: 1,
+    fontSize: 13,
+    color: colors.textSecondary,
+    lineHeight: 18,
   },
   generacionButtons: {
     flexDirection: 'row',

@@ -182,10 +182,14 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
     setLoading(false);
   }, [idEdicionCategoria]); // Removido showError de dependencias
 
+  // Single data loading effect - only on mount and when idEdicionCategoria changes
+  // No useFocusEffect to avoid constant reloads when navigating
   useEffect(() => {
-    console.log('🔄 useEffect disparado, llamando loadData...');
-    loadData();
-  }, [loadData]);
+    if (idEdicionCategoria) {
+      console.log('🔄 useEffect inicial, llamando loadData...');
+      loadData();
+    }
+  }, [idEdicionCategoria]);
 
   const loadFixturesSinPartido = useCallback(async (rondaId: number) => {
     if (!isAdmin) return;
@@ -969,8 +973,7 @@ export const FixtureEmbedImproved: React.FC<FixtureEmbedImprovedProps> = ({
           style: 'destructive',
           onPress: async () => {
             try {
-              // TODO: Llamar API para eliminar ronda
-              // await api.rounds.deleteRound(ronda.id_ronda);
+              await api.rondas.delete(ronda.id_ronda);
               showInfo('Ronda eliminada exitosamente');
               loadData();
             } catch (error) {

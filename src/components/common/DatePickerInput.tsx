@@ -20,6 +20,7 @@ interface DatePickerInputProps {
   error?: string;
   minimumDate?: Date;
   maximumDate?: Date;
+  defaultToToday?: boolean; // If true, opens picker on today's date when empty
 }
 
 export const DatePickerInput: React.FC<DatePickerInputProps> = ({
@@ -30,13 +31,17 @@ export const DatePickerInput: React.FC<DatePickerInputProps> = ({
   error,
   minimumDate,
   maximumDate,
+  defaultToToday = false,
 }) => {
   const [showPicker, setShowPicker] = useState(false);
-  const [internalDate, setInternalDate] = useState<Date>(new Date());
-
-  // Parse date from string (YYYY-MM-DD) or use today
+  
+  // Parse date from string (YYYY-MM-DD) or use a default date
   const parseDate = (dateString: string): Date => {
-    if (!dateString) return new Date();
+    if (!dateString) {
+      // If defaultToToday is true, use current date for fixtures/events
+      // Otherwise use year 2000 for birth date selection
+      return defaultToToday ? new Date() : new Date(2000, 0, 1);
+    }
     try {
       const parts = dateString.split('-');
       if (parts.length === 3) {
@@ -50,8 +55,11 @@ export const DatePickerInput: React.FC<DatePickerInputProps> = ({
     } catch (e) {
       // Fallback
     }
-    return new Date();
+    return defaultToToday ? new Date() : new Date(2000, 0, 1);
   };
+
+  // Initialize with parsed value
+  const [internalDate, setInternalDate] = useState<Date>(() => parseDate(value));
 
   // Format date to YYYY-MM-DD (Safe local format)
   const formatDate = (date: Date): string => {
@@ -127,7 +135,7 @@ export const DatePickerInput: React.FC<DatePickerInputProps> = ({
         <DateTimePicker
           value={internalDate}
           mode="date"
-          display="calendar"
+          display="default"
           onChange={handleDateChange}
           minimumDate={minimumDate}
           maximumDate={maximumDate}
@@ -160,6 +168,8 @@ export const DatePickerInput: React.FC<DatePickerInputProps> = ({
                 minimumDate={minimumDate}
                 maximumDate={maximumDate}
                 style={styles.picker}
+                textColor="#000000"
+                themeVariant="light"
               />
             </Pressable>
           </Pressable>
@@ -242,5 +252,6 @@ const styles = StyleSheet.create({
   },
   picker: {
     height: 200,
+    backgroundColor: '#FFFFFF',
   },
 });

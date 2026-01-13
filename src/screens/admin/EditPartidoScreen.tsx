@@ -223,10 +223,8 @@ export const EditPartidoScreen: React.FC<EditPartidoScreenProps> = ({ navigation
           onPress: async () => {
             const success = await safeAsync(
               async () => {
-                // TODO: Llamar a la API para eliminar el partido
-                // await api.partidos.deletePartido(partido.id_partido);
-                await new Promise(resolve => setTimeout(resolve, 500));
-                return true;
+                const response = await api.partidos.delete(partido.id_partido);
+                return response?.success ?? true;
               },
               'deletePartido',
               {

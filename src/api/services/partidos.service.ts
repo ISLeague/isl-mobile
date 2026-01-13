@@ -168,4 +168,14 @@ export const partidosService = {
     });
     return response.data;
   },
+
+  /**
+   * Eliminar un partido
+   */
+  delete: async (id: number) => {
+    const response = await apiClient.delete('/partidos', {
+      params: { id_partido: id }
+    });
+    return response.data;
+  },
 };
