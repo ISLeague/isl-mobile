@@ -29,6 +29,7 @@ import { getLogoUri } from '../../utils/imageUtils';
 import type { Jugador } from '../../api/types/jugadores.types';
 import type { Grupo } from '../../api/types/grupos.types';
 import type { Partido } from '../../api/types/partidos.types';
+import { Switch } from 'react-native-gesture-handler';
 
 interface TeamDetailScreenProps {
   navigation: any;
@@ -453,7 +454,7 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
         const { total_processed, successful, failed, errors } = uploadResult.data;
 
 
-        // Intentar recargar la lista de jugadores
+        let newPlayers: Jugador[] = [];
         let newPlayersVal: Jugador[] = [];
         if (successful > 0) {
           setImportStatus('Recargando lista de jugadores...');

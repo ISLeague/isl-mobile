@@ -34,12 +34,9 @@ export { edicionCategoriasService } from './services/edicion-categorias.service'
 export { reglasClasificacionService } from './services/reglas-clasificacion.service';
 export { sponsorsService } from './services/sponsors.service';
 export { minigamesService } from './services/minigames.service';
-<<<<<<< HEAD
 export { seguimientoEquiposService } from './services/seguimiento-equipos.service';
-=======
 export { asistenciaService } from './services/asistencia.service';
 export { cambiosService } from './services/cambios.service';
->>>>>>> 9aa12e623dcdcdfbcbb2368062a32f6462d51a0e
 
 // ============================================
 // 🔧 API CONSOLIDADA (Para compatibilidad)
@@ -69,12 +66,9 @@ import { edicionCategoriasService } from './services/edicion-categorias.service'
 import { reglasClasificacionService } from './services/reglas-clasificacion.service';
 import { sponsorsService } from './services/sponsors.service';
 import { minigamesService } from './services/minigames.service';
-<<<<<<< HEAD
 import { seguimientoEquiposService } from './services/seguimiento-equipos.service';
-=======
 import { asistenciaService } from './services/asistencia.service';
 import { cambiosService } from './services/cambios.service';
->>>>>>> 9aa12e623dcdcdfbcbb2368062a32f6462d51a0e
 
 /**
  * API consolidada - Exportación default para compatibilidad
@@ -115,12 +109,9 @@ export const api = {
   reglasClasificacion: reglasClasificacionService,
   sponsors: sponsorsService,
   minigames: minigamesService,
-<<<<<<< HEAD
   seguimientoEquipos: seguimientoEquiposService,
-=======
   asistencia: asistenciaService,
   cambios: cambiosService,
->>>>>>> 9aa12e623dcdcdfbcbb2368062a32f6462d51a0e
 };
 
 export default api;
