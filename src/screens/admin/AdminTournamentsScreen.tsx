@@ -73,10 +73,13 @@ export const AdminTournamentsScreen = ({ navigation, route }: any) => {
         setLoading(true);
       }
 
-      const response = await api.torneos.getByCountry(pais.id_pais, {
+      console.log('🔍 [AdminTournaments] loadTorneos - id_pais:', pais.id_pais, 'filtroActivo:', filtroActivo, 'searchQuery:', searchQuery);
+      const params = {
         activo: filtroActivo,
         q: searchQuery.trim() || undefined,
-      });
+      };
+      console.log('🔍 [AdminTournaments] loadTorneos - calling api.torneos.getByCountry with params:', params);
+      const response = await api.torneos.getByCountry(pais.id_pais, params);
 
       const data = response.data || [];
 

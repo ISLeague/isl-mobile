@@ -32,7 +32,7 @@ export interface TorneosListParams {
   id_pais?: number;
   page?: number;
   limit?: number;
-  activo?: boolean;
+  activo?: boolean | 'todos';
   q?: string;
 }
 

@@ -32,15 +32,11 @@ export const torneosService = {
     id_pais: number,
     params?: Omit<TorneosListParams, 'id_pais'>
   ): Promise<TorneosListResponse> => {
-    const response = await apiClient.get<TorneosListResponse>('/torneos', {
-      params: {
-        id_pais,
-        ...params,
-        action: 'list', // list handles filter by país
-        // Si no se especifica 'activo', por default usar true
-        activo: params?.activo !== undefined ? params.activo : true,
-      }
-    });
+      const { page = 1, limit = 10, activo = 'todos', q } = (params || {}) as TorneosListParams;
+      // Send activo as 'todos' by default (when unspecified) to request all tournaments.
+      const query = { id_pais, page, limit, activo, q } as any;
+      console.log('🔗 [torneosService.getByCountry] query being sent to backend:', query);
+      const response = await apiClient.get('/torneos', { params: query });
     return response.data;
   },
 
