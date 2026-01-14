@@ -25,33 +25,27 @@ interface MyTeamEmbedProps {
 
 export const MyTeamEmbed: React.FC<MyTeamEmbedProps> = ({ navigation, edicionCategoriaId }) => {
   const { isGuest } = useAuth();
-  const { followedTeam, loading, followTeam } = useTeamFollow(edicionCategoriaId);
+  const { followedTeam, teamStats, loading, followTeam } = useTeamFollow(edicionCategoriaId);
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [equipos, setEquipos] = useState<Equipo[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [clasificaciones, setClasificaciones] = useState<Clasificacion[]>([]);
 
-  // Load equipos and clasificaciones from API
+  // Load equipos from API (removed clasificaciones load since stats come with follow)
   useEffect(() => {
     const loadData = async () => {
       const result = await safeAsync(
         async () => {
           const equiposResponse = await api.equipos.list(edicionCategoriaId);
-          const equiposData = equiposResponse.success && equiposResponse.data ? equiposResponse.data : [];
-
-          // TODO: Load clasificaciones from API when grupo ID is available
-          // For now, we'll leave it empty as we don't have a direct endpoint
-          return { equipos: equiposData, clasificaciones: [] };
+          return equiposResponse.success && equiposResponse.data ? equiposResponse.data : [];
         },
         'MyTeamEmbed - loadData',
         {
-          fallbackValue: { equipos: [], clasificaciones: [] },
+          fallbackValue: [],
         }
       );
 
       if (result) {
-        setEquipos(result.equipos);
-        setClasificaciones(result.clasificaciones);
+        setEquipos(result);
       }
     };
 
@@ -135,7 +129,7 @@ export const MyTeamEmbed: React.FC<MyTeamEmbedProps> = ({ navigation, edicionCat
               resizeMode="contain"
             />
           </View>
-          
+
           <Text style={styles.emptyTitle}>Selecciona tu equipo</Text>
           <Text style={styles.emptyText}>Busca y elige el equipo que quieres seguir en esta categoría</Text>
 
@@ -199,11 +193,13 @@ export const MyTeamEmbed: React.FC<MyTeamEmbedProps> = ({ navigation, edicionCat
   };
 
   // Obtener estadísticas del equipo
-  // TODO: Load team stats from clasificacion API when available
-  const teamStats = clasificaciones.find(c => c.id_equipo === followedTeam.id_equipo) || {
+  const stats = teamStats || {
     pj: 0,
+    pg: 0,
+    pe: 0,
+    pp: 0,
     gf: 0,
-    puntos: 0,
+    gc: 0
   };
 
   return (
@@ -211,8 +207,8 @@ export const MyTeamEmbed: React.FC<MyTeamEmbedProps> = ({ navigation, edicionCat
       <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
           <Card style={styles.teamCard}>
-            <TouchableOpacity 
-              onPress={handleTeamPress} 
+            <TouchableOpacity
+              onPress={handleTeamPress}
               activeOpacity={0.7}
               accessible={true}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -233,16 +229,16 @@ export const MyTeamEmbed: React.FC<MyTeamEmbedProps> = ({ navigation, edicionCat
 
               <View style={styles.statsSection}>
                 <View style={styles.statItem}>
-                  <Text style={[styles.statValue, { color: colors.textPrimary }]}>{teamStats.pj}</Text>
+                  <Text style={[styles.statValue, { color: colors.textPrimary }]}>{stats.pj}</Text>
                   <Text style={styles.statLabel}>Partidos</Text>
                 </View>
                 <View style={styles.statItem}>
-                  <Text style={[styles.statValue, { color: colors.textPrimary }]}>{teamStats.gf}</Text>
-                  <Text style={styles.statLabel}>Goles</Text>
+                  <Text style={[styles.statValue, { color: colors.textPrimary }]}>{stats.pg}</Text>
+                  <Text style={styles.statLabel}>Ganados</Text>
                 </View>
                 <View style={styles.statItem}>
-                  <Text style={[styles.statValue, { color: colors.textPrimary }]}>{teamStats.puntos}</Text>
-                  <Text style={styles.statLabel}>Puntos</Text>
+                  <Text style={[styles.statValue, { color: colors.textPrimary }]}>{stats.gf}</Text>
+                  <Text style={styles.statLabel}>Goles</Text>
                 </View>
               </View>
 

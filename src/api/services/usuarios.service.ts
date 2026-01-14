@@ -17,6 +17,11 @@ export const usuariosService = {
     return response.data;
   },
 
+  getMe: async () => {
+    const response = await apiClient.get('/usuarios', { params: { action: 'me' } });
+    return response.data;
+  },
+
   create: async (data: CreateUsuarioRequest) => {
     const response = await apiClient.post('/usuarios', data, { params: { action: 'create' } });
     return response.data;
@@ -67,7 +72,7 @@ export const usuariosService = {
   /**
    * Actualizar perfil del usuario actual (nombre, pais)
    */
-  updateProfile: async (data: { nombre?: string; id_pais?: number }) => {
+  updateProfile: async (data: { nombre?: string; apellido?: string; id_pais?: number }) => {
     const response = await apiClient.post('/usuarios', data, {
       params: { action: 'profile-update' }
     });

@@ -11,6 +11,7 @@ import {
   Linking,
   ActivityIndicator,
   Modal,
+  Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -29,7 +30,7 @@ import { getLogoUri } from '../../utils/imageUtils';
 import type { Jugador } from '../../api/types/jugadores.types';
 import type { Grupo } from '../../api/types/grupos.types';
 import type { Partido } from '../../api/types/partidos.types';
-import { Switch } from 'react-native-gesture-handler';
+
 
 interface TeamDetailScreenProps {
   navigation: any;
@@ -112,8 +113,6 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
   const [preferencias, setPreferencias] = useState({
     notificar_partidos: true,
     notificar_resultados: true,
-    notificar_goles: false,
-    notificar_tarjetas: false,
   });
 
   // Cargar datos del equipo, jugadores y estadísticas desde la API
@@ -206,10 +205,8 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
             setIsFollowing(true);
             setSeguimientoId(seguimiento.id_seguimiento);
             setPreferencias({
-              notificar_partidos: seguimiento.notificar_partidos,
-              notificar_resultados: seguimiento.notificar_resultados,
-              notificar_goles: seguimiento.notificar_goles,
-              notificar_tarjetas: seguimiento.notificar_tarjetas,
+              notificar_partidos: seguimiento.preferencias?.notificar_partidos ?? true,
+              notificar_resultados: seguimiento.preferencias?.notificar_resultados ?? true,
             });
           }
         }
@@ -1435,11 +1432,11 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
       {/* Modal de Preferencias de Notificaciones */}
       <Modal
         visible={showPreferenciasModal}
-        animationType="slide"
+        animationType="fade"
         transparent={true}
         onRequestClose={() => setShowPreferenciasModal(false)}
       >
-        <View style={styles.modalOverlay}>
+        <View style={styles.centeredModalOverlay}>
           <View style={styles.preferenciasModalContainer}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Preferencias de Notificaciones</Text>
@@ -1492,41 +1489,7 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
                 />
               </View>
 
-              <View style={styles.preferenciaModalItem}>
-                <View style={styles.preferenciaModalInfo}>
-                  <MaterialCommunityIcons name="soccer" size={24} color={colors.warning} />
-                  <View style={styles.preferenciaModalTexts}>
-                    <Text style={styles.preferenciaModalLabel}>Goles en tiempo real</Text>
-                    <Text style={styles.preferenciaModalDesc}>
-                      Cada vez que tu equipo anote
-                    </Text>
-                  </View>
-                </View>
-                <Switch
-                  value={preferencias.notificar_goles}
-                  onValueChange={(val) => setPreferencias({ ...preferencias, notificar_goles: val })}
-                  trackColor={{ false: colors.border, true: colors.primary }}
-                  thumbColor={colors.white}
-                />
-              </View>
 
-              <View style={styles.preferenciaModalItem}>
-                <View style={styles.preferenciaModalInfo}>
-                  <MaterialCommunityIcons name="card" size={24} color={colors.error} />
-                  <View style={styles.preferenciaModalTexts}>
-                    <Text style={styles.preferenciaModalLabel}>Tarjetas</Text>
-                    <Text style={styles.preferenciaModalDesc}>
-                      Cuando un jugador reciba tarjeta
-                    </Text>
-                  </View>
-                </View>
-                <Switch
-                  value={preferencias.notificar_tarjetas}
-                  onValueChange={(val) => setPreferencias({ ...preferencias, notificar_tarjetas: val })}
-                  trackColor={{ false: colors.border, true: colors.primary }}
-                  thumbColor={colors.white}
-                />
-              </View>
             </View>
 
             <TouchableOpacity
@@ -2024,6 +1987,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
+  },
+  centeredModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   modalContainer: {
     backgroundColor: colors.white,

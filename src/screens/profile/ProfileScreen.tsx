@@ -21,7 +21,7 @@ import api from '../../api';
 
 export const ProfileScreen = ({ navigation: navProp }: any) => {
   const navigation = useNavigation<any>();
-  const { usuario, isAdmin, isGuest, isTournamentAdmin, logout } = useAuth();
+  const { usuario, isAdmin, isGuest, isTournamentAdmin, logout, updateUsuario } = useAuth();
   const { colors, mode, toggle: toggleTheme } = useTheme();
   const [myTeam, setMyTeam] = useState<Equipo | null>(null);
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
@@ -29,38 +29,46 @@ export const ProfileScreen = ({ navigation: navProp }: any) => {
   const [editTab, setEditTab] = useState<'profile' | 'password'>('profile');
 
   // Estados para editar perfil
-  const [editName, setEditName] = useState(usuario?.email || '');
-  const [editEmail, setEditEmail] = useState(usuario?.email || '');
+  const [editFirstName, setEditFirstName] = useState('');
+  const [editLastName, setEditLastName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
 
   // Estados para cambiar contraseña
-  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
   // Estados para configuración
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [languageSelected, setLanguageSelected] = useState('es');
 
   useEffect(() => {
-    // Aquí cargarías el equipo favorito del usuario
-    // const team = await api.profile.getMyTeam(usuario.id_usuario);
-    // setMyTeam(team);
-
-    // TODO: Cargar usuarios desde la API para suplantación (solo admins)
-    // if (isAdmin) {
-    //   const loadUsuarios = async () => {
-    //     const users = await api.usuarios.list();
-    //     setUsuarios(users.filter(u => u.id_usuario !== usuario?.id_usuario));
-    //   };
-    //   loadUsuarios();
-    // }
-
-    // Inicializar datos de edición
-    if (usuario) {
-      setEditName(usuario.email.split('@')[0]);
-      setEditEmail(usuario.email);
-    }
-  }, [usuario]);
+    // Cargar información actualizada del usuario al montar
+    const loadUserInfo = async () => {
+      try {
+        if (usuario && !isGuest) {
+          const response = await api.usuarios.getMe();
+          if (response.success && response.data && response.data.user) {
+            const user = response.data.user;
+            setEditFirstName(user.nombre || '');
+            setEditLastName(user.apellido || '');
+            setEditEmail(user.email || '');
+          } else {
+            // Fallback to context if API fails or format differs
+            setEditFirstName(usuario.nombre || '');
+            setEditLastName(usuario.apellido || '');
+            setEditEmail(usuario.email || '');
+          }
+        }
+      } catch (error) {
+        // Fallback to context
+        if (usuario) {
+          setEditFirstName(usuario.nombre || '');
+          setEditLastName(usuario.apellido || '');
+          setEditEmail(usuario.email || '');
+        }
+      }
+    };
+    loadUserInfo();
+  }, [usuario, isGuest]);
 
   const handleLogout = () => {
     Alert.alert(
@@ -84,23 +92,31 @@ export const ProfileScreen = ({ navigation: navProp }: any) => {
   };
 
   const handleSaveProfile = async () => {
-    if (!editName.trim()) {
-      Alert.alert('Error', 'Por favor completa el nombre');
+    if (!editFirstName.trim() || !editLastName.trim()) {
+      Alert.alert('Error', 'Por favor completa nombre y apellido');
       return;
     }
 
     try {
-      await api.usuarios.updateProfile({ nombre: editName });
+      const response = await api.usuarios.updateProfile({
+        nombre: editFirstName,
+        apellido: editLastName
+      });
 
-      // Actualizar contexto local
-      if (usuario) {
-        // Asumiendo que updateUsuario fusiona o reemplaza
-        // Como Usuario interface puede variar, intentamos actualizar lo que podemos
-        // updateUsuario({ ...usuario, nombre: editName } as any);
+      if (response && response.success) {
+        if (usuario) {
+          const updatedUser = {
+            ...usuario,
+            nombre: editFirstName,
+            apellido: editLastName,
+            ...(response.data || {})
+          };
+          updateUsuario(updatedUser);
+
+          Alert.alert('Éxito', 'Perfil actualizado correctamente');
+          setShowEditProfileModal(false);
+        }
       }
-
-      Alert.alert('Éxito', 'Perfil actualizado correctamente');
-      setShowEditProfileModal(false);
     } catch (error) {
       // console.error(error);
       Alert.alert('Error', 'No se pudo actualizar el perfil');
@@ -108,8 +124,8 @@ export const ProfileScreen = ({ navigation: navProp }: any) => {
   };
 
   const handleChangePassword = async () => {
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      Alert.alert('Error', 'Por favor completa todos los campos');
+    if (!newPassword || !confirmPassword) {
+      Alert.alert('Error', 'Por favor ingresa la nueva contraseña');
       return;
     }
 
@@ -124,15 +140,17 @@ export const ProfileScreen = ({ navigation: navProp }: any) => {
     }
 
     try {
-      await api.usuarios.changePassword(newPassword);
-      Alert.alert('Éxito', 'Contraseña actualizada correctamente');
-      setShowEditProfileModal(false);
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
+      const response = await api.usuarios.changePassword(newPassword);
+      if (response.success) {
+        Alert.alert('Éxito', 'Contraseña actualizada correctamente');
+        setShowEditProfileModal(false);
+        setNewPassword('');
+        setConfirmPassword('');
+      } else {
+        Alert.alert('Error', 'No se pudo actualizar la contraseña');
+      }
     } catch (error) {
-      // console.error(error);
-      Alert.alert('Error', 'No se pudo actualizar la contraseña. Verifica tu contraseña actual.');
+      Alert.alert('Error', 'Ocurrió un error al cambiar la contraseña');
     }
   };
 
@@ -276,15 +294,14 @@ export const ProfileScreen = ({ navigation: navProp }: any) => {
                     {usuario.email.charAt(0).toUpperCase()}
                   </Text>
                 </View>
-                {usuario.pais && (
-                  <View style={styles.countryBadge}>
-                    <Text style={styles.countryEmoji}>{usuario.pais.emoji}</Text>
-                  </View>
-                )}
               </View>
 
               <View style={styles.userInfo}>
-                <Text style={styles.userName}>{usuario.email.split('@')[0]}</Text>
+                <Text style={styles.userName}>
+                  {usuario.nombre || usuario.apellido
+                    ? `${usuario.nombre || ''} ${usuario.apellido || ''}`.trim()
+                    : usuario.email.split('@')[0]}
+                </Text>
                 <Text style={styles.userEmail}>{usuario.email}</Text>
                 <View style={styles.roleBadge}>
                   <Text style={styles.roleBadgeText}>
@@ -303,8 +320,6 @@ export const ProfileScreen = ({ navigation: navProp }: any) => {
                 <Text style={styles.editButtonText}>Editar</Text>
               </TouchableOpacity>
             </View>
-
-
 
             {/* Menu Items */}
             <View style={styles.menuSection}>
@@ -420,8 +435,19 @@ export const ProfileScreen = ({ navigation: navProp }: any) => {
                     <TextInput
                       style={styles.input}
                       placeholder="Tu nombre"
-                      value={editName}
-                      onChangeText={setEditName}
+                      value={editFirstName}
+                      onChangeText={setEditFirstName}
+                      placeholderTextColor={colors.textSecondary}
+                    />
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>Apellido</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Tu apellido"
+                      value={editLastName}
+                      onChangeText={setEditLastName}
                       placeholderTextColor={colors.textSecondary}
                     />
                   </View>
@@ -429,13 +455,11 @@ export const ProfileScreen = ({ navigation: navProp }: any) => {
                   <View style={styles.inputGroup}>
                     <Text style={styles.inputLabel}>Email</Text>
                     <TextInput
-                      style={styles.input}
+                      style={[styles.input, { backgroundColor: '#f0f0f0' }]}
                       placeholder="tu@email.com"
                       value={editEmail}
-                      onChangeText={setEditEmail}
+                      editable={false}
                       placeholderTextColor={colors.textSecondary}
-                      keyboardType="email-address"
-                      autoCapitalize="none"
                     />
                   </View>
 
@@ -445,18 +469,6 @@ export const ProfileScreen = ({ navigation: navProp }: any) => {
                 </>
               ) : (
                 <>
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>Contraseña Actual</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Tu contraseña actual"
-                      value={currentPassword}
-                      onChangeText={setCurrentPassword}
-                      placeholderTextColor={colors.textSecondary}
-                      secureTextEntry
-                    />
-                  </View>
-
                   <View style={styles.inputGroup}>
                     <Text style={styles.inputLabel}>Nueva Contraseña</Text>
                     <TextInput
@@ -592,7 +604,7 @@ export const ProfileScreen = ({ navigation: navProp }: any) => {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </SafeAreaView >
   );
 };
 

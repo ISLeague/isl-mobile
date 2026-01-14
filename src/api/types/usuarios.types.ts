@@ -4,14 +4,23 @@
 
 export interface Usuario {
   id_usuario: number;
+  auth_user_id?: string;
+  auth_id?: string;
   email: string;
   rol: 'invitado' | 'superadmin' | 'admin' | 'fan';
-  id_pais: number;
+  nombre: string;
+  apellido: string;
+  acepto_terminos: boolean;
+  acepto_privacidad: boolean;
+  activo: boolean;
+  email_confirmado_at: string | null;
+  created_at: string;
+  updated_at: string;
+  // Optional fields for app logic compatibility
+  id_pais?: number;
   id_torneos?: number[];
   id_admin_suplantando?: number;
   nombre_completo?: string;
-  activo?: boolean;
-  created_at?: string;
 }
 
 export interface CreateUsuarioRequest {

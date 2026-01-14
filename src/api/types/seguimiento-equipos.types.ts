@@ -3,10 +3,6 @@ export interface SeguimientoEquipo {
   id_usuario: number;
   id_equipo: number;
   id_edicion_categoria: number;
-  notificar_partidos: boolean;
-  notificar_resultados: boolean;
-  notificar_goles: boolean;
-  notificar_tarjetas: boolean;
   fecha_seguimiento: string;
   equipo?: {
     id_equipo: number;
@@ -16,12 +12,12 @@ export interface SeguimientoEquipo {
   };
   edicion_categoria?: {
     id_edicion_categoria: number;
-    edicion: {
+    ediciones: {
       id_edicion: number;
       nombre: string;
       numero: number;
     };
-    categoria: {
+    categorias: {
       id_categoria: number;
       nombre: string;
     };
@@ -29,8 +25,14 @@ export interface SeguimientoEquipo {
   preferencias?: {
     notificar_partidos: boolean;
     notificar_resultados: boolean;
-    notificar_goles: boolean;
-    notificar_tarjetas: boolean;
+  };
+  estadisticas?: {
+    partidos_jugados: number;
+    partidos_ganados: number;
+    partidos_perdidos: number;
+    partidos_empatados: number;
+    goles_favor: number;
+    goles_contra: number;
   };
 }
 
