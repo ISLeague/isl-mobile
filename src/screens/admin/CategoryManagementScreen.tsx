@@ -28,6 +28,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { SponsorSlider } from '../../components/common';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useFocusEffect } from '@react-navigation/native';
+import { TheBestEmbed } from './components/TheBestEmbed';
 
 
 // ===============================
