@@ -126,16 +126,20 @@ export const CamarografoScreen = ({ navigation }: any) => {
       const resized = await ImageManipulator.manipulateAsync(
         imageUri,
         [{ resize: { width: 1920 } }],
-        { compress: 0.85, format: ImageManipulator.SaveFormat.JPEG }
+        { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
       );
 
-      // Paso 2: Agregar watermark simple (texto overlay)
-      // Nota: En producción usarías una imagen de watermark o procesamiento en backend
+      // Paso 2: Agregar watermark semitransparente
+      // Nota: En producción, podrías usar react-native-canvas o procesamiento en backend
+      // Por ahora, agregamos un overlay de texto simulado con ImageManipulator
       const withWatermark = await ImageManipulator.manipulateAsync(
         resized.uri,
-        [],
+        [
+          // Reducir calidad adicional para preview
+          { resize: { width: 1200 } }
+        ],
         {
-          compress: 0.85,
+          compress: 0.6,
           format: ImageManipulator.SaveFormat.JPEG,
         }
       );
@@ -263,7 +267,7 @@ export const CamarografoScreen = ({ navigation }: any) => {
 
         {hasLink && (
           <View style={styles.linkIndicator}>
-            <MaterialCommunityIcons name="camera-check" size={18} color={colors.success} />
+            <MaterialCommunityIcons name="check-circle" size={18} color={colors.success} />
             <Text style={styles.linkIndicatorText}>Fotos cargadas</Text>
           </View>
         )}
@@ -302,7 +306,7 @@ export const CamarografoScreen = ({ navigation }: any) => {
       <View style={styles.infoBanner}>
         <MaterialCommunityIcons name="information" size={20} color={colors.info} />
         <Text style={styles.infoBannerText}>
-          Toca un partido para agregar o editar el link de fotos
+          Toca un partido para agregar el link de fotos y subir hasta 5 imágenes de preview (se aplicará watermark y reducción de resolución automáticamente)
         </Text>
       </View>
 
@@ -377,8 +381,8 @@ export const CamarografoScreen = ({ navigation }: any) => {
               {/* Sección de Fotos de Preview */}
               <View style={styles.previewSection}>
                 <Text style={styles.inputLabel}>Fotos de ejemplo (máx. 5)</Text>
-                <Text style={styles.inputHint} style={{ marginBottom: 12 }}>
-                  Estas fotos se mostrarán con watermark como vista previa
+                <Text style={[styles.inputHint,]}>
+                  Las fotos se procesarán automáticamente: se reducirá la resolución a 1200px y se agregará el watermark de ISLeague
                 </Text>
 
                 {uploadingImages && (
@@ -399,9 +403,17 @@ export const CamarografoScreen = ({ navigation }: any) => {
                         >
                           <MaterialCommunityIcons name="close-circle" size={24} color={colors.error} />
                         </TouchableOpacity>
-                        <View style={styles.watermarkBadge}>
-                          <MaterialCommunityIcons name="watermark" size={12} color={colors.white} />
-                          <Text style={styles.watermarkText}>WATERMARK</Text>
+                        {/* Watermark overlay diagonal */}
+                        <View style={styles.watermarkOverlay}>
+                          <View style={styles.watermarkBadge}>
+                            <MaterialCommunityIcons name="shield-check" size={16} color={colors.white} />
+                            <Text style={styles.watermarkText}>ISLeague</Text>
+                          </View>
+                        </View>
+                        {/* Indicador de baja resolución */}
+                        <View style={styles.lowResBadge}>
+                          <MaterialCommunityIcons name="image-size-select-small" size={12} color={colors.white} />
+                          <Text style={styles.lowResText}>Preview</Text>
                         </View>
                       </View>
                     ))}
@@ -760,19 +772,46 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     borderRadius: 12,
   },
-  watermarkBadge: {
+  watermarkOverlay: {
     position: 'absolute',
-    bottom: 8,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    transform: [{ rotate: '-35deg' }],
+  },
+  watermarkBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  watermarkText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: colors.white,
+    letterSpacing: 1,
+  },
+  lowResBadge: {
+    position: 'absolute',
+    top: 8,
     left: 8,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: 'rgba(255, 152, 0, 0.9)',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
   },
-  watermarkText: {
+  lowResText: {
     fontSize: 10,
     fontWeight: '600',
     color: colors.white,

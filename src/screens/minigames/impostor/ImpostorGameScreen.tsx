@@ -17,20 +17,15 @@ import { useAuth } from '../../../contexts/AuthContext';
 
 const { width } = Dimensions.get('window');
 
-interface Props {
-  navigation: any;
-  route: {
-    params: {
-      id_sala: string;
-      codigo_sala: string;
-    };
-  };
-}
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../../../navigation/types';
+
+type Props = NativeStackScreenProps<RootStackParamList, 'ImpostorGame'>;
 
 export const ImpostorGameScreen = ({ navigation, route }: Props) => {
   const { id_sala, codigo_sala } = route.params;
-  const { user } = useAuth();
-  
+  const { usuario } = useAuth();
+
   const [carta, setCarta] = useState<MiCarta | null>(null);
   const [sala, setSala] = useState<Sala | null>(null);
   const [loading, setLoading] = useState(true);
@@ -71,11 +66,11 @@ export const ImpostorGameScreen = ({ navigation, route }: Props) => {
         // Ignorar errores de polling
       }
     }, 3000);
-    
+
     return () => clearInterval(interval);
   }, [id_sala]);
 
-  const isHost = sala?.id_host === user?.id;
+  const isHost = String(sala?.id_host) === String(usuario?.id_usuario);
 
   const handleEndGame = async () => {
     Alert.alert(

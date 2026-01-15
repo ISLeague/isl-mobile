@@ -79,7 +79,7 @@ export const AdminTournamentsScreen = ({ navigation, route }: any) => {
         activo: activoParam,
         q: searchQuery.trim() || undefined,
       } as const;
-      console.log('🔍 [AdminTournaments] loadTorneos - calling api.torneos.getByCountry with params:', params);
+      console.log('[AdminTournaments] loadTorneos - calling api.torneos.getByCountry with params:', params);
       const response = await api.torneos.getByCountry(pais.id_pais, params as any);
 
       const data = response.data || [];

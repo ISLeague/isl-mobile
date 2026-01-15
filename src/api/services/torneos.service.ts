@@ -6,28 +6,19 @@ import {
   TorneosListResponse
 } from '../types/torneos.types';
 
-/**
- * Servicio de Torneos
- */
+
 export const torneosService = {
-  /**
-   * Listar todos los torneos con parámetros opcionales
-   */
   list: async (params?: TorneosListParams): Promise<TorneosListResponse> => {
     const response = await apiClient.get<TorneosListResponse>('/torneos', {
       params: {
         ...params,
         action: 'list',
-        // Si no se especifica 'activo', por default usar true
         activo: params?.activo !== undefined ? params.activo : true,
       }
     });
     return response.data;
   },
 
-  /**
-   * Obtener torneos por país con búsqueda y filtros
-   */
   getByCountry: async (
     id_pais: number,
     params?: Omit<TorneosListParams, 'id_pais'>
