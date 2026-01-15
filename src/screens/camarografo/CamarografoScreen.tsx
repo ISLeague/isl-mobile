@@ -188,12 +188,15 @@ export const CamarografoScreen = ({ navigation }: any) => {
   }, [selectedRonda]);
 
   const loadAllData = async () => {
+    console.log('🚀 [CamarografoScreen] loadAllData - Iniciando carga de datos iniciales');
     setLoading(true);
     try {
       const response = await api.paises.list();
+      console.log('✅ [CamarografoScreen] api.paises.list - Respuesta:', response);
       const paisesResult = Array.isArray(response) ? response : response.data || [];
       setAllPaises(paisesResult);
     } catch (error) {
+      console.error('❌ [CamarografoScreen] Error al cargar países:', error);
       showError('Error al cargar países');
     } finally {
       setLoading(false);
@@ -201,11 +204,14 @@ export const CamarografoScreen = ({ navigation }: any) => {
   };
 
   const loadTorneos = async (idPais: number) => {
+    console.log(`🚀 [CamarografoScreen] loadTorneos - Cargando torneos para país: ${idPais}`);
     setLoadingFilters(true);
     try {
       const response = await api.torneos.list({ id_pais: idPais });
+      console.log('✅ [CamarografoScreen] api.torneos.list - Respuesta:', response);
       setFilteredTorneos(response.data || []);
     } catch (error) {
+      console.error('❌ [CamarografoScreen] Error al cargar torneos:', error);
       showError('Error al cargar torneos');
     } finally {
       setLoadingFilters(false);
@@ -213,11 +219,14 @@ export const CamarografoScreen = ({ navigation }: any) => {
   };
 
   const loadEdiciones = async (idTorneo: number) => {
+    console.log(`🚀 [CamarografoScreen] loadEdiciones - Cargando ediciones para torneo: ${idTorneo}`);
     setLoadingFilters(true);
     try {
       const response = await api.ediciones.list({ id_torneo: idTorneo });
+      console.log('✅ [CamarografoScreen] api.ediciones.list - Respuesta:', response);
       setFilteredEdiciones(response.data || []);
     } catch (error) {
+      console.error('❌ [CamarografoScreen] Error al cargar ediciones:', error);
       showError('Error al cargar ediciones');
     } finally {
       setLoadingFilters(false);
@@ -225,12 +234,20 @@ export const CamarografoScreen = ({ navigation }: any) => {
   };
 
   const loadCategorias = async (idEdicion: number) => {
+    console.log(`🚀 [CamarografoScreen] loadCategorias - Cargando categorías para edición: ${idEdicion}`);
     setLoadingFilters(true);
     try {
       const response = await api.edicionCategorias.list({ id_edicion: idEdicion });
+      console.log('✅ [CamarografoScreen] api.edicionCategorias.list - Respuesta:', JSON.stringify(response, null, 2));
       const items = Array.isArray(response.data) ? response.data : response.data?.data || [];
+
+      // Loggear los nombres de las categorías encontradas para depuración
+      const categoryNames = items.map((i: any) => i.categorias?.nombre || i.categoria?.nombre || 'Sin nombre');
+      console.log(`📂 [CamarografoScreen] Categorías procesadas:`, categoryNames);
+
       setFilteredCategorias(items);
     } catch (error) {
+      console.error('❌ [CamarografoScreen] Error al cargar categorías:', error);
       showError('Error al cargar categorías');
     } finally {
       setLoadingFilters(false);
@@ -238,26 +255,54 @@ export const CamarografoScreen = ({ navigation }: any) => {
   };
 
   const loadRondas = async (idEdicionCategoria: number) => {
+    console.log(`🚀 [CamarografoScreen] loadRondas - Cargando rondas para categoría: ${idEdicionCategoria}`);
     setLoadingFilters(true);
     try {
       const response = await api.rondas.list({ id_edicion_categoria: idEdicionCategoria });
+      console.log('✅ [CamarografoScreen] api.rondas.list - Respuesta:', response);
       setFilteredRondas(response.data || []);
-    } catch (error) {
-      showError('Error al cargar rondas');
+    } catch (error: any) {
+      const is404 = error.response?.status === 404;
+      const endpoint = error.config?.url || '/rondas';
+      const fullUrl = error.config?.baseURL ? `${error.config.baseURL}${endpoint}` : endpoint;
+
+      console.error(`❌ [CamarografoScreen] FALLO CARGA DE RONDAS:`, {
+        url: fullUrl,
+        method: error.config?.method?.toUpperCase(),
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        errorMessage: error.message,
+        apiResponse: error.response?.data,
+        params: error.config?.params
+      });
+
+      if (is404) {
+        showError('No se encontraron rondas configuradas');
+      } else {
+        showError('Error de red al cargar rondas');
+      }
+      setFilteredRondas([]);
     } finally {
       setLoadingFilters(false);
     }
   };
 
   const loadPartidos = async (idRonda: number) => {
+    console.log(`🚀 [CamarografoScreen] loadPartidos - Cargando partidos para ronda: ${idRonda}`);
     setLoadingFilters(true);
     const result = await safeAsync(
       async () => {
         const response = await api.partidos.list({ id_ronda: idRonda });
+        console.log('✅ [CamarografoScreen] api.partidos.list - Respuesta:', response);
         return response.data || [];
       },
       'loadPartidos',
-      { fallbackValue: [], onError: () => showError('Error al cargar partidos') }
+      {
+        fallbackValue: [], onError: (err) => {
+          console.error('❌ [CamarografoScreen] Error al cargar partidos:', err);
+          showError('Error al cargar partidos');
+        }
+      }
     );
     setPartidos(result);
     setLoadingFilters(false);
@@ -469,8 +514,8 @@ export const CamarografoScreen = ({ navigation }: any) => {
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
         {items.map((item) => {
           const value = item[valueKey] || item.id_pais || item.id_torneo || item.id_edicion || item.id_edicion_categoria || item.id_ronda;
-          // Para categorías, el nombre viene en item.categoria.nombre
-          const display = item.categoria?.nombre || item[displayKey] || item.nombre;
+          // Para categorías, el nombre puede venir en item.categorias.nombre o item.categoria.nombre
+          const display = item.categorias?.nombre || item.categoria?.nombre || item[displayKey] || item.nombre;
           const isSelected = selectedValue === value;
 
           return (
@@ -517,107 +562,120 @@ export const CamarografoScreen = ({ navigation }: any) => {
         </TouchableOpacity>
       </View>
 
-      {/* Filters Section */}
-      <ScrollView style={styles.filtersSection} nestedScrollEnabled>
-        {/* País */}
-        {allPaises.length > 0 && renderFilterDropdown(
-          'País',
-          allPaises,
-          selectedPais,
-          setSelectedPais,
-          'nombre',
-          'id_pais'
-        )}
+      {/* Content Scrolleable */}
+      <FlatList
+        data={partidos}
+        renderItem={renderPartido}
+        keyExtractor={(item) => item.id_partido.toString()}
+        contentContainerStyle={styles.listContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} />
+        }
+        ListHeaderComponent={
+          <View>
+            {/* Filters Section */}
+            <View style={styles.filtersSection}>
+              {/* País */}
+              {allPaises.length > 0 && renderFilterDropdown(
+                'País',
+                allPaises,
+                selectedPais,
+                setSelectedPais,
+                'nombre',
+                'id_pais'
+              )}
 
-        {/* Torneo */}
-        {selectedPais && filteredTorneos.length > 0 && renderFilterDropdown(
-          'Torneo',
-          filteredTorneos,
-          selectedTorneo,
-          setSelectedTorneo,
-          'nombre',
-          'id_torneo'
-        )}
+              {/* Torneo */}
+              {selectedPais && filteredTorneos.length > 0 && renderFilterDropdown(
+                'Torneo',
+                filteredTorneos,
+                selectedTorneo,
+                setSelectedTorneo,
+                'nombre',
+                'id_torneo'
+              )}
 
-        {/* Edición */}
-        {selectedTorneo && filteredEdiciones.length > 0 && renderFilterDropdown(
-          'Edición',
-          filteredEdiciones,
-          selectedEdicion,
-          setSelectedEdicion,
-          'nombre',
-          'id_edicion'
-        )}
+              {/* Edición */}
+              {selectedTorneo && filteredEdiciones.length > 0 && renderFilterDropdown(
+                'Edición',
+                filteredEdiciones,
+                selectedEdicion,
+                setSelectedEdicion,
+                'nombre',
+                'id_edicion'
+              )}
 
-        {/* Categoría */}
-        {selectedEdicion && filteredCategorias.length > 0 && renderFilterDropdown(
-          'Categoría',
-          filteredCategorias,
-          selectedCategoria,
-          setSelectedCategoria,
-          'nombre',
-          'id_edicion_categoria',
-          false,
-          true
-        )}
+              {/* Categoría */}
+              {selectedEdicion && filteredCategorias.length > 0 && renderFilterDropdown(
+                'Categoría',
+                filteredCategorias,
+                selectedCategoria,
+                setSelectedCategoria,
+                'nombre',
+                'id_edicion_categoria',
+                false,
+                true
+              )}
 
-        {/* Ronda */}
-        {selectedCategoria && filteredRondas.length > 0 && renderFilterDropdown(
-          'Ronda',
-          filteredRondas,
-          selectedRonda,
-          setSelectedRonda,
-          'nombre',
-          'id_ronda'
-        )}
+              {/* Ronda */}
+              {selectedCategoria && filteredRondas.length > 0 && renderFilterDropdown(
+                'Ronda',
+                filteredRondas,
+                selectedRonda,
+                setSelectedRonda,
+                'nombre',
+                'id_ronda'
+              )}
 
-        {loadingFilters && (
-          <View style={styles.loadingFilters}>
-            <ActivityIndicator size="small" color={colors.primary} />
-            <Text style={styles.loadingFiltersText}>Cargando...</Text>
+              {loadingFilters && (
+                <View style={styles.loadingFilters}>
+                  <ActivityIndicator size="small" color={colors.primary} />
+                  <Text style={styles.loadingFiltersText}>Cargando...</Text>
+                </View>
+              )}
+            </View>
+
+            {/* Info Banner */}
+            {selectedRonda && (
+              <View style={styles.infoBanner}>
+                <MaterialCommunityIcons name="information" size={20} color={colors.info} />
+                <Text style={styles.infoBannerText}>
+                  Toca un partido para agregar el link de fotos y hasta 2 imágenes de preview
+                </Text>
+              </View>
+            )}
           </View>
-        )}
-      </ScrollView>
-
-      {/* Info Banner */}
-      {selectedRonda && (
-        <View style={styles.infoBanner}>
-          <MaterialCommunityIcons name="information" size={20} color={colors.info} />
-          <Text style={styles.infoBannerText}>
-            Toca un partido para agregar el link de fotos y hasta 2 imágenes de preview
-          </Text>
-        </View>
-      )}
-
-      {/* Content */}
-      {!selectedRonda ? (
-        <View style={styles.emptyContainer}>
-          <MaterialCommunityIcons name="filter" size={64} color={colors.textLight} />
-          <Text style={styles.emptyText}>Selecciona País, Torneo, Edición, Categoría y Ronda</Text>
-          <Text style={styles.emptySubtext}>para ver los partidos disponibles</Text>
-        </View>
-      ) : loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Cargando partidos...</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={partidos}
-          renderItem={renderPartido}
-          keyExtractor={(item) => item.id_partido.toString()}
-          contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} />
-          }
-          ListEmptyComponent={
+        }
+        ListEmptyComponent={
+          loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={styles.loadingText}>Cargando partidos...</Text>
+            </View>
+          ) : !selectedCategoria ? (
+            <View style={styles.emptyContainer}>
+              <MaterialCommunityIcons name="filter" size={64} color={colors.textLight} />
+              <Text style={styles.emptyText}>Selecciona los filtros para ver los partidos</Text>
+            </View>
+          ) : filteredRondas.length === 0 && !loadingFilters ? (
+            <View style={styles.emptyContainer}>
+              <MaterialCommunityIcons name="alert-circle-outline" size={64} color={colors.warning} />
+              <Text style={styles.emptyText}>No hay rondas creadas</Text>
+              <Text style={styles.emptySubtext}>Esta categoría aún no tiene un fixture generado</Text>
+            </View>
+          ) : !selectedRonda ? (
+            <View style={styles.emptyContainer}>
+              <MaterialCommunityIcons name="calendar-search" size={64} color={colors.textLight} />
+              <Text style={styles.emptyText}>Selecciona una ronda</Text>
+            </View>
+          ) : (
             <View style={styles.emptyContainer}>
               <MaterialCommunityIcons name="soccer" size={64} color={colors.textLight} />
               <Text style={styles.emptyText}>No hay partidos disponibles</Text>
             </View>
-          }
-        />
-      )}
+          )
+        }
+      />
 
       {/* Modal */}
       <Modal
@@ -794,7 +852,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
-    maxHeight: 300,
   },
   filterContainer: {
     marginBottom: 8,
