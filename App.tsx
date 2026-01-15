@@ -72,8 +72,9 @@ import {
   ImpostorLobbyScreen,
   ImpostorGameScreen
 } from './src/screens/minigames';
+import { RootStackParamList } from './src/navigation/types';
 
-const Stack = createNativeStackNavigator();
+const Stack = createNativeStackNavigator<RootStackParamList>();
 
 // Component interno que maneja push notifications
 function AppNavigator() {

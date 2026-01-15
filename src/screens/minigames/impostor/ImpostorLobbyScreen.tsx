@@ -16,21 +16,15 @@ import * as Clipboard from 'expo-clipboard';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useFocusEffect } from '@react-navigation/native';
 
-interface Props {
-  navigation: any;
-  route: {
-    params: {
-      id_sala: string;
-      codigo_sala: string;
-      isHost: boolean;
-    };
-  };
-}
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../../../navigation/types';
+
+type Props = NativeStackScreenProps<RootStackParamList, 'ImpostorLobby'>;
 
 export const ImpostorLobbyScreen = ({ navigation, route }: Props) => {
   const { id_sala, codigo_sala } = route.params;
-  const { user } = useAuth();
-  
+  const { usuario } = useAuth();
+
   const [sala, setSala] = useState<Sala | null>(null);
   const [loading, setLoading] = useState(true);
   const [startingGame, setStartingGame] = useState(false);
@@ -57,7 +51,7 @@ export const ImpostorLobbyScreen = ({ navigation, route }: Props) => {
     }, [id_sala])
   );
 
-  const isHost = sala?.id_host === user?.id;
+  const isHost = sala?.id_host === String(usuario?.id_usuario);
 
   const handleCopyCode = async () => {
     await Clipboard.setStringAsync(codigo_sala);
@@ -114,7 +108,7 @@ export const ImpostorLobbyScreen = ({ navigation, route }: Props) => {
 
   const renderJugador = ({ item, index }: { item: SalaJugador; index: number }) => {
     const esHost = sala?.id_host === item.id_usuario;
-    const esTu = user?.id === item.id_usuario;
+    const esTu = String(usuario?.id_usuario) === item.id_usuario;
 
     return (
       <View style={styles.jugadorItem}>

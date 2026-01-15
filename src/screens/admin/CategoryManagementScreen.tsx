@@ -31,16 +31,13 @@ import { useFocusEffect } from '@react-navigation/native';
 import { TheBestEmbed } from './components/TheBestEmbed';
 
 
-// ===============================
-// Pantalla principal
-// ===============================
+
 export const CategoryManagementScreen = ({ navigation, route }: any) => {
   const pagerRef = useRef<PagerView>(null);
   const tabScrollRef = useRef<ScrollView>(null);
   const tabRefs = useRef<{ [key: string]: View | null }>({});
   const { torneo, pais, categoria, edicionCategoria, edicion } = route.params;
 
-  // Usar la categoria del edicionCategoria si existe, sino usar la categoria directa
   const initialCategoria = edicionCategoria?.categoria || categoria;
 
   const { isAdmin, isGuest, isSuperAdmin } = useAuth();
@@ -55,14 +52,12 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
   const [tabLayouts, setTabLayouts] = useState<{ [key: string]: { x: number; width: number } }>({});
   const [refreshLocalTab, setRefreshLocalTab] = useState(0);
 
-  // Usar idEdicionCategoria desde los params directamente
   const [idEdicionCategoria, setIdEdicionCategoria] = useState<number | undefined>(
     edicionCategoria?.id_edicion_categoria
   );
   const [idFase, setIdFase] = useState<number | undefined>(undefined);
   const [showTeamChoiceModal, setShowTeamChoiceModal] = useState(false);
 
-  // Tabs diferentes para admin y fan (invitados ven lo mismo que fans)
   const tabs = isAdmin
     ? [
       { id: 'equipos', label: 'Equipos' },
@@ -74,7 +69,6 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
       { id: 'sponsors', label: 'Sponsors' },
     ]
     : [
-      // Fans e invitados ven todo (invitados verán mensajes al intentar acceder)
       { id: 'miequipo', label: 'Mi Equipo' },
       { id: 'grupos', label: 'Grupos' },
       { id: 'fixture', label: 'Fixture' },
@@ -82,12 +76,10 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
       { id: 'local', label: 'Local' },
     ];
 
-  // Animated values para el indicador
   const scrollX = useRef(new Animated.Value(0)).current;
   const indicatorLeft = useRef(new Animated.Value(0)).current;
   const indicatorWidth = useRef(new Animated.Value(0)).current;
 
-  // Actualizar indicador cuando cambia scrollX o tabLayouts
   useEffect(() => {
     if (Object.keys(tabLayouts).length === tabs.length) {
       const listener = scrollX.addListener(({ value }) => {
@@ -115,13 +107,11 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
     }
   }, [tabLayouts, tabs.length]);
 
-  // Función para medir layout de un tab
   const handleTabLayout = (tabId: string, index: number) => (event: any) => {
     const { x, width } = event.nativeEvent.layout;
     setTabLayouts((prev) => {
       const updated = { ...prev, [tabId]: { x, width } };
 
-      // Inicializar indicador en el primer tab
       if (index === 0 && Object.keys(prev).length === 0) {
         indicatorLeft.setValue(x);
         indicatorWidth.setValue(width);
@@ -131,7 +121,6 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
     });
   };
 
-  // Función para hacer scroll automático al tab seleccionado
   const scrollToTab = (index: number) => {
     const tabRef = tabRefs.current[tabs[index].id];
     if (tabRef && tabScrollRef.current) {
@@ -148,7 +137,6 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
   const [refreshGroups, setRefreshGroups] = useState(0);
   const [refreshTeams, setRefreshTeams] = useState(0);
 
-  // Refresh LocalTab and Groups when screen gains focus
   useFocusEffect(
     React.useCallback(() => {
       loadCategorias();
@@ -169,16 +157,14 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
 
   const loadCategorias = async () => {
     try {
-      // First load all global categories to get names
       const allCategoriasResponse = await api.categorias.list();
       const allCategorias = allCategoriasResponse.data?.data || allCategoriasResponse.data || [];
 
       const response = await api.edicionCategorias.list({ id_edicion: edicion.id_edicion });
       if (response.success && response.data) {
-        // Handle both { data: [...] } and { data: { data: [...] } }
         const categoriesArray = response.data.data || response.data || [];
 
-        // Enrich with categoria info if not present
+
         const enrichedCategories = categoriesArray.map((edicionCat: any) => ({
           ...edicionCat,
           categoria: edicionCat.categoria || allCategorias.find((c: any) => c.id_categoria === edicionCat.id_categoria),
