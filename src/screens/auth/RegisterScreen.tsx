@@ -98,11 +98,11 @@ export const RegisterScreen = ({ navigation }: any) => {
 
       setLoading(false);
       Alert.alert(
-        '¡Éxito!',
-        response.mensaje || 'Registro completado. Por favor revisa tu email para confirmar tu cuenta.',
+        '¡Registro Exitoso!',
+        '📧 Hemos enviado un correo de confirmación a:\n\n' + email + '\n\nEs necesario que confirmes tu correo electrónico antes de poder iniciar sesión. Revisa tu bandeja de entrada (y spam).',
         [
           {
-            text: 'Ir al Login',
+            text: 'Entendido, ir al Login',
             onPress: () => navigation.replace('Login'),
           },
         ]

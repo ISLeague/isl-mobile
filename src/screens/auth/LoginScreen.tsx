@@ -65,7 +65,16 @@ export const LoginScreen = ({ navigation }: any) => {
         severity: 'high',
         fallbackValue: null,
         onError: (error) => {
-          showError(getUserFriendlyMessage(error), 'Error');
+          const statusCode = error?.response?.status;
+          if (statusCode === 401) {
+            Alert.alert(
+              'Credenciales Inválidas',
+              'El correo electrónico o la contraseña son incorrectos.\n\nSi acabas de registrarte, asegúrate de haber confirmado tu correo electrónico.',
+              [{ text: 'Entendido' }]
+            );
+          } else {
+            showError(getUserFriendlyMessage(error), 'Error');
+          }
         }
       }
     );

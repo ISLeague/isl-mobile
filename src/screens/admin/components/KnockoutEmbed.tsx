@@ -322,16 +322,16 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
           <View style={styles.partidoInfo}>
             <View style={styles.partidoDetalle}>
               <MaterialCommunityIcons name="calendar" size={14} color={colors.textSecondary} />
-              <Text style={styles.partidoDetalleText}>{partido.fecha || 'Sin fecha'}</Text>
+              <Text style={styles.partidoDetalleText}>{partido.fecha || 'Fecha Pendiente'}</Text>
             </View>
             <View style={styles.partidoDetalle}>
               <MaterialCommunityIcons name="clock-outline" size={14} color={colors.textSecondary} />
-              <Text style={styles.partidoDetalleText}>{partido.hora?.substring(0, 5) || 'Sin hora'}</Text>
+              <Text style={styles.partidoDetalleText}>{partido.hora?.substring(0, 5) || 'Hora Pendiente'}</Text>
             </View>
             <View style={styles.partidoDetalle}>
               <MaterialCommunityIcons name="map-marker" size={14} color={colors.textSecondary} />
               <Text style={styles.partidoDetalleText} numberOfLines={1}>
-                {partido.cancha?.nombre || 'Por definir'}
+                {partido.cancha?.nombre || 'Cancha Pendiente'}
               </Text>
             </View>
           </View>

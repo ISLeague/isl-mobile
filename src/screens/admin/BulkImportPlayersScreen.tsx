@@ -391,25 +391,33 @@ export const BulkImportPlayersScreen: React.FC<BulkImportPlayersScreenProps> = (
             <ScrollView style={styles.modalScrollView}>
               <Text style={styles.formatTitle}>Columnas requeridas:</Text>
               <View style={styles.formatList}>
-                <Text style={styles.formatItem}>• nombre_completo (texto)</Text>
-                <Text style={styles.formatItem}>• dni (texto, único)</Text>
-                <Text style={styles.formatItem}>• fecha_nacimiento (DD/MM/YYYY)</Text>
-                <Text style={styles.formatItem}>• numero_camiseta (número, 1-99)</Text>
-                <Text style={styles.formatItem}>• posicion (texto)</Text>
+                <Text style={styles.formatItem}>• nombre_completo (texto) *</Text>
+                <Text style={styles.formatItem}>• dni (texto, único) *</Text>
+                <Text style={styles.formatItem}>• fecha_nacimiento (DD/MM/YYYY) *</Text>
+                <Text style={styles.formatItem}>• es_refuerzo (si/no) *</Text>
+              </View>
+
+              <Text style={styles.formatTitle}>Columnas opcionales:</Text>
+              <View style={styles.formatList}>
+                <Text style={styles.formatItem}>• numero_camiseta (número 1-99, o "-" si no tiene)</Text>
+                <Text style={styles.formatItem}>• posicion (texto, opcional)</Text>
               </View>
 
               <Text style={styles.formatTitle}>Ejemplo:</Text>
               <View style={styles.codeBlock}>
-                <Text style={styles.codeText}>nombre_completo,dni,fecha_nacimiento,numero_camiseta,posicion</Text>
-                <Text style={styles.codeText}>Juan Pérez,12345678,15/03/2000,10,Delantero</Text>
-                <Text style={styles.codeText}>María García,87654321,22/07/1999,7,Mediocampista</Text>
+                <Text style={styles.codeText}>nombre_completo,dni,fecha_nacimiento,es_refuerzo,numero_camiseta,posicion</Text>
+                <Text style={styles.codeText}>Juan Pérez,12345678,15/03/2000,no,10,Delantero</Text>
+                <Text style={styles.codeText}>María García,87654321,22/07/1999,si,-,</Text>
+                <Text style={styles.codeText}>Pedro López,11223344,01/01/2001,no,7,Mediocampista</Text>
               </View>
 
               <View style={styles.warningBox}>
                 <MaterialCommunityIcons name="alert" size={20} color={colors.warning} />
                 <Text style={styles.warningText}>
-                  Importante: Verifica que todos los datos estén correctos antes de importar.
-                  Los DNI duplicados serán rechazados.
+                  Importante:{'\n'}
+                  • Los DNI duplicados serán rechazados{'\n'}
+                  • Si no tiene número de camiseta, usa "-"{'\n'}
+                  • es_refuerzo debe ser "si" o "no"
                 </Text>
               </View>
             </ScrollView>

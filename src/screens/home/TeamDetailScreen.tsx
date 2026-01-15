@@ -1252,50 +1252,38 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
 
               {/* Modal Content */}
               <View style={styles.modalContent}>
-                <View style={styles.instructionsCard}>
-                  <MaterialCommunityIcons name="information" size={24} color={colors.info} />
+                <Text style={styles.columnListTitle}>Columnas requeridas:</Text>
+                <View style={styles.columnListCard}>
+                  <Text style={styles.columnItemText}>• nombre_completo (texto) *</Text>
+                  <Text style={styles.columnItemText}>• dni (texto, único) *</Text>
+                  <Text style={styles.columnItemText}>• fecha_nacimiento (DD/MM/YYYY) *</Text>
+                  <Text style={styles.columnItemText}>• es_refuerzo (si/no) *</Text>
+                </View>
+
+                <Text style={[styles.columnListTitle, { marginTop: 12 }]}>Columnas opcionales:</Text>
+                <View style={styles.columnListCard}>
+                  <Text style={styles.columnItemText}>• numero_camiseta (número 1-99, o "-" si no tiene)</Text>
+                  <Text style={styles.columnItemText}>• posicion (texto, opcional)</Text>
+                </View>
+
+                <Text style={[styles.columnListTitle, { marginTop: 12 }]}>Ejemplo:</Text>
+                <View style={styles.exampleBox}>
+                  <Text style={styles.exampleText}>nombre_completo,dni,fecha_nacimiento,es_refuerzo,numero_camiseta,posicion</Text>
+                  <Text style={styles.exampleText}>Juan Pérez,12345678,15/03/2000,no,10,Delantero</Text>
+                  <Text style={styles.exampleText}>María García,87654321,22/07/1999,si,-,</Text>
+                  <Text style={styles.exampleText}>Pedro López,11223344,01/01/2001,no,7,Mediocampista</Text>
+                </View>
+
+                <View style={[styles.instructionsCard, { borderLeftColor: colors.warning, marginTop: 16 }]}>
+                  <MaterialCommunityIcons name="alert" size={20} color={colors.warning} />
                   <View style={styles.instructionsTextContainer}>
-                    <Text style={styles.instructionsTitle}>Requisitos del Archivo</Text>
                     <Text style={styles.instructionsText}>
-                      El archivo CSV debe contener las siguientes columnas en este orden exacto:
+                      Importante:{'\n'}
+                      • Los DNI duplicados serán rechazados{'\n'}
+                      • Si no tiene número de camiseta, usa "-"{'\n'}
+                      • es_refuerzo debe ser "si" o "no"
                     </Text>
                   </View>
-                </View>
-
-                {/* Column List */}
-                <View style={styles.columnListCard}>
-                  <Text style={styles.columnListTitle}>Columnas Requeridas:</Text>
-                  {[
-                    '1. Nombre completo',
-                    '2. DNI',
-                    '3. Fecha de nacimiento (YYYY-MM-DD)',
-                    '4. Número de camiseta (opcional)',
-                    '5. Posición',
-                    '6. Pie dominante',
-                    '7. Altura en cm (opcional)',
-                    '8. Peso en kg (opcional)',
-                    '9. Nacionalidad',
-                    '10. Es refuerzo (0 o 1)',
-                    '11. Es capitán (0 o 1)',
-                  ].map((item, index) => (
-                    <View key={index} style={styles.columnItem}>
-                      <MaterialCommunityIcons
-                        name="circle-small"
-                        size={20}
-                        color={colors.primary}
-                      />
-                      <Text style={styles.columnItemText}>{item}</Text>
-                    </View>
-                  ))}
-                </View>
-
-                {/* Example */}
-                <View style={styles.exampleBox}>
-                  <Text style={styles.exampleTitle}>Ejemplo de Fila:</Text>
-                  <Text style={styles.exampleText}>
-                    Juan Pérez,12345678,2000-05-15,10,{'\n'}
-                    Delantero,derecho,175,70,Argentina,0,0
-                  </Text>
                 </View>
 
                 {/* Buttons */}

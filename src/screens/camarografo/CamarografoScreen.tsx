@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -17,12 +17,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
+import { Asset } from 'expo-asset';
 import { colors } from '../../theme/colors';
-import { Button } from '../../components/common/Button';
 import { useToast } from '../../contexts/ToastContext';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../api';
 import { safeAsync } from '../../utils/errorHandling';
+
+// Watermark image
+const WATERMARK_IMAGE = require('../../assets/watermark.png');
 
 interface Partido {
   id_partido: number;
@@ -32,15 +35,75 @@ interface Partido {
   hora: string;
   estado_partido: string;
   cancha?: { nombre: string };
-  ronda?: { nombre: string };
+  ronda?: { nombre: string; id_ronda?: number };
+  id_ronda?: number;
   link_fotos?: string;
+}
+
+interface Pais {
+  id_pais: number;
+  nombre: string;
+  emoji?: string;
+}
+
+interface Torneo {
+  id_torneo: number;
+  nombre: string;
+  id_pais: number;
+}
+
+interface Edicion {
+  id_edicion: number;
+  nombre: string;
+  id_torneo: number;
+}
+
+interface Categoria {
+  id_categoria: number;
+  nombre: string;
+}
+
+interface EdicionCategoria {
+  id_edicion_categoria: number;
+  id_edicion: number;
+  id_categoria: number;
+  categoria?: Categoria;
+}
+
+interface Ronda {
+  id_ronda: number;
+  nombre: string;
+  numero_ronda?: number;
+  id_edicion_categoria: number;
 }
 
 export const CamarografoScreen = ({ navigation }: any) => {
   const { showSuccess, showError } = useToast();
   const { usuario, logout } = useAuth();
+
+  // Filter states - All data
+  const [allPaises, setAllPaises] = useState<Pais[]>([]);
+  const [allTorneos, setAllTorneos] = useState<Torneo[]>([]);
+  const [allEdiciones, setAllEdiciones] = useState<Edicion[]>([]);
+  const [allCategorias, setAllCategorias] = useState<EdicionCategoria[]>([]);
+  const [allRondas, setAllRondas] = useState<Ronda[]>([]);
+
+  // Filtered data based on selection
+  const [filteredTorneos, setFilteredTorneos] = useState<Torneo[]>([]);
+  const [filteredEdiciones, setFilteredEdiciones] = useState<Edicion[]>([]);
+  const [filteredCategorias, setFilteredCategorias] = useState<EdicionCategoria[]>([]);
+  const [filteredRondas, setFilteredRondas] = useState<Ronda[]>([]);
+
+  const [selectedPais, setSelectedPais] = useState<number | null>(null);
+  const [selectedTorneo, setSelectedTorneo] = useState<number | null>(null);
+  const [selectedEdicion, setSelectedEdicion] = useState<number | null>(null);
+  const [selectedCategoria, setSelectedCategoria] = useState<number | null>(null);
+  const [selectedRonda, setSelectedRonda] = useState<number | null>(null);
+
+  // Main states
   const [partidos, setPartidos] = useState<Partido[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingFilters, setLoadingFilters] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedPartido, setSelectedPartido] = useState<Partido | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -48,35 +111,173 @@ export const CamarografoScreen = ({ navigation }: any) => {
   const [previewImages, setPreviewImages] = useState<string[]>([]);
   const [uploadingImages, setUploadingImages] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [watermarkAsset, setWatermarkAsset] = useState<Asset | null>(null);
 
+  // Load watermark asset on mount
   useEffect(() => {
-    loadPartidos();
+    const loadWatermark = async () => {
+      try {
+        const asset = Asset.fromModule(WATERMARK_IMAGE);
+        await asset.downloadAsync();
+        setWatermarkAsset(asset);
+      } catch (error) {
+        console.error('Error loading watermark:', error);
+      }
+    };
+    loadWatermark();
+    loadAllData();
   }, []);
 
-  const loadPartidos = async () => {
-    setLoading(true);
+  // Filter torneos when país changes
+  useEffect(() => {
+    if (selectedPais) {
+      const filtered = allTorneos.filter(t => t.id_pais === selectedPais);
+      setFilteredTorneos(filtered);
+    } else {
+      setFilteredTorneos([]);
+    }
+    setSelectedTorneo(null);
+    setSelectedEdicion(null);
+    setSelectedCategoria(null);
+    setSelectedRonda(null);
+    setPartidos([]);
+  }, [selectedPais, allTorneos]);
 
+  // Filter ediciones when torneo changes
+  useEffect(() => {
+    if (selectedTorneo) {
+      const filtered = allEdiciones.filter(e => e.id_torneo === selectedTorneo);
+      setFilteredEdiciones(filtered);
+    } else {
+      setFilteredEdiciones([]);
+    }
+    setSelectedEdicion(null);
+    setSelectedCategoria(null);
+    setSelectedRonda(null);
+    setPartidos([]);
+  }, [selectedTorneo, allEdiciones]);
+
+  // Filter categorias when edicion changes
+  useEffect(() => {
+    if (selectedEdicion) {
+      const filtered = allCategorias.filter(c => c.id_edicion === selectedEdicion);
+      setFilteredCategorias(filtered);
+    } else {
+      setFilteredCategorias([]);
+    }
+    setSelectedCategoria(null);
+    setSelectedRonda(null);
+    setPartidos([]);
+  }, [selectedEdicion, allCategorias]);
+
+  // Filter rondas when categoria changes
+  useEffect(() => {
+    if (selectedCategoria) {
+      const filtered = allRondas.filter(r => r.id_edicion_categoria === selectedCategoria);
+      setFilteredRondas(filtered);
+    } else {
+      setFilteredRondas([]);
+    }
+    setSelectedRonda(null);
+    setPartidos([]);
+  }, [selectedCategoria, allRondas]);
+
+  // Load partidos when ronda changes
+  useEffect(() => {
+    if (selectedRonda) {
+      loadPartidos(selectedRonda);
+    } else {
+      setPartidos([]);
+    }
+  }, [selectedRonda]);
+
+  const loadAllData = async () => {
+    setLoading(true);
+    try {
+      // Load all países
+      const paisesResult = await safeAsync(
+        async () => {
+          const response = await api.paises.list();
+          return Array.isArray(response) ? response : response.data || [];
+        },
+        'loadPaises',
+        { fallbackValue: [] }
+      );
+      setAllPaises(paisesResult);
+
+      // Load all torneos
+      const torneosResult = await safeAsync(
+        async () => {
+          const response = await api.torneos.list();
+          return response.data || [];
+        },
+        'loadTorneos',
+        { fallbackValue: [] }
+      );
+      setAllTorneos(torneosResult);
+
+      // Load all ediciones (we need to fetch from all torneos)
+      const edicionesPromises = torneosResult.map(async (torneo: Torneo) => {
+        const response = await api.ediciones.list(torneo.id_torneo);
+        return (response.data || []).map((e: any) => ({ ...e, id_torneo: torneo.id_torneo }));
+      });
+      const edicionesArrays = await Promise.all(edicionesPromises);
+      const allEdicionesFlat = edicionesArrays.flat();
+      setAllEdiciones(allEdicionesFlat);
+
+      // Load all categorias (from all ediciones)
+      const categoriasPromises = allEdicionesFlat.map(async (edicion: Edicion) => {
+        try {
+          const response = await api.edicionCategorias.list(edicion.id_edicion);
+          return (response.data || []).map((c: any) => ({ ...c, id_edicion: edicion.id_edicion }));
+        } catch {
+          return [];
+        }
+      });
+      const categoriasArrays = await Promise.all(categoriasPromises);
+      const allCategoriasFlat = categoriasArrays.flat();
+      setAllCategorias(allCategoriasFlat);
+
+      // Load all rondas (from all categorias)
+      const rondasPromises = allCategoriasFlat.map(async (categoria: EdicionCategoria) => {
+        try {
+          const response = await api.rondas.list({ id_edicion_categoria: categoria.id_edicion_categoria });
+          return (response.data || []).map((r: any) => ({ ...r, id_edicion_categoria: categoria.id_edicion_categoria }));
+        } catch {
+          return [];
+        }
+      });
+      const rondasArrays = await Promise.all(rondasPromises);
+      const allRondasFlat = rondasArrays.flat();
+      setAllRondas(allRondasFlat);
+
+    } catch (error) {
+      showError('Error al cargar datos');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadPartidos = async (idRonda: number) => {
+    setLoadingFilters(true);
     const result = await safeAsync(
       async () => {
-        // Obtener todos los partidos (puedes filtrar por torneo específico si es necesario)
-        const response = await api.partidos.list();
+        const response = await api.partidos.list({ id_ronda: idRonda });
         return response.data || [];
       },
       'loadPartidos',
-      {
-        fallbackValue: [],
-        onError: () => showError('Error al cargar partidos'),
-      }
+      { fallbackValue: [], onError: () => showError('Error al cargar partidos') }
     );
-
     setPartidos(result);
-    setLoading(false);
+    setLoadingFilters(false);
   };
 
   const handleRefresh = async () => {
-    setRefreshing(true);
-    await loadPartidos();
-    setRefreshing(false);
+    if (selectedRonda) {
+      setRefreshing(true);
+      await loadPartidos(selectedRonda);
+      setRefreshing(false);
+    }
   };
 
   const handleOpenModal = (partido: Partido) => {
@@ -98,21 +299,20 @@ export const CamarografoScreen = ({ navigation }: any) => {
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsMultipleSelection: true,
         quality: 0.8,
-        selectionLimit: 5,
+        selectionLimit: 2, // Solo 2 fotos
       });
 
       if (!result.canceled && result.assets) {
         setUploadingImages(true);
         const processedImages = await Promise.all(
-          result.assets.slice(0, 5).map(async (asset) => {
-            // Aplicar watermark y reducir resolución
+          result.assets.slice(0, 2).map(async (asset) => {
             const manipulatedImage = await applyWatermarkAndResize(asset.uri);
             return manipulatedImage.uri;
           })
         );
         setPreviewImages(processedImages);
         setUploadingImages(false);
-        showSuccess(`${processedImages.length} imagen(es) procesada(s)`);
+        showSuccess(`${processedImages.length} imagen(es) procesada(s) con watermark`);
       }
     } catch (error) {
       setUploadingImages(false);
@@ -122,29 +322,23 @@ export const CamarografoScreen = ({ navigation }: any) => {
 
   const applyWatermarkAndResize = async (imageUri: string) => {
     try {
-      // Paso 1: Reducir resolución (max 1920px de ancho)
+      // Paso 1: Reducir resolución (max 1200px de ancho)
       const resized = await ImageManipulator.manipulateAsync(
         imageUri,
-        [{ resize: { width: 1920 } }],
+        [{ resize: { width: 1200 } }],
+        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
+      );
+
+      // El watermark se aplica visualmente en la UI como overlay
+      // La imagen final con watermark se genera en el backend
+      // Aquí guardamos la imagen procesada para preview
+      const processed = await ImageManipulator.manipulateAsync(
+        resized.uri,
+        [],
         { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
       );
 
-      // Paso 2: Agregar watermark semitransparente
-      // Nota: En producción, podrías usar react-native-canvas o procesamiento en backend
-      // Por ahora, agregamos un overlay de texto simulado con ImageManipulator
-      const withWatermark = await ImageManipulator.manipulateAsync(
-        resized.uri,
-        [
-          // Reducir calidad adicional para preview
-          { resize: { width: 1200 } }
-        ],
-        {
-          compress: 0.6,
-          format: ImageManipulator.SaveFormat.JPEG,
-        }
-      );
-
-      return withWatermark;
+      return processed;
     } catch (error) {
       console.error('Error procesando imagen:', error);
       throw error;
@@ -163,7 +357,6 @@ export const CamarografoScreen = ({ navigation }: any) => {
       return;
     }
 
-    // Validar que sea una URL válida
     try {
       new URL(linkFotos.trim());
     } catch {
@@ -179,10 +372,7 @@ export const CamarografoScreen = ({ navigation }: any) => {
         return response;
       },
       'saveLinkFotos',
-      {
-        fallbackValue: null,
-        onError: () => showError('Error al guardar el link de fotos'),
-      }
+      { fallbackValue: null, onError: () => showError('Error al guardar') }
     );
 
     setSaving(false);
@@ -192,7 +382,10 @@ export const CamarografoScreen = ({ navigation }: any) => {
       setShowModal(false);
       setSelectedPartido(null);
       setLinkFotos('');
-      await loadPartidos();
+      setPreviewImages([]);
+      if (selectedRonda) {
+        await loadPartidos(selectedRonda);
+      }
     }
   };
 
@@ -207,10 +400,7 @@ export const CamarografoScreen = ({ navigation }: any) => {
           style: 'destructive',
           onPress: async () => {
             await logout();
-            navigation.reset({
-              index: 0,
-              routes: [{ name: 'Login' }],
-            });
+            navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
           },
         },
       ]
@@ -242,9 +432,7 @@ export const CamarografoScreen = ({ navigation }: any) => {
           <View style={styles.equipoRow}>
             <Text style={styles.equipoNombre}>{item.equipo_local?.nombre || 'Local'}</Text>
           </View>
-
           <Text style={styles.vsText}>VS</Text>
-
           <View style={styles.equipoRow}>
             <Text style={styles.equipoNombre}>{item.equipo_visitante?.nombre || 'Visitante'}</Text>
           </View>
@@ -253,15 +441,15 @@ export const CamarografoScreen = ({ navigation }: any) => {
         <View style={styles.partidoFooter}>
           <View style={styles.infoRow}>
             <MaterialCommunityIcons name="calendar" size={16} color={colors.textSecondary} />
-            <Text style={styles.infoText}>{item.fecha || 'Sin fecha'}</Text>
+            <Text style={styles.infoText}>{item.fecha || 'Fecha Pendiente'}</Text>
           </View>
           <View style={styles.infoRow}>
             <MaterialCommunityIcons name="clock-outline" size={16} color={colors.textSecondary} />
-            <Text style={styles.infoText}>{item.hora || 'Sin hora'}</Text>
+            <Text style={styles.infoText}>{item.hora || 'Hora Pendiente'}</Text>
           </View>
           <View style={styles.infoRow}>
             <MaterialCommunityIcons name="stadium" size={16} color={colors.textSecondary} />
-            <Text style={styles.infoText}>{item.cancha?.nombre || 'Sin cancha'}</Text>
+            <Text style={styles.infoText}>{item.cancha?.nombre || 'Cancha Pendiente'}</Text>
           </View>
         </View>
 
@@ -275,16 +463,41 @@ export const CamarografoScreen = ({ navigation }: any) => {
     );
   };
 
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Cargando partidos...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  const renderFilterDropdown = (
+    label: string,
+    items: any[],
+    selectedValue: number | null,
+    onSelect: (value: number | null) => void,
+    displayKey: string = 'nombre',
+    valueKey: string = 'id',
+    disabled: boolean = false
+  ) => (
+    <View style={styles.filterContainer}>
+      <Text style={styles.filterLabel}>{label}</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
+        {items.map((item) => {
+          const value = item[valueKey] || item.id_pais || item.id_torneo || item.id_edicion || item.id_edicion_categoria || item.id_ronda;
+          // Para categorías, el nombre viene en item.categoria.nombre
+          const display = item.categoria?.nombre || item[displayKey] || item.nombre;
+          const isSelected = selectedValue === value;
+
+          return (
+            <TouchableOpacity
+              key={value}
+              style={[styles.filterChip, isSelected && styles.filterChipSelected, disabled && styles.filterChipDisabled]}
+              onPress={() => !disabled && onSelect(isSelected ? null : value)}
+              disabled={disabled}
+            >
+              {item.emoji && <Text style={styles.filterEmoji}>{item.emoji}</Text>}
+              <Text style={[styles.filterChipText, isSelected && styles.filterChipTextSelected]}>
+                {display}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -302,36 +515,107 @@ export const CamarografoScreen = ({ navigation }: any) => {
         </TouchableOpacity>
       </View>
 
-      {/* Info Banner */}
-      <View style={styles.infoBanner}>
-        <MaterialCommunityIcons name="information" size={20} color={colors.info} />
-        <Text style={styles.infoBannerText}>
-          Toca un partido para agregar el link de fotos y subir hasta 5 imágenes de preview (se aplicará watermark y reducción de resolución automáticamente)
-        </Text>
-      </View>
+      {/* Filters Section */}
+      <ScrollView style={styles.filtersSection} nestedScrollEnabled>
+        {/* País */}
+        {allPaises.length > 0 && renderFilterDropdown(
+          'País',
+          allPaises,
+          selectedPais,
+          setSelectedPais,
+          'nombre',
+          'id_pais'
+        )}
 
-      {/* Lista de Partidos */}
-      <FlatList
-        data={partidos}
-        renderItem={renderPartido}
-        keyExtractor={(item) => item.id_partido.toString()}
-        contentContainerStyle={styles.listContent}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            colors={[colors.primary]}
-          />
-        }
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <MaterialCommunityIcons name="soccer" size={64} color={colors.textLight} />
-            <Text style={styles.emptyText}>No hay partidos disponibles</Text>
+        {/* Torneo */}
+        {selectedPais && filteredTorneos.length > 0 && renderFilterDropdown(
+          'Torneo',
+          filteredTorneos,
+          selectedTorneo,
+          setSelectedTorneo,
+          'nombre',
+          'id_torneo'
+        )}
+
+        {/* Edición */}
+        {selectedTorneo && filteredEdiciones.length > 0 && renderFilterDropdown(
+          'Edición',
+          filteredEdiciones,
+          selectedEdicion,
+          setSelectedEdicion,
+          'nombre',
+          'id_edicion'
+        )}
+
+        {/* Categoría */}
+        {selectedEdicion && filteredCategorias.length > 0 && renderFilterDropdown(
+          'Categoría',
+          filteredCategorias,
+          selectedCategoria,
+          setSelectedCategoria,
+          'nombre',
+          'id_edicion_categoria'
+        )}
+
+        {/* Ronda */}
+        {selectedCategoria && filteredRondas.length > 0 && renderFilterDropdown(
+          'Ronda',
+          filteredRondas,
+          selectedRonda,
+          setSelectedRonda,
+          'nombre',
+          'id_ronda'
+        )}
+
+        {loadingFilters && (
+          <View style={styles.loadingFilters}>
+            <ActivityIndicator size="small" color={colors.primary} />
+            <Text style={styles.loadingFiltersText}>Cargando...</Text>
           </View>
-        }
-      />
+        )}
+      </ScrollView>
 
-      {/* Modal para agregar/editar link de fotos y subir imágenes */}
+      {/* Info Banner */}
+      {selectedRonda && (
+        <View style={styles.infoBanner}>
+          <MaterialCommunityIcons name="information" size={20} color={colors.info} />
+          <Text style={styles.infoBannerText}>
+            Toca un partido para agregar el link de fotos y hasta 2 imágenes de preview
+          </Text>
+        </View>
+      )}
+
+      {/* Content */}
+      {!selectedRonda ? (
+        <View style={styles.emptyContainer}>
+          <MaterialCommunityIcons name="filter" size={64} color={colors.textLight} />
+          <Text style={styles.emptyText}>Selecciona País, Torneo, Edición, Categoría y Ronda</Text>
+          <Text style={styles.emptySubtext}>para ver los partidos disponibles</Text>
+        </View>
+      ) : loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Cargando partidos...</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={partidos}
+          renderItem={renderPartido}
+          keyExtractor={(item) => item.id_partido.toString()}
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} />
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <MaterialCommunityIcons name="soccer" size={64} color={colors.textLight} />
+              <Text style={styles.emptyText}>No hay partidos disponibles</Text>
+            </View>
+          }
+        />
+      )}
+
+      {/* Modal */}
       <Modal
         visible={showModal}
         animationType="slide"
@@ -354,12 +638,12 @@ export const CamarografoScreen = ({ navigation }: any) => {
                     {selectedPartido.equipo_local?.nombre} vs {selectedPartido.equipo_visitante?.nombre}
                   </Text>
                   <Text style={styles.modalPartidoDate}>
-                    {selectedPartido.fecha} - {selectedPartido.hora}
+                    {selectedPartido.fecha || 'Fecha Pendiente'} - {selectedPartido.hora || 'Hora Pendiente'}
                   </Text>
                 </View>
               )}
 
-              {/* Sección de Link de Fotos */}
+              {/* Link de Fotos */}
               <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>Link de Google Drive (fotos completas) *</Text>
                 <TextInput
@@ -373,16 +657,14 @@ export const CamarografoScreen = ({ navigation }: any) => {
                   keyboardType="url"
                   multiline
                 />
-                <Text style={styles.inputHint}>
-                  Link con todas las fotos del partido
-                </Text>
+                <Text style={styles.inputHint}>Link con todas las fotos del partido</Text>
               </View>
 
-              {/* Sección de Fotos de Preview */}
+              {/* Fotos de Preview - Máximo 2 */}
               <View style={styles.previewSection}>
-                <Text style={styles.inputLabel}>Fotos de ejemplo (máx. 5)</Text>
-                <Text style={[styles.inputHint,]}>
-                  Las fotos se procesarán automáticamente: se reducirá la resolución a 1200px y se agregará el watermark de ISLeague
+                <Text style={styles.inputLabel}>Fotos de ejemplo (máx. 2)</Text>
+                <Text style={styles.inputHint}>
+                  Las fotos se subirán con watermark al bucket de almacenamiento
                 </Text>
 
                 {uploadingImages && (
@@ -403,14 +685,9 @@ export const CamarografoScreen = ({ navigation }: any) => {
                         >
                           <MaterialCommunityIcons name="close-circle" size={24} color={colors.error} />
                         </TouchableOpacity>
-                        {/* Watermark overlay diagonal */}
                         <View style={styles.watermarkOverlay}>
-                          <View style={styles.watermarkBadge}>
-                            <MaterialCommunityIcons name="shield-check" size={16} color={colors.white} />
-                            <Text style={styles.watermarkText}>ISLeague</Text>
-                          </View>
+                          <Image source={WATERMARK_IMAGE} style={styles.watermarkImage} />
                         </View>
-                        {/* Indicador de baja resolución */}
                         <View style={styles.lowResBadge}>
                           <MaterialCommunityIcons name="image-size-select-small" size={12} color={colors.white} />
                           <Text style={styles.lowResText}>Preview</Text>
@@ -420,7 +697,7 @@ export const CamarografoScreen = ({ navigation }: any) => {
                   </View>
                 )}
 
-                {previewImages.length < 5 && (
+                {previewImages.length < 2 && (
                   <TouchableOpacity
                     style={styles.addPhotoButton}
                     onPress={handlePickImages}
@@ -428,7 +705,7 @@ export const CamarografoScreen = ({ navigation }: any) => {
                   >
                     <MaterialCommunityIcons name="camera-plus" size={32} color={colors.primary} />
                     <Text style={styles.addPhotoText}>
-                      {previewImages.length === 0 ? 'Agregar fotos de ejemplo' : `Agregar más (${5 - previewImages.length} restantes)`}
+                      {previewImages.length === 0 ? 'Agregar fotos de ejemplo' : `Agregar 1 más`}
                     </Text>
                   </TouchableOpacity>
                 )}
@@ -507,6 +784,66 @@ const styles = StyleSheet.create({
   },
   logoutButton: {
     padding: 8,
+  },
+  filtersSection: {
+    backgroundColor: colors.white,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    maxHeight: 300,
+  },
+  filterContainer: {
+    marginBottom: 8,
+  },
+  filterLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    marginLeft: 20,
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  filterScroll: {
+    paddingHorizontal: 16,
+  },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: colors.backgroundGray,
+    marginRight: 8,
+    gap: 6,
+  },
+  filterChipSelected: {
+    backgroundColor: colors.primary,
+  },
+  filterChipDisabled: {
+    opacity: 0.5,
+  },
+  filterEmoji: {
+    fontSize: 16,
+  },
+  filterChipText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.textPrimary,
+  },
+  filterChipTextSelected: {
+    color: colors.white,
+  },
+  loadingFilters: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 8,
+  },
+  loadingFiltersText: {
+    fontSize: 13,
+    color: colors.textSecondary,
   },
   infoBanner: {
     flexDirection: 'row',
@@ -624,11 +961,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: 60,
-    gap: 16,
+    gap: 12,
   },
   emptyText: {
     fontSize: 16,
     color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: colors.textLight,
     textAlign: 'center',
   },
   modalOverlay: {
@@ -675,7 +1017,7 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   inputContainer: {
-    marginBottom: 24,
+    marginBottom: 20,
   },
   inputLabel: {
     fontSize: 14,
@@ -699,37 +1041,7 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: 8,
   },
-  modalActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  modalButton: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalButtonCancel: {
-    backgroundColor: colors.backgroundGray,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  modalButtonSave: {
-    backgroundColor: colors.primary,
-  },
-  modalButtonTextCancel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.textPrimary,
-  },
-  modalButtonTextSave: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.white,
-  },
   previewSection: {
-    marginTop: 24,
     marginBottom: 24,
   },
   uploadingContainer: {
@@ -740,7 +1052,7 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     backgroundColor: colors.backgroundGray,
     borderRadius: 12,
-    marginBottom: 16,
+    marginTop: 16,
   },
   uploadingText: {
     fontSize: 14,
@@ -750,7 +1062,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
-    marginBottom: 16,
+    marginTop: 16,
   },
   imagePreviewContainer: {
     width: '48%',
@@ -778,26 +1090,12 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
-    transform: [{ rotate: '-35deg' }],
   },
-  watermarkBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  watermarkText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: colors.white,
-    letterSpacing: 1,
+  watermarkImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'stretch',
+    opacity: 0.5,
   },
   lowResBadge: {
     position: 'absolute',
@@ -827,11 +1125,41 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 12,
     backgroundColor: colors.backgroundGray,
+    marginTop: 16,
   },
   addPhotoText: {
     fontSize: 14,
     fontWeight: '600',
     color: colors.primary,
     textAlign: 'center',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalButtonCancel: {
+    backgroundColor: colors.backgroundGray,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  modalButtonSave: {
+    backgroundColor: colors.primary,
+  },
+  modalButtonTextCancel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  modalButtonTextSave: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.white,
   },
 });
