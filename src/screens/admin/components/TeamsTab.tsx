@@ -168,15 +168,6 @@ export const TeamsTab: React.FC<TeamsTabProps> = ({
               <Text style={styles.createButtonText}>Crear Equipo</Text>
             </TouchableOpacity>
           )}
-          {onBulkCreateTeams && (
-            <TouchableOpacity
-              style={[styles.createButton, styles.bulkButton]}
-              onPress={onBulkCreateTeams}
-            >
-              <MaterialCommunityIcons name="file-upload" size={24} color={colors.white} />
-              <Text style={styles.createButtonText}>Importar Equipos CSV</Text>
-            </TouchableOpacity>
-          )}
         </View>
       )}
 

@@ -78,16 +78,6 @@ export const HomeScreen = ({ navigation }: any) => {
           <View>
             <Text style={styles.title}>ISL</Text>
           </View>
-          <TouchableOpacity style={styles.notificationButton}>
-            <MaterialCommunityIcons
-              name="bell-outline"
-              size={26}
-              color={colors.textPrimary}
-            />
-            <View style={styles.notificationBadge}>
-              <Text style={styles.notificationBadgeText}>2</Text>
-            </View>
-          </TouchableOpacity>
 
         </View>
 

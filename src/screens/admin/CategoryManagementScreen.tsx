@@ -245,10 +245,7 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back" size={24} color={colors.white} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.notificationButton}>
-            <View style={styles.notificationDot} />
-            <Ionicons name="notifications" size={24} color={colors.white} />
-          </TouchableOpacity>
+
         </View>
 
         <View style={styles.headerContent}>
