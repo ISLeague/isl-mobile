@@ -17,6 +17,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { colors } from '../../theme/colors';
 import api from '../../api';
 import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
 import { Pais, Edicion, Torneo } from '../../api/types';
 
 interface TorneoConEstado extends Torneo {
@@ -26,6 +27,7 @@ interface TorneoConEstado extends Torneo {
 
 export const AdminTournamentsScreen = ({ navigation, route }: any) => {
   const { isAdmin, isSuperAdmin } = useAuth();
+  const { showSuccess, showError } = useToast();
   const { pais } = route.params as { pais: Pais };
   const [torneos, setTorneos] = useState<TorneoConEstado[]>([]);
   const [loading, setLoading] = useState(true);
@@ -169,25 +171,49 @@ export const AdminTournamentsScreen = ({ navigation, route }: any) => {
   };
 
   const handleDeleteTournament = (torneo: TorneoConEstado) => {
-    Alert.alert(
-      'Eliminar Torneo',
-      `¿Estás seguro de eliminar "${torneo.nombre}"? Esta acción no se puede deshacer.`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.torneos.delete(torneo.id_torneo);
-              setTorneos(torneos.filter(t => t.id_torneo !== torneo.id_torneo));
-            } catch (error) {
-              Alert.alert('Error', 'No se pudo eliminar el torneo');
-            }
+    if (torneo.activo) {
+      Alert.alert(
+        'Desactivar Torneo',
+        `El torneo "${torneo.nombre}" pasará a ser inactivo. Si desea borrarlo completamente, debe ir a la pestaña "Inactivos" y volver a borrarlo.`,
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Desactivar',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await api.torneos.update({ id_torneo: torneo.id_torneo, activo: false });
+                showSuccess('Torneo movido a inactivos');
+                loadTorneos(true);
+              } catch (error) {
+                showError('No se pudo desactivar el torneo');
+              }
+            },
           },
-        },
-      ]
-    );
+        ]
+      );
+    } else {
+      Alert.alert(
+        'ELIMINAR PERMANENTEMENTE',
+        `¿Estás SEGURO de eliminar "${torneo.nombre}"? SE BORRARÁ TODO: ediciones, categorías, rondas, partidos y estadísticas asociadas. Esta acción es IRREVERSIBLE.`,
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'ELIMINAR TODO',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await api.torneos.delete(torneo.id_torneo);
+                showSuccess('Torneo y todos sus datos eliminados');
+                loadTorneos(true);
+              } catch (error) {
+                showError('No se pudo eliminar el torneo permanentemente');
+              }
+            },
+          },
+        ]
+      );
+    }
   };
 
   const renderHeader = useMemo(() => (

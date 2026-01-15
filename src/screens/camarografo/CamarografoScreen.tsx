@@ -128,11 +128,10 @@ export const CamarografoScreen = ({ navigation }: any) => {
     loadAllData();
   }, []);
 
-  // Filter torneos when país changes
+  // Load torneos when país changes
   useEffect(() => {
     if (selectedPais) {
-      const filtered = allTorneos.filter(t => t.id_pais === selectedPais);
-      setFilteredTorneos(filtered);
+      loadTorneos(selectedPais);
     } else {
       setFilteredTorneos([]);
     }
@@ -141,13 +140,12 @@ export const CamarografoScreen = ({ navigation }: any) => {
     setSelectedCategoria(null);
     setSelectedRonda(null);
     setPartidos([]);
-  }, [selectedPais, allTorneos]);
+  }, [selectedPais]);
 
-  // Filter ediciones when torneo changes
+  // Load ediciones when torneo changes
   useEffect(() => {
     if (selectedTorneo) {
-      const filtered = allEdiciones.filter(e => e.id_torneo === selectedTorneo);
-      setFilteredEdiciones(filtered);
+      loadEdiciones(selectedTorneo);
     } else {
       setFilteredEdiciones([]);
     }
@@ -155,32 +153,30 @@ export const CamarografoScreen = ({ navigation }: any) => {
     setSelectedCategoria(null);
     setSelectedRonda(null);
     setPartidos([]);
-  }, [selectedTorneo, allEdiciones]);
+  }, [selectedTorneo]);
 
-  // Filter categorias when edicion changes
+  // Load categorias when edicion changes
   useEffect(() => {
     if (selectedEdicion) {
-      const filtered = allCategorias.filter(c => c.id_edicion === selectedEdicion);
-      setFilteredCategorias(filtered);
+      loadCategorias(selectedEdicion);
     } else {
       setFilteredCategorias([]);
     }
     setSelectedCategoria(null);
     setSelectedRonda(null);
     setPartidos([]);
-  }, [selectedEdicion, allCategorias]);
+  }, [selectedEdicion]);
 
-  // Filter rondas when categoria changes
+  // Load rondas when categoria changes
   useEffect(() => {
     if (selectedCategoria) {
-      const filtered = allRondas.filter(r => r.id_edicion_categoria === selectedCategoria);
-      setFilteredRondas(filtered);
+      loadRondas(selectedCategoria);
     } else {
       setFilteredRondas([]);
     }
     setSelectedRonda(null);
     setPartidos([]);
-  }, [selectedCategoria, allRondas]);
+  }, [selectedCategoria]);
 
   // Load partidos when ronda changes
   useEffect(() => {
@@ -194,67 +190,62 @@ export const CamarografoScreen = ({ navigation }: any) => {
   const loadAllData = async () => {
     setLoading(true);
     try {
-      // Load all países
-      const paisesResult = await safeAsync(
-        async () => {
-          const response = await api.paises.list();
-          return Array.isArray(response) ? response : response.data || [];
-        },
-        'loadPaises',
-        { fallbackValue: [] }
-      );
+      const response = await api.paises.list();
+      const paisesResult = Array.isArray(response) ? response : response.data || [];
       setAllPaises(paisesResult);
-
-      // Load all torneos
-      const torneosResult = await safeAsync(
-        async () => {
-          const response = await api.torneos.list();
-          return response.data || [];
-        },
-        'loadTorneos',
-        { fallbackValue: [] }
-      );
-      setAllTorneos(torneosResult);
-
-      // Load all ediciones (we need to fetch from all torneos)
-      const edicionesPromises = torneosResult.map(async (torneo: Torneo) => {
-        const response = await api.ediciones.list(torneo.id_torneo);
-        return (response.data || []).map((e: any) => ({ ...e, id_torneo: torneo.id_torneo }));
-      });
-      const edicionesArrays = await Promise.all(edicionesPromises);
-      const allEdicionesFlat = edicionesArrays.flat();
-      setAllEdiciones(allEdicionesFlat);
-
-      // Load all categorias (from all ediciones)
-      const categoriasPromises = allEdicionesFlat.map(async (edicion: Edicion) => {
-        try {
-          const response = await api.edicionCategorias.list(edicion.id_edicion);
-          return (response.data || []).map((c: any) => ({ ...c, id_edicion: edicion.id_edicion }));
-        } catch {
-          return [];
-        }
-      });
-      const categoriasArrays = await Promise.all(categoriasPromises);
-      const allCategoriasFlat = categoriasArrays.flat();
-      setAllCategorias(allCategoriasFlat);
-
-      // Load all rondas (from all categorias)
-      const rondasPromises = allCategoriasFlat.map(async (categoria: EdicionCategoria) => {
-        try {
-          const response = await api.rondas.list({ id_edicion_categoria: categoria.id_edicion_categoria });
-          return (response.data || []).map((r: any) => ({ ...r, id_edicion_categoria: categoria.id_edicion_categoria }));
-        } catch {
-          return [];
-        }
-      });
-      const rondasArrays = await Promise.all(rondasPromises);
-      const allRondasFlat = rondasArrays.flat();
-      setAllRondas(allRondasFlat);
-
     } catch (error) {
-      showError('Error al cargar datos');
+      showError('Error al cargar países');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadTorneos = async (idPais: number) => {
+    setLoadingFilters(true);
+    try {
+      const response = await api.torneos.list({ id_pais: idPais });
+      setFilteredTorneos(response.data || []);
+    } catch (error) {
+      showError('Error al cargar torneos');
+    } finally {
+      setLoadingFilters(false);
+    }
+  };
+
+  const loadEdiciones = async (idTorneo: number) => {
+    setLoadingFilters(true);
+    try {
+      const response = await api.ediciones.list({ id_torneo: idTorneo });
+      setFilteredEdiciones(response.data || []);
+    } catch (error) {
+      showError('Error al cargar ediciones');
+    } finally {
+      setLoadingFilters(false);
+    }
+  };
+
+  const loadCategorias = async (idEdicion: number) => {
+    setLoadingFilters(true);
+    try {
+      const response = await api.edicionCategorias.list({ id_edicion: idEdicion });
+      const items = Array.isArray(response.data) ? response.data : response.data?.data || [];
+      setFilteredCategorias(items);
+    } catch (error) {
+      showError('Error al cargar categorías');
+    } finally {
+      setLoadingFilters(false);
+    }
+  };
+
+  const loadRondas = async (idEdicionCategoria: number) => {
+    setLoadingFilters(true);
+    try {
+      const response = await api.rondas.list({ id_edicion_categoria: idEdicionCategoria });
+      setFilteredRondas(response.data || []);
+    } catch (error) {
+      showError('Error al cargar rondas');
+    } finally {
+      setLoadingFilters(false);
     }
   };
 
@@ -470,7 +461,8 @@ export const CamarografoScreen = ({ navigation }: any) => {
     onSelect: (value: number | null) => void,
     displayKey: string = 'nombre',
     valueKey: string = 'id',
-    disabled: boolean = false
+    disabled: boolean = false,
+    isCategory: boolean = false
   ) => (
     <View style={styles.filterContainer}>
       <Text style={styles.filterLabel}>{label}</Text>
@@ -484,12 +476,22 @@ export const CamarografoScreen = ({ navigation }: any) => {
           return (
             <TouchableOpacity
               key={value}
-              style={[styles.filterChip, isSelected && styles.filterChipSelected, disabled && styles.filterChipDisabled]}
+              style={[
+                styles.filterChip,
+                isCategory && styles.categoryChip,
+                isSelected && styles.filterChipSelected,
+                isSelected && isCategory && styles.categoryChipSelected,
+                disabled && styles.filterChipDisabled
+              ]}
               onPress={() => !disabled && onSelect(isSelected ? null : value)}
               disabled={disabled}
             >
               {item.emoji && <Text style={styles.filterEmoji}>{item.emoji}</Text>}
-              <Text style={[styles.filterChipText, isSelected && styles.filterChipTextSelected]}>
+              <Text style={[
+                styles.filterChipText,
+                isSelected && styles.filterChipTextSelected,
+                isCategory && styles.categoryChipText
+              ]}>
                 {display}
               </Text>
             </TouchableOpacity>
@@ -554,7 +556,9 @@ export const CamarografoScreen = ({ navigation }: any) => {
           selectedCategoria,
           setSelectedCategoria,
           'nombre',
-          'id_edicion_categoria'
+          'id_edicion_categoria',
+          false,
+          true
         )}
 
         {/* Ronda */}
@@ -819,6 +823,27 @@ const styles = StyleSheet.create({
   },
   filterChipSelected: {
     backgroundColor: colors.primary,
+  },
+  categoryChip: {
+    width: 65,
+    height: 65,
+    borderRadius: 33,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 0,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    backgroundColor: colors.white,
+    marginRight: 10,
+  },
+  categoryChipSelected: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  categoryChipText: {
+    fontSize: 10,
+    textAlign: 'center',
+    fontWeight: 'bold',
   },
   filterChipDisabled: {
     opacity: 0.5,
@@ -1090,12 +1115,16 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
   },
   watermarkImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'stretch',
-    opacity: 0.5,
+    width: '120%',
+    height: '120%',
+    resizeMode: 'contain',
+    opacity: 0.15,
+    transform: [{ rotate: '-30deg' }],
   },
   lowResBadge: {
     position: 'absolute',

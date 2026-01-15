@@ -63,7 +63,7 @@ export const BulkImportPlayersScreen: React.FC<BulkImportPlayersScreenProps> = (
         onError: () => showError('Error al cargar equipos'),
       }
     );
-    setEquipos(result);
+    setEquipos(result || []);
     setLoading(false);
   };
 
@@ -97,126 +97,127 @@ export const BulkImportPlayersScreen: React.FC<BulkImportPlayersScreenProps> = (
       return;
     }
 
-    setShowFormatModal(false);
-    setImporting(true);
-    setCurrentImportIndex(0);
-    setImportResults([]);
-
-    const selectedEquiposList = equipos.filter(e => selectedEquipos.has(e.id_equipo));
-
-    for (let i = 0; i < selectedEquiposList.length; i++) {
-      const equipo = selectedEquiposList[i];
-      setCurrentImportIndex(i + 1);
-
-      // Mostrar alerta para subir CSV del equipo
-      await new Promise<void>((resolve) => {
-        Alert.alert(
-          `Importar Jugadores - ${equipo.nombre}`,
-          `Selecciona el archivo CSV con los jugadores del equipo "${equipo.nombre}"`,
-          [
-            {
-              text: 'Seleccionar CSV',
-              onPress: async () => {
-                const result = await importCSVForEquipo(equipo);
-                setImportResults(prev => [...prev, result]);
-                resolve();
-              },
-            },
-            {
-              text: 'Omitir',
-              style: 'cancel',
-              onPress: () => {
-                setImportResults(prev => [...prev, {
-                  equipoId: equipo.id_equipo,
-                  equipoNombre: equipo.nombre,
-                  success: false,
-                  successful: 0,
-                  failed: 0,
-                  errors: [{ row: 0, error: 'Omitido por el usuario' }],
-                }]);
-                resolve();
-              },
-            },
-          ]
-        );
-      });
-    }
-
-    setImporting(false);
-    setShowResultsModal(true);
-  };
-
-  const importCSVForEquipo = async (equipo: Equipo) => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: ['text/csv', 'text/comma-separated-values', 'application/csv', '*/*'],
         copyToCacheDirectory: true,
       });
 
-      if (result.canceled) {
-        return {
-          equipoId: equipo.id_equipo,
-          equipoNombre: equipo.nombre,
-          success: false,
-          successful: 0,
-          failed: 0,
-          errors: [{ row: 0, error: 'Importación cancelada' }],
-        };
-      }
+      if (result.canceled) return;
 
       const file = result.assets[0];
-      const csvFile = {
-        uri: file.uri,
-        type: 'text/csv',
-        name: file.name,
-      } as any;
+      const response = await fetch(file.uri);
+      const csvText = await response.text();
 
-      // Validar CSV primero (puedes hacer una llamada al backend para validar)
-      const uploadResult = await safeAsync(
-        async () => {
-          const apiResponse = await api.jugadores.createBulk(equipo.id_equipo, csvFile);
-          return apiResponse;
-        },
-        'importCSV',
-        {
-          fallbackValue: null,
-          onError: (error: any) => {
-            console.error(`Error importando CSV para ${equipo.nombre}:`, error);
-          },
-        }
-      );
+      setImporting(true);
+      setCurrentImportIndex(0);
+      setImportResults([]);
 
-      if (uploadResult && uploadResult.success) {
-        const { total_processed, successful, failed, errors } = uploadResult.data;
-        return {
-          equipoId: equipo.id_equipo,
-          equipoNombre: equipo.nombre,
-          success: true,
-          successful: successful || 0,
-          failed: failed || 0,
-          errors: errors || [],
-        };
-      } else {
-        return {
-          equipoId: equipo.id_equipo,
-          equipoNombre: equipo.nombre,
-          success: false,
-          successful: 0,
-          failed: 0,
-          errors: [{ row: 0, error: 'Error al procesar el archivo' }],
-        };
+      const selectedEquiposList = equipos.filter(e => selectedEquipos.has(e.id_equipo));
+
+      // Parse CSV
+      const lines = csvText.split(/\r?\n/).filter(line => line.trim() !== '');
+      if (lines.length < 2) {
+        showError('El archivo CSV está vacío o no tiene el formato correcto');
+        setImporting(false);
+        return;
       }
+
+      const headers = lines[0].split(',').map(h => h.trim());
+      const rows = lines.slice(1).map(line => {
+        const values = line.split(',').map(v => v.trim());
+        const obj: any = {};
+        headers.forEach((header, index) => {
+          obj[header] = values[index];
+        });
+        return obj;
+      });
+
+      // Validar columna nombre_equipo
+      if (!headers.includes('nombre_equipo')) {
+        showError('El CSV debe incluir la columna "nombre_equipo"');
+        setImporting(false);
+        return;
+      }
+
+      for (let i = 0; i < selectedEquiposList.length; i++) {
+        const equipo = selectedEquiposList[i];
+        setCurrentImportIndex(i + 1);
+
+        // Filtrar filas para este equipo
+        const equipoRows = rows.filter(row => row.nombre_equipo === equipo.nombre);
+
+        if (equipoRows.length === 0) {
+          setImportResults(prev => [...prev, {
+            equipoId: equipo.id_equipo,
+            equipoNombre: equipo.nombre,
+            success: false,
+            successful: 0,
+            failed: 0,
+            errors: [{ row: 0, error: 'No se encontraron jugadores para este equipo en el CSV' }],
+          }]);
+          continue;
+        }
+
+        // Generar CSV para este equipo (sin la columna nombre_equipo y arreglando el header de nombre completo)
+        // El usuario reportó que el backend pide "nombre completo"
+        const teamHeaders = headers.filter(h => h !== 'nombre_equipo');
+        const teamLines = [
+          teamHeaders.map(h => h === 'nombre_completo' ? 'nombre completo' : h).join(','),
+          ...equipoRows.map(row => teamHeaders.map(h => row[h]).join(','))
+        ];
+        const teamCsvString = teamLines.join('\n');
+
+        // En React Native, para enviar como archivo, podemos usar un Blob si está disponible o enviarlo como string si el backend lo acepta
+        // Pero api.jugadores.createBulk espera un objeto tipo archivo para FormData.
+        // Vamos a intentar enviarlo convirtiendo el string a una simulación de archivo.
+        const teamCsvFile = {
+          uri: 'data:text/csv;base64,' + btoa(unescape(encodeURIComponent(teamCsvString))),
+          type: 'text/csv',
+          name: `${equipo.nombre}_import.csv`,
+        } as any;
+
+        const uploadResult = await safeAsync(
+          async () => {
+            const apiResponse = await api.jugadores.createBulk(equipo.id_equipo, teamCsvFile);
+            return apiResponse;
+          },
+          'importCSV',
+          { fallbackValue: null }
+        );
+
+        if (uploadResult && uploadResult.success) {
+          const { successful, failed, errors } = uploadResult.data;
+          setImportResults(prev => [...prev, {
+            equipoId: equipo.id_equipo,
+            equipoNombre: equipo.nombre,
+            success: true,
+            successful: successful || 0,
+            failed: failed || 0,
+            errors: errors || [],
+          }]);
+        } else {
+          setImportResults(prev => [...prev, {
+            equipoId: equipo.id_equipo,
+            equipoNombre: equipo.nombre,
+            success: false,
+            successful: 0,
+            failed: 0,
+            errors: [{ row: 0, error: 'Error al procesar este equipo' }],
+          }]);
+        }
+      }
+
+      setImporting(false);
+      setShowResultsModal(true);
     } catch (error) {
-      return {
-        equipoId: equipo.id_equipo,
-        equipoNombre: equipo.nombre,
-        success: false,
-        successful: 0,
-        failed: 0,
-        errors: [{ row: 0, error: 'Error inesperado' }],
-      };
+      console.error('Error in import process:', error);
+      showError('Error al procesar el archivo CSV');
+      setImporting(false);
     }
   };
+
+
 
   const filteredEquipos = equipos.filter((equipo) =>
     equipo.nombre.toLowerCase().includes(searchQuery.toLowerCase())
@@ -252,11 +253,10 @@ export const BulkImportPlayersScreen: React.FC<BulkImportPlayersScreenProps> = (
             <Text style={styles.infoTitle}>¿Cómo funciona?</Text>
           </View>
           <Text style={styles.infoText}>
-            1. Selecciona los equipos a los que quieres importar jugadores{'\n'}
-            2. Presiona "Ver Formato CSV" para conocer el formato requerido{'\n'}
-            3. Presiona "Iniciar Importación"{'\n'}
-            4. Selecciona el archivo CSV para cada equipo{'\n'}
-            5. Revisa los resultados al final
+            1. Selecciona los equipos que quieres importar{'\n'}
+            2. Presiona "Iniciar Importación" y selecciona UN SOLO archivo CSV con todos los jugadores{'\n'}
+            3. El CSV debe tener la columna "nombre_equipo" para asignar cada jugador{'\n'}
+            4. Revisa los resultados al final
           </Text>
         </Card>
 
@@ -339,14 +339,12 @@ export const BulkImportPlayersScreen: React.FC<BulkImportPlayersScreenProps> = (
             onPress={handleShowFormat}
             variant="secondary"
             style={styles.buttonHalf}
-            leftIcon={<MaterialCommunityIcons name="file-document-outline" size={20} color={colors.primary} />}
           />
           <Button
             title={`Iniciar Importación (${selectedEquipos.size})`}
             onPress={handleStartImport}
             disabled={selectedEquipos.size === 0}
             style={styles.buttonHalf}
-            leftIcon={<MaterialCommunityIcons name="upload" size={20} color={colors.white} />}
           />
         </View>
       )}
@@ -391,6 +389,7 @@ export const BulkImportPlayersScreen: React.FC<BulkImportPlayersScreenProps> = (
             <ScrollView style={styles.modalScrollView}>
               <Text style={styles.formatTitle}>Columnas requeridas:</Text>
               <View style={styles.formatList}>
+                <Text style={styles.formatItem}>• nombre_equipo (debe coincidir exactamente) *</Text>
                 <Text style={styles.formatItem}>• nombre_completo (texto) *</Text>
                 <Text style={styles.formatItem}>• dni (texto, único) *</Text>
                 <Text style={styles.formatItem}>• fecha_nacimiento (DD/MM/YYYY) *</Text>
@@ -405,10 +404,9 @@ export const BulkImportPlayersScreen: React.FC<BulkImportPlayersScreenProps> = (
 
               <Text style={styles.formatTitle}>Ejemplo:</Text>
               <View style={styles.codeBlock}>
-                <Text style={styles.codeText}>nombre_completo,dni,fecha_nacimiento,es_refuerzo,numero_camiseta,posicion</Text>
-                <Text style={styles.codeText}>Juan Pérez,12345678,15/03/2000,no,10,Delantero</Text>
-                <Text style={styles.codeText}>María García,87654321,22/07/1999,si,-,</Text>
-                <Text style={styles.codeText}>Pedro López,11223344,01/01/2001,no,7,Mediocampista</Text>
+                <Text style={styles.codeText}>nombre_equipo,nombre_completo,dni,fecha_nacimiento,es_refuerzo,numero_camiseta,posicion</Text>
+                <Text style={styles.codeText}>Real Madrid,Juan Pérez,12345678,15/03/2000,no,10,Delantero</Text>
+                <Text style={styles.codeText}>Barcelona,María García,87654321,22/07/1999,si,-,Mediocampista</Text>
               </View>
 
               <View style={styles.warningBox}>
