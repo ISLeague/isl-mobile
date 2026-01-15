@@ -374,25 +374,6 @@ export const MyTeamScreen: React.FC<Props> = ({ navigation }) => {
             </View>
           ))}
         </Card>
-
-        {/* Fotos del equipo */}
-        <Card style={styles.photosCard}>
-          <View style={styles.sectionHeader}>
-            <MaterialCommunityIcons name="camera" size={20} color={colors.primary} />
-            <Text style={styles.sectionTitle}>Fotos del Equipo</Text>
-          </View>
-          
-          <TouchableOpacity onPress={() => {/* TODO: Abrir galería */}}>
-            <Image
-              source={{ uri: teamPhotos.link_preview }}
-              style={styles.photoPreview}
-            />
-            <View style={styles.photoOverlay}>
-              <MaterialCommunityIcons name="image-multiple" size={32} color={colors.white} />
-              <Text style={styles.photoOverlayText}>Ver Todas las Fotos</Text>
-            </View>
-          </TouchableOpacity>
-        </Card>
       </ScrollView>
 
       {/* Modal de confirmación de cambio */}

@@ -16,7 +16,7 @@ import { Local } from '../../api/types';
 
 export const EditLocalScreen = ({ navigation, route }: any) => {
   const { local } = route.params as { local: Local };
-  
+
   const [nombre, setNombre] = useState(local.nombre);
   const [latitud, setLatitud] = useState(local.latitud.toString());
   const [longitud, setLongitud] = useState(local.longitud.toString());
@@ -129,7 +129,7 @@ export const EditLocalScreen = ({ navigation, route }: any) => {
             value={latitud}
             onChangeText={setLatitud}
             error={errors.latitud}
-            keyboardType="numeric"
+            keyboardType="default"
             leftIcon={<Ionicons name="navigate" size={20} color={colors.textLight} />}
           />
 
@@ -139,7 +139,7 @@ export const EditLocalScreen = ({ navigation, route }: any) => {
             value={longitud}
             onChangeText={setLongitud}
             error={errors.longitud}
-            keyboardType="numeric"
+            keyboardType="default"
             leftIcon={<Ionicons name="location" size={20} color={colors.textLight} />}
           />
 

@@ -19,7 +19,7 @@ interface CreateGroupScreenProps {
 }
 
 export const CreateGroupScreen: React.FC<CreateGroupScreenProps> = ({ navigation, route }) => {
-  const { idEdicionCategoria } = route.params || {};
+  const { idEdicionCategoria, onGroupCreated } = route.params || {};
 
   const [nombre, setNombre] = useState('');
   const [equiposPasanOro, setEquiposPasanOro] = useState('2');
@@ -66,8 +66,14 @@ export const CreateGroupScreen: React.FC<CreateGroupScreenProps> = ({ navigation
     // const reglas = generarReglasClasificacion(oro, plata, tipoClasificacion);
     // await api.classification.createRules(reglas);
 
-    Alert.alert('Éxito', `Grupo "${nombre}" creado exitosamente con reglas de clasificación auto-generadas`, [
-      { text: 'OK', onPress: () => navigation.goBack() }
+    Alert.alert('Éxito', `Grupo "${nombre}" creado exitosamente`, [
+      {
+        text: 'OK',
+        onPress: () => {
+          if (onGroupCreated) onGroupCreated();
+          navigation.goBack();
+        }
+      }
     ]);
   };
 

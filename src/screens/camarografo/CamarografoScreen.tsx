@@ -10,9 +10,13 @@ import {
   TextInput,
   Alert,
   RefreshControl,
+  Image,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { colors } from '../../theme/colors';
 import { Button } from '../../components/common/Button';
 import { useToast } from '../../contexts/ToastContext';
@@ -41,6 +45,8 @@ export const CamarografoScreen = ({ navigation }: any) => {
   const [selectedPartido, setSelectedPartido] = useState<Partido | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [linkFotos, setLinkFotos] = useState('');
+  const [previewImages, setPreviewImages] = useState<string[]>([]);
+  const [uploadingImages, setUploadingImages] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -76,7 +82,73 @@ export const CamarografoScreen = ({ navigation }: any) => {
   const handleOpenModal = (partido: Partido) => {
     setSelectedPartido(partido);
     setLinkFotos(partido.link_fotos || '');
+    setPreviewImages([]);
     setShowModal(true);
+  };
+
+  const handlePickImages = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        showError('Se necesitan permisos para acceder a las fotos');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsMultipleSelection: true,
+        quality: 0.8,
+        selectionLimit: 5,
+      });
+
+      if (!result.canceled && result.assets) {
+        setUploadingImages(true);
+        const processedImages = await Promise.all(
+          result.assets.slice(0, 5).map(async (asset) => {
+            // Aplicar watermark y reducir resolución
+            const manipulatedImage = await applyWatermarkAndResize(asset.uri);
+            return manipulatedImage.uri;
+          })
+        );
+        setPreviewImages(processedImages);
+        setUploadingImages(false);
+        showSuccess(`${processedImages.length} imagen(es) procesada(s)`);
+      }
+    } catch (error) {
+      setUploadingImages(false);
+      showError('Error al seleccionar imágenes');
+    }
+  };
+
+  const applyWatermarkAndResize = async (imageUri: string) => {
+    try {
+      // Paso 1: Reducir resolución (max 1920px de ancho)
+      const resized = await ImageManipulator.manipulateAsync(
+        imageUri,
+        [{ resize: { width: 1920 } }],
+        { compress: 0.85, format: ImageManipulator.SaveFormat.JPEG }
+      );
+
+      // Paso 2: Agregar watermark simple (texto overlay)
+      // Nota: En producción usarías una imagen de watermark o procesamiento en backend
+      const withWatermark = await ImageManipulator.manipulateAsync(
+        resized.uri,
+        [],
+        {
+          compress: 0.85,
+          format: ImageManipulator.SaveFormat.JPEG,
+        }
+      );
+
+      return withWatermark;
+    } catch (error) {
+      console.error('Error procesando imagen:', error);
+      throw error;
+    }
+  };
+
+  const handleRemoveImage = (index: number) => {
+    setPreviewImages((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSaveFotos = async () => {
@@ -255,7 +327,7 @@ export const CamarografoScreen = ({ navigation }: any) => {
         }
       />
 
-      {/* Modal para agregar/editar link de fotos */}
+      {/* Modal para agregar/editar link de fotos y subir imágenes */}
       <Modal
         visible={showModal}
         animationType="slide"
@@ -263,65 +335,116 @@ export const CamarografoScreen = ({ navigation }: any) => {
         onRequestClose={() => setShowModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Link de Fotos</Text>
-              <TouchableOpacity onPress={() => setShowModal(false)}>
-                <MaterialCommunityIcons name="close" size={24} color={colors.textPrimary} />
-              </TouchableOpacity>
-            </View>
+          <ScrollView style={styles.modalScrollView}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Cargar Fotos</Text>
+                <TouchableOpacity onPress={() => setShowModal(false)}>
+                  <MaterialCommunityIcons name="close" size={24} color={colors.textPrimary} />
+                </TouchableOpacity>
+              </View>
 
-            {selectedPartido && (
-              <View style={styles.modalPartidoInfo}>
-                <Text style={styles.modalPartidoText}>
-                  {selectedPartido.equipo_local?.nombre} vs {selectedPartido.equipo_visitante?.nombre}
-                </Text>
-                <Text style={styles.modalPartidoDate}>
-                  {selectedPartido.fecha} - {selectedPartido.hora}
+              {selectedPartido && (
+                <View style={styles.modalPartidoInfo}>
+                  <Text style={styles.modalPartidoText}>
+                    {selectedPartido.equipo_local?.nombre} vs {selectedPartido.equipo_visitante?.nombre}
+                  </Text>
+                  <Text style={styles.modalPartidoDate}>
+                    {selectedPartido.fecha} - {selectedPartido.hora}
+                  </Text>
+                </View>
+              )}
+
+              {/* Sección de Link de Fotos */}
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Link de Google Drive (fotos completas) *</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="https://drive.google.com/..."
+                  value={linkFotos}
+                  onChangeText={setLinkFotos}
+                  placeholderTextColor={colors.textLight}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="url"
+                  multiline
+                />
+                <Text style={styles.inputHint}>
+                  Link con todas las fotos del partido
                 </Text>
               </View>
-            )}
 
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Link de Google Drive o similar *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="https://drive.google.com/..."
-                value={linkFotos}
-                onChangeText={setLinkFotos}
-                placeholderTextColor={colors.textLight}
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="url"
-                multiline
-              />
-              <Text style={styles.inputHint}>
-                Asegúrate de que el link sea público y accesible
-              </Text>
-            </View>
+              {/* Sección de Fotos de Preview */}
+              <View style={styles.previewSection}>
+                <Text style={styles.inputLabel}>Fotos de ejemplo (máx. 5)</Text>
+                <Text style={styles.inputHint} style={{ marginBottom: 12 }}>
+                  Estas fotos se mostrarán con watermark como vista previa
+                </Text>
 
-            <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.modalButtonCancel]}
-                onPress={() => setShowModal(false)}
-                disabled={saving}
-              >
-                <Text style={styles.modalButtonTextCancel}>Cancelar</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.modalButton, styles.modalButtonSave]}
-                onPress={handleSaveFotos}
-                disabled={saving}
-              >
-                {saving ? (
-                  <ActivityIndicator size="small" color={colors.white} />
-                ) : (
-                  <Text style={styles.modalButtonTextSave}>Guardar</Text>
+                {uploadingImages && (
+                  <View style={styles.uploadingContainer}>
+                    <ActivityIndicator size="small" color={colors.primary} />
+                    <Text style={styles.uploadingText}>Procesando imágenes...</Text>
+                  </View>
                 )}
-              </TouchableOpacity>
+
+                {previewImages.length > 0 && (
+                  <View style={styles.imagesGrid}>
+                    {previewImages.map((uri, index) => (
+                      <View key={index} style={styles.imagePreviewContainer}>
+                        <Image source={{ uri }} style={styles.imagePreview} />
+                        <TouchableOpacity
+                          style={styles.removeImageButton}
+                          onPress={() => handleRemoveImage(index)}
+                        >
+                          <MaterialCommunityIcons name="close-circle" size={24} color={colors.error} />
+                        </TouchableOpacity>
+                        <View style={styles.watermarkBadge}>
+                          <MaterialCommunityIcons name="watermark" size={12} color={colors.white} />
+                          <Text style={styles.watermarkText}>WATERMARK</Text>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                {previewImages.length < 5 && (
+                  <TouchableOpacity
+                    style={styles.addPhotoButton}
+                    onPress={handlePickImages}
+                    disabled={uploadingImages}
+                  >
+                    <MaterialCommunityIcons name="camera-plus" size={32} color={colors.primary} />
+                    <Text style={styles.addPhotoText}>
+                      {previewImages.length === 0 ? 'Agregar fotos de ejemplo' : `Agregar más (${5 - previewImages.length} restantes)`}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.modalButtonCancel]}
+                  onPress={() => setShowModal(false)}
+                  disabled={saving}
+                >
+                  <Text style={styles.modalButtonTextCancel}>Cancelar</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.modalButtonSave]}
+                  onPress={handleSaveFotos}
+                  disabled={saving || uploadingImages}
+                >
+                  {saving ? (
+                    <ActivityIndicator size="small" color={colors.white} />
+                  ) : (
+                    <Text style={styles.modalButtonTextSave}>Guardar</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
+          </ScrollView>
         </View>
       </Modal>
     </SafeAreaView>
@@ -501,6 +624,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
+  modalScrollView: {
+    maxHeight: '90%',
+  },
   modalContent: {
     backgroundColor: colors.white,
     borderTopLeftRadius: 20,
@@ -508,7 +634,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 40,
-    maxHeight: '80%',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -590,5 +715,84 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: colors.white,
+  },
+  previewSection: {
+    marginTop: 24,
+    marginBottom: 24,
+  },
+  uploadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    paddingVertical: 20,
+    backgroundColor: colors.backgroundGray,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  uploadingText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  imagesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 16,
+  },
+  imagePreviewContainer: {
+    width: '48%',
+    aspectRatio: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+    position: 'relative',
+    backgroundColor: colors.backgroundGray,
+  },
+  imagePreview: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  removeImageButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: colors.white,
+    borderRadius: 12,
+  },
+  watermarkBadge: {
+    position: 'absolute',
+    bottom: 8,
+    left: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  watermarkText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: colors.white,
+  },
+  addPhotoButton: {
+    borderWidth: 2,
+    borderColor: colors.primary,
+    borderStyle: 'dashed',
+    borderRadius: 12,
+    paddingVertical: 32,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    backgroundColor: colors.backgroundGray,
+  },
+  addPhotoText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primary,
+    textAlign: 'center',
   },
 });

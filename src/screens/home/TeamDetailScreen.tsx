@@ -87,11 +87,10 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
     newPlayers: Jugador[];
   } | null>(null);
 
-  // Tabs - Fotos se muestra para todos
+  // Tabs - Solo estadísticas y jugadores
   const tabs = [
     { id: 'estadisticas', label: 'Estadísticas' },
     { id: 'jugadores', label: 'Jugadores' },
-    { id: 'fotos', label: 'Fotos' },
   ];
 
   const [activeTab, setActiveTab] = useState('estadisticas');

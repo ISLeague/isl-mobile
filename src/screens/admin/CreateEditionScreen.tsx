@@ -84,6 +84,7 @@ export const CreateEditionScreen = ({ navigation, route }: any) => {
         numero: numeroValue,
         nombre: nombre.trim(),
         id_torneo: torneo.id_torneo,
+        estado,
         fecha_inicio: fechaInicio.trim(),
         fecha_fin: fechaFin.trim(),
       });

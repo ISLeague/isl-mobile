@@ -23,6 +23,7 @@ interface TeamsTabProps {
   refreshTrigger?: number;
   onCreateTeam?: () => void;
   onBulkCreateTeams?: () => void;
+  onBulkImportPlayers?: () => void;
   onTeamPress?: (equipo: Equipo) => void;
 }
 
@@ -32,6 +33,7 @@ export const TeamsTab: React.FC<TeamsTabProps> = ({
   refreshTrigger,
   onCreateTeam,
   onBulkCreateTeams,
+  onBulkImportPlayers,
   onTeamPress,
 }) => {
   const { isAdmin } = useAuth();
@@ -172,9 +174,28 @@ export const TeamsTab: React.FC<TeamsTabProps> = ({
               onPress={onBulkCreateTeams}
             >
               <MaterialCommunityIcons name="file-upload" size={24} color={colors.white} />
-              <Text style={styles.createButtonText}>Importar CSV</Text>
+              <Text style={styles.createButtonText}>Importar Equipos CSV</Text>
             </TouchableOpacity>
           )}
+        </View>
+      )}
+
+      {/* Botón de Importar Jugadores CSV - Siempre activo */}
+      {isAdmin && equipos.length > 0 && onBulkImportPlayers && (
+        <View style={styles.importPlayersContainer}>
+          <TouchableOpacity
+            style={styles.importPlayersButton}
+            onPress={onBulkImportPlayers}
+          >
+            <MaterialCommunityIcons name="account-multiple-plus" size={24} color={colors.success} />
+            <View style={styles.importPlayersTextContainer}>
+              <Text style={styles.importPlayersTitle}>Importar Jugadores CSV</Text>
+              <Text style={styles.importPlayersSubtitle}>
+                Carga plantillas de jugadores para múltiples equipos
+              </Text>
+            </View>
+            <MaterialCommunityIcons name="chevron-right" size={24} color={colors.textSecondary} />
+          </TouchableOpacity>
         </View>
       )}
 
@@ -468,5 +489,38 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
     textAlign: 'center',
+  },
+  importPlayersContainer: {
+    marginHorizontal: 16,
+    marginVertical: 12,
+  },
+  importPlayersButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderRadius: 12,
+    padding: 16,
+    gap: 12,
+    borderWidth: 2,
+    borderColor: colors.success,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  importPlayersTextContainer: {
+    flex: 1,
+  },
+  importPlayersTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 4,
+  },
+  importPlayersSubtitle: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    lineHeight: 18,
   },
 });

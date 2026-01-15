@@ -60,6 +60,7 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
     edicionCategoria?.id_edicion_categoria
   );
   const [idFase, setIdFase] = useState<number | undefined>(undefined);
+  const [showTeamChoiceModal, setShowTeamChoiceModal] = useState(false);
 
   // Tabs diferentes para admin y fan (invitados ven lo mismo que fans)
   const tabs = isAdmin
@@ -150,6 +151,8 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
   // Refresh LocalTab and Groups when screen gains focus
   useFocusEffect(
     React.useCallback(() => {
+      loadCategorias();
+      loadFaseGrupos();
       setRefreshLocalTab(prev => prev + 1);
       setRefreshGroups(prev => prev + 1);
       setRefreshTeams(prev => prev + 1);
@@ -169,18 +172,18 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
       // First load all global categories to get names
       const allCategoriasResponse = await api.categorias.list();
       const allCategorias = allCategoriasResponse.data?.data || allCategoriasResponse.data || [];
-      
+
       const response = await api.edicionCategorias.list({ id_edicion: edicion.id_edicion });
       if (response.success && response.data) {
         // Handle both { data: [...] } and { data: { data: [...] } }
         const categoriesArray = response.data.data || response.data || [];
-        
+
         // Enrich with categoria info if not present
         const enrichedCategories = categoriesArray.map((edicionCat: any) => ({
           ...edicionCat,
           categoria: edicionCat.categoria || allCategorias.find((c: any) => c.id_categoria === edicionCat.id_categoria),
         }));
-        
+
         setCategorias(enrichedCategories);
       }
     } catch (error) {
@@ -190,23 +193,19 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
 
   const loadFaseGrupos = async () => {
     if (!idEdicionCategoria) {
-      // console.warn('⚠️ [CategoryManagement] No idEdicionCategoria disponible para cargar fases');
       return;
     }
 
     try {
-
       const fasesResponse = await api.fases.list(idEdicionCategoria);
       if (fasesResponse.success && fasesResponse.data && fasesResponse.data.length > 0) {
         // Find the first "grupo" type fase
         const faseGrupos = fasesResponse.data.find(f => f.tipo === 'grupo');
         if (faseGrupos) {
           setIdFase(faseGrupos.id_fase);
-        } else {
         }
       }
     } catch (error) {
-      // console.error('Error loading fase de grupos:', error);
     }
   };
 
@@ -384,6 +383,7 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
                     idFase={idFase}
                     idEdicionCategoria={idEdicionCategoria}
                     refreshTrigger={refreshGroups}
+                    onRefresh={loadFaseGrupos}
                   />
                 </View>
               );
@@ -411,10 +411,11 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
                     idEdicionCategoria={idEdicionCategoria || 1}
                     maxEquipos={edicionCategoria?.max_equipos}
                     refreshTrigger={refreshTeams}
-                    onCreateTeam={() => navigation.navigate('CreateTeam', {
+                    onCreateTeam={() => setShowTeamChoiceModal(true)}
+                    onBulkCreateTeams={() => navigation.navigate('BulkCreateTeams', {
                       idEdicionCategoria: idEdicionCategoria || 1,
                     })}
-                    onBulkCreateTeams={() => navigation.navigate('BulkCreateTeams', {
+                    onBulkImportPlayers={() => navigation.navigate('BulkImportPlayers', {
                       idEdicionCategoria: idEdicionCategoria || 1,
                     })}
                     onTeamPress={(equipo) => navigation.navigate('TeamDetail', { equipoId: equipo.id_equipo })}
@@ -664,6 +665,53 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
             <Text style={styles.modalNote}>
               El tema se aplicará en toda la aplicación para todos los usuarios (admin y fans).
             </Text>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Tipo de creación de equipo Modal */}
+      <Modal
+        visible={showTeamChoiceModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowTeamChoiceModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={[styles.modalTitle, { textAlign: 'center', marginBottom: 24 }]}>Crear Nuevo Equipo</Text>
+
+            <TouchableOpacity
+              style={[styles.modalButton, styles.confirmButton, { marginBottom: 16 }]}
+              onPress={() => {
+                setShowTeamChoiceModal(false);
+                navigation.navigate('CreateTeam', {
+                  idEdicionCategoria: idEdicionCategoria || 1,
+                  onTeamCreated: () => setRefreshTeams(prev => prev + 1)
+                });
+              }}
+            >
+              <Text style={styles.confirmButtonText}>Crear Manualmente</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.modalButton, styles.confirmButton, { marginBottom: 16 }]}
+              onPress={() => {
+                setShowTeamChoiceModal(false);
+                navigation.navigate('SelectMasterTeams', {
+                  idEdicionCategoria: idEdicionCategoria || 1,
+                  onTeamsAdded: () => setRefreshTeams(prev => prev + 1)
+                });
+              }}
+            >
+              <Text style={styles.confirmButtonText}>Seleccionar Existente</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.modalButton, styles.cancelButton]}
+              onPress={() => setShowTeamChoiceModal(false)}
+            >
+              <Text style={styles.cancelButtonText}>Cancelar</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -989,10 +1037,32 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   modalNote: {
-    fontSize: 12,
+    fontSize: 13,
     color: colors.textSecondary,
     textAlign: 'center',
-    fontStyle: 'italic',
+    marginTop: 20,
     lineHeight: 18,
+  },
+  modalButton: {
+    width: '100%',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: colors.backgroundGray,
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  confirmButton: {
+    backgroundColor: colors.primary,
+  },
+  confirmButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.white,
   },
 });

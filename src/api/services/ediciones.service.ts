@@ -41,7 +41,7 @@ export const edicionesService = {
       '/ediciones',
       data,
       {
-        params: { id_edicion, action: 'update' },
+        params: { id: id_edicion, action: 'update' },
       }
     );
     return response.data;
@@ -54,7 +54,7 @@ export const edicionesService = {
     const response = await apiClient.delete(
       '/ediciones',
       {
-        params: { id_edicion, action: 'delete' },
+        params: { id: id_edicion, action: 'delete' },
       }
     );
     return response.data;
