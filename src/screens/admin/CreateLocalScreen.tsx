@@ -217,7 +217,7 @@ export const CreateLocalScreen = ({ navigation, route }: any) => {
               value={latitud}
               onChangeText={setLatitud}
               error={errors.latitud}
-              keyboardType="numeric"
+              keyboardType="default"
               leftIcon={<Ionicons name="location" size={20} color={colors.textLight} />}
             />
 
@@ -227,7 +227,7 @@ export const CreateLocalScreen = ({ navigation, route }: any) => {
               value={longitud}
               onChangeText={setLongitud}
               error={errors.longitud}
-              keyboardType="numeric"
+              keyboardType="default"
               leftIcon={<Ionicons name="navigate" size={20} color={colors.textLight} />}
             />
 

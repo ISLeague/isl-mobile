@@ -14,7 +14,7 @@ import { colors } from '../../theme/colors';
 import { Input, Button, DatePickerInput, TimePickerInput } from '../../components/common';
 import { useToast } from '../../contexts/ToastContext';
 import { safeAsync } from '../../utils/errorHandling';
-import { Partido, Cancha } from '../../api/types';
+import { Partido, Cancha, Equipo, Grupo, Clasificacion } from '../../api/types';
 import { FixtureGenerateResponse, EnfrentamientoFixture } from '../../api/types/rondas.types';
 import api from '../../api';
 
@@ -46,6 +46,7 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
   const [orden, setOrden] = useState('1');
+  const [modoCreacion, setModoCreacion] = useState<'individual' | 'automatico'>('individual');
 
   // Step 2: Generate Fixture
   const [createdRondaId, setCreatedRondaId] = useState<number | null>(null);
@@ -199,9 +200,12 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
   };
 
   const handleCreateRonda = async () => {
-    if (!nombre.trim()) {
-      Alert.alert('Error', 'El nombre de la ronda es requerido');
-      return;
+    // Si es modo automático, no validar nombre
+    if (tipo !== 'fase_grupos' || modoCreacion !== 'automatico') {
+      if (!nombre.trim()) {
+        Alert.alert('Error', 'El nombre de la ronda es requerido');
+        return;
+      }
     }
 
     if (!orden.trim() || isNaN(parseInt(orden))) {
@@ -237,47 +241,16 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
       return;
     }
 
-    // Validar que todos los grupos tengan el mismo tamaño (solo para Fase de Grupos)
-    if (tipo === 'fase_grupos') {
-      const gruposResult = await safeAsync(
-        async () => await api.grupos.get(fasesResult.id_fase),
-        'CreateRondaFlow - getGrupos',
-        { fallbackValue: null }
-      );
-
-      if (gruposResult && gruposResult.success && gruposResult.data) {
-        const grupos = gruposResult.data.grupos || [];
-        if (grupos.length > 0) {
-          const firstGroupSize = grupos[0].equipos?.length || 0;
-          const allSameSize = grupos.every((g: any) => (g.equipos?.length || 0) === firstGroupSize);
-
-          if (!allSameSize) {
-            Alert.alert(
-              'Error de Validación',
-              'Todos los grupos deben tener la misma cantidad de equipos para generar el fixture automáticamente.'
-            );
-            setLoading(false);
-            return;
-          }
-
-          if (firstGroupSize === 0) {
-            Alert.alert('Error', 'Los grupos no tienen equipos asignados.');
-            setLoading(false);
-            return;
-          }
-        } else {
-          Alert.alert('Error', 'No hay grupos creados en esta fase.');
-          setLoading(false);
-          return;
-        }
-      }
+    if (tipo === 'fase_grupos' && modoCreacion === 'automatico') {
+      handleCreateAutomaticRondas(fasesResult.id_fase);
+      return;
     }
 
     const rondaData = {
       nombre: nombre.trim(),
       id_fase: fasesResult.id_fase,
       tipo,
-      veces_enfrentamiento: tipo === 'fase_grupos' ? parseInt(vecesEnfrentamiento) : undefined,
+      cantidad_enfrentamientos: tipo === 'fase_grupos' ? parseInt(vecesEnfrentamiento) : undefined,
       es_amistosa: tipo === 'amistosa',
       fecha_inicio: tipo === 'amistosa' ? (fechaInicio.trim() || undefined) : undefined,
       fecha_fin: tipo === 'amistosa' ? (fechaFin.trim() || undefined) : undefined,
@@ -305,7 +278,89 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
       setCreatedRondaId(rondaId);
       setCreatedFaseId(fasesResult.id_fase);
       showSuccess(`Ronda "${nombre}" creada exitosamente`);
-      setCurrentStep('generate');
+
+      if (tipo === 'fase_grupos' && modoCreacion === 'individual') {
+        navigation.goBack();
+      } else {
+        setCurrentStep('generate');
+      }
+    }
+  };
+
+  const handleCreateAutomaticRondas = async (idFase: number) => {
+    setLoading(true);
+
+    try {
+      // 1. Obtener grupos para saber cuántas rondas generar
+      const gruposResult = await api.grupos.get(idFase);
+      if (!gruposResult.success || !gruposResult.data?.grupos || gruposResult.data.grupos.length === 0) {
+        showError('No hay grupos creados en esta fase.');
+        setLoading(false);
+        return;
+      }
+
+      const grupos = gruposResult.data.grupos;
+      const numEquipos = grupos[0].equipos?.length || 0;
+
+      // Validar que todos los grupos tengan el mismo tamaño
+      const allSameSize = grupos.every((g: any) => (g.equipos?.length || 0) === numEquipos);
+      if (!allSameSize) {
+        Alert.alert('Error', 'Todos los grupos deben tener la misma cantidad de equipos.');
+        setLoading(false);
+        return;
+      }
+
+      if (numEquipos < 2) {
+        Alert.alert('Error', 'Los grupos deben tener al menos 2 equipos.');
+        setLoading(false);
+        return;
+      }
+
+      // Calcular rondas necesarias basado en la lógica de enfrentamientos
+      // Para 4 equipos: 3 rondas (1° vs 4°, 1° vs 3°, 1° vs 2°)
+      // Si se enfrentan 2 veces, serían 6 rondas
+      const veces = parseInt(vecesEnfrentamiento) || 1;
+      const totalRondas = (numEquipos - 1) * veces;
+
+      let successCount = 0;
+
+      // 2. Crear rondas y generar fixtures
+      for (let i = 1; i <= totalRondas; i++) {
+        // Crear Ronda
+        const rondaData = {
+          nombre: `Fecha ${i}`,
+          id_fase: idFase,
+          tipo: 'fase_grupos' as const,
+          cantidad_enfrentamientos: veces,
+          orden: i,
+        };
+
+        const rondaRes = await api.rondas.create(rondaData);
+        if (rondaRes.success && rondaRes.data) {
+          const rondaId = rondaRes.data.id_ronda || rondaRes.data.id;
+
+          // Determinar la jornada actual dentro del ciclo de veces
+          const jornadaActual = ((i - 1) % (numEquipos - 1)) + 1;
+
+          // Generar Fixture para esta ronda con la lógica de posiciones
+          // El fixture debe emparejar: 1° con último, 2° con penúltimo, etc.
+          await api.rondas.generarFixture({
+            id_ronda: rondaId,
+            tipo_generacion: 'round_robin',
+            jornada: jornadaActual,
+            ida_vuelta: veces > 1
+          });
+
+          successCount++;
+        }
+      }
+
+      showSuccess(`Se crearon ${successCount} rondas con sus fixtures automáticamente.`);
+      navigation.goBack();
+    } catch (error) {
+      showError('Error durante la creación automática de rondas.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -402,8 +457,105 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
       setFixtureDetails(initialDetails);
 
       showSuccess('Fixture generado exitosamente');
-      setCurrentStep('assign');
+
+      // Crear partidos automáticamente sin pedir detalles
+      await handleCreatePartidosAutomatically(result.data.jornadas);
     }
+  };
+
+  const handleCreatePartidosAutomatically = async (jornadas: any[]) => {
+    if (!createdRondaId || !createdFaseId) {
+      showError('No hay datos de ronda disponibles');
+      return;
+    }
+
+    setLoading(true);
+
+    let createdCount = 0;
+    let errorCount = 0;
+
+    // Get all fixtures
+    const allFixtures: any[] = [];
+    jornadas.forEach((jornada) => {
+      jornada.enfrentamientos.forEach((enfrentamiento: any) => {
+        allFixtures.push(enfrentamiento);
+      });
+    });
+
+    // Create partidos without fecha, hora, cancha
+    for (const fixture of allFixtures) {
+      const tipoPartido: 'clasificacion' | 'eliminatoria' | 'amistoso' =
+        tipo === 'amistosa' ? 'amistoso' : 'clasificacion';
+
+      const partidoData = {
+        id_fixture: fixture.fixture_id,
+        id_equipo_local: fixture.id_equipo_local,
+        id_equipo_visitante: fixture.id_equipo_visitante,
+        id_ronda: createdRondaId,
+        id_fase: createdFaseId,
+        tipo_partido: tipoPartido,
+        afecta_clasificacion: tipo !== 'amistosa',
+        observaciones: fixture.nombre_grupo
+          ? `Partido de ${tipo === 'amistosa' ? 'amistoso' : 'clasificación'} - Grupo ${fixture.nombre_grupo}`
+          : `Partido de ${tipo === 'amistosa' ? 'amistoso' : tipo}`,
+      };
+
+      const result = await safeAsync(
+        async () => {
+          const response = await api.partidos.createFromFixture(partidoData);
+          return response;
+        },
+        'CreateRondaFlow - createPartidoAuto',
+        {
+          fallbackValue: null,
+          onError: (error) => {
+            errorCount++;
+          },
+        }
+      );
+
+      if (result && result.success) {
+        createdCount++;
+      }
+    }
+
+    setLoading(false);
+
+    if (errorCount > 0) {
+      showError(`Se crearon ${createdCount} partidos con ${errorCount} errores`);
+    } else {
+      showSuccess(`${createdCount} partidos creados exitosamente`);
+    }
+
+    // Volver a la pantalla anterior
+    navigation.goBack();
+  };
+
+  const validateFriendlyRoundDuplicates = () => {
+    if (tipo !== 'amistosa') return true;
+
+    const equiposEnJornadas: { [jornada: number]: Set<number> } = {};
+    let isValid = true;
+
+    if (!fixtureResponse?.data?.jornadas) return true;
+
+    fixtureResponse.data.jornadas.forEach((jornada: any) => {
+      const jornadaNum = jornada.jornada;
+      if (!equiposEnJornadas[jornadaNum]) {
+        equiposEnJornadas[jornadaNum] = new Set();
+      }
+
+      jornada.enfrentamientos.forEach((enfrentamiento: any) => {
+        if (equiposEnJornadas[jornadaNum].has(enfrentamiento.id_equipo_local) ||
+          equiposEnJornadas[jornadaNum].has(enfrentamiento.id_equipo_visitante)) {
+          isValid = false;
+        }
+        equiposEnJornadas[jornadaNum].add(enfrentamiento.id_equipo_local);
+        equiposEnJornadas[jornadaNum].add(enfrentamiento.id_equipo_visitante);
+      });
+    });
+
+    return isValid;
   };
 
   const handleCreatePartidos = async () => {
@@ -554,16 +706,7 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
         <View style={[styles.stepCircle, currentStep === 'generate' && styles.stepCircleActive]}>
           <Text style={styles.stepNumber}>2</Text>
         </View>
-        <Text style={styles.stepLabel}>Generar Fixture</Text>
-      </View>
-
-      <View style={styles.stepLine} />
-
-      <View style={styles.stepItem}>
-        <View style={[styles.stepCircle, currentStep === 'assign' && styles.stepCircleActive]}>
-          <Text style={styles.stepNumber}>3</Text>
-        </View>
-        <Text style={styles.stepLabel}>Asignar Detalles</Text>
+        <Text style={styles.stepLabel}>Generar y Crear Partidos</Text>
       </View>
     </View>
   );
@@ -576,13 +719,15 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
     >
       <Text style={styles.sectionTitle}>Información de la Ronda</Text>
 
-      <Input
-        label="Nombre de la Ronda *"
-        placeholder="Ej: Jornada 1"
-        value={nombre}
-        onChangeText={setNombre}
-        leftIcon={<MaterialCommunityIcons name="trophy" size={20} color={colors.textLight} />}
-      />
+      {(tipo !== 'fase_grupos' || modoCreacion === 'individual') && (
+        <Input
+          label="Nombre de la Ronda *"
+          placeholder="Ej: Jornada 1"
+          value={nombre}
+          onChangeText={setNombre}
+          leftIcon={<MaterialCommunityIcons name="trophy" size={20} color={colors.textLight} />}
+        />
+      )}
 
       <Text style={styles.fieldLabel}>Tipo de Ronda *</Text>
       <View style={styles.tipoButtons}>
@@ -616,14 +761,46 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
       </View>
 
       {tipo === 'fase_grupos' && (
-        <Input
-          label="¿Cuántas veces se enfrentan los equipos? *"
-          placeholder="Ej: 1 (Ida), 2 (Ida y Vuelta)"
-          value={vecesEnfrentamiento}
-          onChangeText={setVecesEnfrentamiento}
-          keyboardType="numeric"
-          leftIcon={<MaterialCommunityIcons name="repeat" size={20} color={colors.textLight} />}
-        />
+        <>
+          <View style={styles.tipoButtons}>
+            <TouchableOpacity
+              style={[styles.tipoButton, modoCreacion === 'individual' && styles.tipoButtonActive]}
+              onPress={() => setModoCreacion('individual')}
+            >
+              <MaterialCommunityIcons
+                name="account"
+                size={24}
+                color={modoCreacion === 'individual' ? colors.white : colors.primary}
+              />
+              <Text style={[styles.tipoButtonText, modoCreacion === 'individual' && styles.tipoButtonTextActive]}>
+                Individual
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.tipoButton, modoCreacion === 'automatico' && styles.tipoButtonActive]}
+              onPress={() => setModoCreacion('automatico')}
+            >
+              <MaterialCommunityIcons
+                name="robot"
+                size={24}
+                color={modoCreacion === 'automatico' ? colors.white : colors.primary}
+              />
+              <Text style={[styles.tipoButtonText, modoCreacion === 'automatico' && styles.tipoButtonTextActive]}>
+                Automático
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <Input
+            label="¿Cuántas veces se enfrentan los equipos? *"
+            placeholder="Ej: 1 (Ida), 2 (Ida y Vuelta)"
+            value={vecesEnfrentamiento}
+            onChangeText={setVecesEnfrentamiento}
+            keyboardType="numeric"
+            leftIcon={<MaterialCommunityIcons name="repeat" size={20} color={colors.textLight} />}
+          />
+        </>
       )}
 
 
@@ -659,7 +836,13 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
       />
 
       <Button
-        title="Siguiente: Generar Fixture"
+        title={
+          tipo === 'fase_grupos' && modoCreacion === 'individual'
+            ? 'Crear Ronda'
+            : tipo === 'fase_grupos' && modoCreacion === 'automatico'
+              ? 'Generar Rondas Automáticamente'
+              : 'Siguiente: Generar Fixture'
+        }
         onPress={handleCreateRonda}
         loading={loading}
         disabled={loading}
@@ -693,75 +876,53 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
         <TouchableOpacity
           style={[styles.generacionButton, tipoGeneracion === 'round_robin' && styles.generacionButtonActive]}
           onPress={() => setTipoGeneracion('round_robin')}
-          disabled={tipo === 'amistosa'}
         >
           <MaterialCommunityIcons
             name="group"
             size={28}
-            color={tipoGeneracion === 'round_robin' ? colors.white : tipo === 'amistosa' ? colors.textLight : colors.primary}
+            color={tipoGeneracion === 'round_robin' ? colors.white : colors.primary}
           />
           <Text style={[
             styles.generacionButtonText,
             tipoGeneracion === 'round_robin' && styles.generacionButtonTextActive,
-            tipo === 'amistosa' && styles.generacionButtonTextDisabled
           ]}>
             Round Robin
           </Text>
           <Text style={[
             styles.generacionButtonDesc,
             tipoGeneracion === 'round_robin' && styles.generacionButtonDescActive,
-            tipo === 'amistosa' && styles.generacionButtonTextDisabled
           ]}>
             Todos contra todos
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.generacionButton, tipoGeneracion === 'amistoso_aleatorio' && styles.generacionButtonActive]}
-          onPress={() => setTipoGeneracion('amistoso_aleatorio')}
-        >
-          <MaterialCommunityIcons
-            name="shuffle-variant"
-            size={28}
-            color={tipoGeneracion === 'amistoso_aleatorio' ? colors.white : colors.primary}
-          />
-          <Text style={[styles.generacionButtonText, tipoGeneracion === 'amistoso_aleatorio' && styles.generacionButtonTextActive]}>
-            Aleatorio
-          </Text>
-          <Text style={[styles.generacionButtonDesc, tipoGeneracion === 'amistoso_aleatorio' && styles.generacionButtonDescActive]}>
-            Emparejamientos al azar
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.generacionButton,
-            tipoGeneracion === 'amistoso_intergrupos' && styles.generacionButtonActive,
-            tipo !== 'amistosa' && styles.generacionButtonDisabled
-          ]}
-          onPress={() => setTipoGeneracion('amistoso_intergrupos')}
-          disabled={tipo !== 'amistosa'}
-        >
-          <MaterialCommunityIcons
-            name="account-group"
-            size={28}
-            color={tipoGeneracion === 'amistoso_intergrupos' ? colors.white : tipo !== 'amistosa' ? colors.textLight : colors.primary}
-          />
-          <Text style={[
-            styles.generacionButtonText,
-            tipoGeneracion === 'amistoso_intergrupos' && styles.generacionButtonTextActive,
-            tipo !== 'amistosa' && styles.generacionButtonTextDisabled
-          ]}>
-            Inter-Grupos
-          </Text>
-          <Text style={[
-            styles.generacionButtonDesc,
-            tipoGeneracion === 'amistoso_intergrupos' && styles.generacionButtonDescActive,
-            tipo !== 'amistosa' && styles.generacionButtonTextDisabled
-          ]}>
-            Cruces entre grupos
-          </Text>
-        </TouchableOpacity>
+        {tipo === 'amistosa' && (
+          <TouchableOpacity
+            style={[
+              styles.generacionButton,
+              tipoGeneracion === 'amistoso_intergrupos' && styles.generacionButtonActive,
+            ]}
+            onPress={() => setTipoGeneracion('amistoso_intergrupos')}
+          >
+            <MaterialCommunityIcons
+              name="account-group"
+              size={28}
+              color={tipoGeneracion === 'amistoso_intergrupos' ? colors.white : colors.primary}
+            />
+            <Text style={[
+              styles.generacionButtonText,
+              tipoGeneracion === 'amistoso_intergrupos' && styles.generacionButtonTextActive,
+            ]}>
+              Inter-Grupos
+            </Text>
+            <Text style={[
+              styles.generacionButtonDesc,
+              tipoGeneracion === 'amistoso_intergrupos' && styles.generacionButtonDescActive,
+            ]}>
+              Cruces entre grupos
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {tipo === 'fase_grupos' && tipoGeneracion === 'round_robin' && (
@@ -810,11 +971,11 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
           style={styles.buttonHalf}
         />
         <Button
-          title="Generar Partidos"
+          title="Generar y Crear Partidos"
           onPress={handleGenerateFixture}
           loading={loading}
           disabled={loading}
-          style={styles.buttonHalf}
+          style={styles.button}
         />
       </View>
     </ScrollView>
@@ -1057,7 +1218,6 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
 
       {currentStep === 'create' && renderCreateStep()}
       {currentStep === 'generate' && renderGenerateStep()}
-      {currentStep === 'assign' && renderAssignStep()}
     </SafeAreaView>
   );
 };

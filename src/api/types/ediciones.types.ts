@@ -27,6 +27,7 @@ export interface CreateEdicionRequest {
   numero: number;
   nombre: string;
   id_torneo: number;
+  estado: EstadoEdicion;
   fecha_inicio: string;
   fecha_fin: string;
 }

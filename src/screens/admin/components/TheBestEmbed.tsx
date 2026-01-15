@@ -41,19 +41,31 @@ export const TheBestEmbed: React.FC<TheBestEmbedProps> = ({ navigation, idEdicio
       // Fetch top scorers
       const goleadoresResponse = await api.estadisticas.goleadores(idEdicionCategoria, 10);
       if (goleadoresResponse.success && goleadoresResponse.data) {
-        setGoleadores(goleadoresResponse.data.goleadores || []);
+        // Filtrar jugadores con datos válidos
+        const goleadoresValidos = (goleadoresResponse.data.goleadores || []).filter(
+          (g: any) => g && g.id_jugador && g.nombre && g.equipo_nombre
+        );
+        setGoleadores(goleadoresValidos);
       }
 
       // Fetch top assists
       const asistenciasResponse = await api.estadisticas.asistencias(idEdicionCategoria, 10);
       if (asistenciasResponse.success && asistenciasResponse.data) {
-        setAsistencias(asistenciasResponse.data.asistencias || []);
+        // Filtrar jugadores con datos válidos
+        const asistenciasValidas = (asistenciasResponse.data.asistencias || []).filter(
+          (a: any) => a && a.id_jugador && a.nombre && a.equipo_nombre
+        );
+        setAsistencias(asistenciasValidas);
       }
 
       // Fetch team statistics
       const equiposResponse = await api.estadisticas.equiposGlobal(idEdicionCategoria);
       if (equiposResponse.success && equiposResponse.data) {
-        setEstadisticasEquipos(equiposResponse.data.estadisticas || []);
+        // Filtrar equipos con datos válidos
+        const equiposValidos = (equiposResponse.data.estadisticas || []).filter(
+          (e: any) => e && e.id_equipo && e.nombre
+        );
+        setEstadisticasEquipos(equiposValidos);
       }
     } catch (error) {
       // console.error('Error loading statistics:', error);
@@ -247,34 +259,36 @@ export const TheBestEmbed: React.FC<TheBestEmbedProps> = ({ navigation, idEdicio
         </View>
 
         <View style={styles.rankingList}>
-          {ranking.data.map((item: any, index: number) => (
-            <TouchableOpacity
-              key={ranking.isTeam ? item.id_equipo : item.id_jugador}
-              style={styles.rankingItem}
-              onPress={() => ranking.isTeam ? handleTeamPress(item.id_equipo) : handlePlayerPress(item.id_jugador)}
-              activeOpacity={0.7}
-            >
-              <View style={styles.rankingPosition}>
-                <Text style={[
-                  styles.positionText,
-                  index === 0 && styles.firstPosition,
-                  index === 1 && styles.secondPosition,
-                  index === 2 && styles.thirdPosition,
-                ]}>
-                  {index + 1}
+          {ranking.data
+            .filter((item: any) => item && (ranking.isTeam ? item.id_equipo : item.id_jugador))
+            .map((item: any, index: number) => (
+              <TouchableOpacity
+                key={ranking.isTeam ? item.id_equipo : item.id_jugador}
+                style={styles.rankingItem}
+                onPress={() => ranking.isTeam ? handleTeamPress(item.id_equipo) : handlePlayerPress(item.id_jugador)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.rankingPosition}>
+                  <Text style={[
+                    styles.positionText,
+                    index === 0 && styles.firstPosition,
+                    index === 1 && styles.secondPosition,
+                    index === 2 && styles.thirdPosition,
+                  ]}>
+                    {index + 1}
+                  </Text>
+                </View>
+                <View style={styles.playerInfo}>
+                  <Text style={styles.playerName}>
+                    {ranking.isTeam ? (item.nombre || 'Equipo') : formatPlayerName(item.nombre || 'Jugador')}
+                  </Text>
+                  <Text style={styles.teamName}>{ranking.isTeam ? (item.logo || '') : (item.equipo_nombre || '')}</Text>
+                </View>
+                <Text style={[styles.statValue, { color: ranking.color }]}>
+                  {item[ranking.statKey] !== undefined && item[ranking.statKey] !== null ? item[ranking.statKey] : '0'}
                 </Text>
-              </View>
-              <View style={styles.playerInfo}>
-                <Text style={styles.playerName}>
-                  {ranking.isTeam ? item.nombre : formatPlayerName(item.nombre)}
-                </Text>
-                <Text style={styles.teamName}>{ranking.isTeam ? item.logo : item.equipo_nombre}</Text>
-              </View>
-              <Text style={[styles.statValue, { color: ranking.color }]}>
-                {item[ranking.statKey]}
-              </Text>
-            </TouchableOpacity>
-          ))}
+              </TouchableOpacity>
+            ))}
         </View>
       </Card>
     );

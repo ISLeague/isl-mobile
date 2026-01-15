@@ -214,13 +214,42 @@ export const EditPartidoScreen: React.FC<EditPartidoScreenProps> = ({ navigation
   const handleDelete = () => {
     Alert.alert(
       'Confirmar eliminación',
-      '¿Estás seguro de que deseas eliminar este partido? Esta acción no se puede deshacer.',
+      '¿Estás seguro de que deseas eliminar este partido? Se eliminará su resultado si existe.',
       [
         { text: 'Cancelar', style: 'cancel' },
         {
           text: 'Eliminar',
           style: 'destructive',
           onPress: async () => {
+            // Primero verificar si el partido tiene resultado e intentar eliminarlo
+            const hasResult = await safeAsync(
+              async () => {
+                // Intentar obtener el resultado del partido
+                const resultResponse = await api.resultados.getByPartido(partido.id_partido);
+                return resultResponse?.success && resultResponse?.data;
+              },
+              'checkPartidoResult',
+              {
+                fallbackValue: false,
+                onError: () => {}
+              }
+            );
+
+            // Si tiene resultado, eliminarlo primero
+            if (hasResult) {
+              await safeAsync(
+                async () => {
+                  await api.resultados.delete(partido.id_partido);
+                },
+                'deletePartidoResult',
+                {
+                  fallbackValue: null,
+                  onError: () => {}
+                }
+              );
+            }
+
+            // Ahora eliminar el partido
             const success = await safeAsync(
               async () => {
                 const response = await api.partidos.delete(partido.id_partido);

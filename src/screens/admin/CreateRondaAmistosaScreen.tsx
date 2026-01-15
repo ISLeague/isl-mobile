@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -6,15 +6,11 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Alert,
-  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
-import { Button, Modal, SearchBar } from '../../components/common';
-import { Equipo, Clasificacion, Grupo } from '../../api/types';
-import { generarPartidosAmistososAutomaticos } from '../../utils/fixtureGenerator';
+import { Button } from '../../components/common';
 import { useToast } from '../../contexts/ToastContext';
 import api from '../../api';
 import { safeAsync } from '../../utils/errorHandling';
@@ -24,207 +20,15 @@ interface CreateRondaAmistosaScreenProps {
   route: any;
 }
 
-interface PartidoAmistoso {
-  id_temporal: string;
-  id_equipo_local: number;
-  id_equipo_visitante: number;
-  fecha: string;
-  hora: string;
-  id_cancha?: number;
-}
-
 export const CreateRondaAmistosaScreen: React.FC<CreateRondaAmistosaScreenProps> = ({ navigation, route }) => {
   const { idEdicionCategoria } = route.params || {};
   const { showSuccess, showError, showInfo } = useToast();
 
   const [nombre, setNombre] = useState('Amistosos - Fecha 1');
   const [fechaInicio, setFechaInicio] = useState('');
-  const [partidos, setPartidos] = useState<PartidoAmistoso[]>([]);
-  const [showAddPartidoModal, setShowAddPartidoModal] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  // Estados para agregar partido
-  const [selectedLocal, setSelectedLocal] = useState<Equipo | null>(null);
-  const [selectedVisitante, setSelectedVisitante] = useState<Equipo | null>(null);
-  const [fechaPartido, setFechaPartido] = useState('');
-  const [horaPartido, setHoraPartido] = useState('');
-  const [selectingTeamFor, setSelectingTeamFor] = useState<'local' | 'visitante' | null>(null);
-
-  // Estados para datos de API
-  const [equipos, setEquipos] = useState<Equipo[]>([]);
-  const [clasificaciones, setClasificaciones] = useState<Clasificacion[]>([]);
-  const [grupos, setGrupos] = useState<Grupo[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  // Estados para búsqueda manual
-  const [searchQueryLocal, setSearchQueryLocal] = useState('');
-  const [searchQueryVisitante, setSearchQueryVisitante] = useState('');
-
-  // Load data from API
-  useEffect(() => {
-    const loadData = async () => {
-      if (!idEdicionCategoria) {
-        setLoading(false);
-        return;
-      }
-
-      const result = await safeAsync(
-        async () => {
-          const equiposResponse = await api.equipos.list(idEdicionCategoria);
-          const equiposData = equiposResponse.success && equiposResponse.data ? equiposResponse.data : [];
-
-          // TODO: Load grupos and clasificaciones when available
-          return { equipos: equiposData, grupos: [], clasificaciones: [] };
-        },
-        'CreateRondaAmistosaScreen - loadData',
-        { fallbackValue: { equipos: [], grupos: [], clasificaciones: [] } }
-      );
-
-      if (result) {
-        setEquipos(result.equipos);
-        setGrupos(result.grupos);
-        setClasificaciones(result.clasificaciones);
-      }
-      setLoading(false);
-    };
-
-    loadData();
-  }, [idEdicionCategoria]);
-
-  // Obtener equipos de diferentes grupos para amistosos (memoizado)
-  const getEquiposDisponiblesParaAmistosos = useCallback((equipoSeleccionado?: Equipo): Equipo[] => {
-    if (!equipoSeleccionado) return equipos;
-
-    // Encontrar el grupo del equipo seleccionado
-    const clasificacion = clasificaciones.find(c => c.id_equipo === equipoSeleccionado.id_equipo);
-    if (!clasificacion) return equipos;
-
-    // Filtrar equipos que NO están en el mismo grupo
-    const equiposOtrosGrupos = equipos.filter(equipo => {
-      const clasifEquipo = clasificaciones.find(c => c.id_equipo === equipo.id_equipo);
-      return clasifEquipo && clasifEquipo.id_grupo !== clasificacion.id_grupo;
-    });
-
-    return equiposOtrosGrupos;
-  }, [equipos, clasificaciones]);
-
-  // Generar automáticamente partidos amistosos
-  const handleGenerarAutomaticamente = () => {
-    Alert.alert(
-      '🤖 Generación Automática',
-      'Se generarán partidos entre equipos de diferentes grupos basándose en su posición (1° vs último, 2° vs penúltimo, etc.).\n\n¿Continuar?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Generar',
-          style: 'default',
-          onPress: () => {
-            try {
-              const partidosGenerados = generarPartidosAmistososAutomaticos(
-                grupos,
-                clasificaciones,
-                equipos,
-                fechaInicio || '2025-01-01'
-              );
-
-              if (partidosGenerados.length === 0) {
-                showInfo('No se pudieron generar partidos. Verifica que haya equipos en diferentes grupos.');
-                return;
-              }
-
-              // Convertir a formato PartidoAmistoso
-              const partidosAmistosos: PartidoAmistoso[] = partidosGenerados.map((p, idx) => ({
-                id_temporal: `auto_${Date.now()}_${idx}`,
-                id_equipo_local: p.id_equipo_local,
-                id_equipo_visitante: p.id_equipo_visitante,
-                fecha: p.fecha,
-                hora: p.hora,
-              }));
-
-              setPartidos(partidosAmistosos);
-              showSuccess(`Se generaron ${partidosAmistosos.length} partidos automáticamente`);
-            } catch (error) {
-              // console.error('Error generando partidos:', error);
-              showError('Error al generar partidos automáticamente');
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  const handleAddPartido = () => {
-    if (!selectedLocal || !selectedVisitante) {
-      Alert.alert('Error', 'Debes seleccionar ambos equipos');
-      return;
-    }
-
-    if (selectedLocal.id_equipo === selectedVisitante.id_equipo) {
-      Alert.alert('Error', 'Un equipo no puede jugar contra sí mismo');
-      return;
-    }
-
-    if (!fechaPartido.trim()) {
-      Alert.alert('Error', 'Debes especificar la fecha del partido');
-      return;
-    }
-
-    if (!horaPartido.trim()) {
-      Alert.alert('Error', 'Debes especificar la hora del partido');
-      return;
-    }
-
-    // Validar formato de fecha
-    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-    if (!dateRegex.test(fechaPartido)) {
-      Alert.alert('Error', 'El formato de la fecha debe ser YYYY-MM-DD (ej: 2025-12-25)');
-      return;
-    }
-
-    // Validar formato de hora
-    const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
-    if (!timeRegex.test(horaPartido)) {
-      Alert.alert('Error', 'El formato de la hora debe ser HH:MM (ej: 15:00)');
-      return;
-    }
-
-    const nuevoPartido: PartidoAmistoso = {
-      id_temporal: Date.now().toString(),
-      id_equipo_local: selectedLocal.id_equipo,
-      id_equipo_visitante: selectedVisitante.id_equipo,
-      fecha: fechaPartido,
-      hora: horaPartido,
-    };
-
-    setPartidos([...partidos, nuevoPartido]);
-    
-    // Limpiar formulario
-    setSelectedLocal(null);
-    setSelectedVisitante(null);
-    setFechaPartido('');
-    setHoraPartido('');
-    setShowAddPartidoModal(false);
-    
-    Alert.alert('Éxito', 'Partido agregado a la ronda');
-  };
-
-  const handleRemovePartido = (idTemporal: string) => {
-    Alert.alert(
-      'Confirmar',
-      '¿Deseas eliminar este partido?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: () => {
-            setPartidos(partidos.filter(p => p.id_temporal !== idTemporal));
-          },
-        },
-      ]
-    );
-  };
-
-  const handleCreateRonda = () => {
+  const handleCreateRonda = async () => {
     // Validaciones
     if (!nombre.trim()) {
       Alert.alert('Error', 'El nombre de la ronda es requerido');
@@ -236,167 +40,80 @@ export const CreateRondaAmistosaScreen: React.FC<CreateRondaAmistosaScreenProps>
       return;
     }
 
-    if (partidos.length === 0) {
-      Alert.alert('Error', 'Debes agregar al menos un partido');
+    setLoading(true);
+
+    // Get fase for this edicion
+    const fasesResult = await safeAsync(
+      async () => {
+        const response = await api.fases.list(idEdicionCategoria);
+
+        const fase = response.success && response.data && response.data.length > 0
+          ? response.data.find((f: any) => f.tipo === 'grupo') || response.data[0]
+          : null;
+
+        return fase;
+      },
+      'CreateRondaAmistosaScreen - getFase',
+      {
+        fallbackValue: null,
+        onError: (error) => {
+          showError('Error al obtener la fase');
+        },
+      }
+    );
+
+    if (!fasesResult || !fasesResult.id_fase) {
+      showError('No se encontró una fase válida para esta edición');
+      setLoading(false);
       return;
     }
 
     const rondaData = {
-      nombre,
-      fecha_inicio: fechaInicio,
-      id_fase: 1, // TODO: Obtener el ID de fase correcto
-      id_edicion_categoria: idEdicionCategoria,
+      nombre: nombre.trim(),
+      id_fase: fasesResult.id_fase,
+      tipo: 'amistosa' as const,
       es_amistosa: true,
-      partidos: partidos,
+      fecha_inicio: fechaInicio.trim() || undefined,
+      orden: 1,
     };
 
-    
-    // TODO: Llamar a la API para crear la ronda y los partidos
-    // await api.fixture.createRondaAmistosa(rondaData);
-    
-    Alert.alert('Éxito', `Ronda amistosa "${nombre}" creada con ${partidos.length} partidos`, [
-      { text: 'OK', onPress: () => navigation.goBack() }
-    ]);
-  };
-
-  const getEquipoById = (id: number): Equipo | undefined => {
-    return equipos.find(e => e.id_equipo === id);
-  };
-
-  const renderPartidoItem = (partido: PartidoAmistoso) => {
-    const equipoLocal = getEquipoById(partido.id_equipo_local);
-    const equipoVisitante = getEquipoById(partido.id_equipo_visitante);
-
-    if (!equipoLocal || !equipoVisitante) return null;
-
-    return (
-      <View key={partido.id_temporal} style={styles.partidoCard}>
-        <View style={styles.partidoInfo}>
-          <View style={styles.partidoEquipos}>
-            <View style={styles.equipoRow}>
-              <Image
-                source={require('../../assets/InterLOGO.png')}
-                style={styles.equipoLogo}
-                resizeMode="contain"
-              />
-              <Text style={styles.equipoNombre}>{equipoLocal.nombre}</Text>
-            </View>
-            
-            <Text style={styles.vsText}>VS</Text>
-            
-            <View style={styles.equipoRow}>
-              <Image
-                source={require('../../assets/InterLOGO.png')}
-                style={styles.equipoLogo}
-                resizeMode="contain"
-              />
-              <Text style={styles.equipoNombre}>{equipoVisitante.nombre}</Text>
-            </View>
-          </View>
-
-          <View style={styles.partidoDetalles}>
-            <Text style={styles.partidoDetalle}>
-              <MaterialCommunityIcons name="calendar" size={14} color={colors.textSecondary} />
-              {' '}{partido.fecha} - {partido.hora}
-            </Text>
-          </View>
-        </View>
-
-        <TouchableOpacity
-          style={styles.removeButton}
-          onPress={() => handleRemovePartido(partido.id_temporal)}
-        >
-          <MaterialCommunityIcons name="close-circle" size={24} color={colors.error} />
-        </TouchableOpacity>
-      </View>
-    );
-  };
-
-  const renderTeamSelector = (type: 'local' | 'visitante') => {
-    const isLocal = type === 'local';
-    const selectedEquipo = isLocal ? selectedLocal : selectedVisitante;
-    const searchQuery = isLocal ? searchQueryLocal : searchQueryVisitante;
-    const setSearchQuery = isLocal ? setSearchQueryLocal : setSearchQueryVisitante;
-    const otherTeam = isLocal ? selectedVisitante : selectedLocal;
-
-    // Filtrar equipos disponibles basado en reglas de amistosos
-    const equiposDisponibles = getEquiposDisponiblesParaAmistosos(otherTeam || undefined);
-
-    // Manual search filtering
-    const filteredEquipos = equiposDisponibles.filter((e: Equipo) => {
-      if (!searchQuery) return true;
-      const equipoNombre = e.nombre?.toLowerCase() || '';
-      return equipoNombre.includes(searchQuery.toLowerCase());
-    });
-
-    const equiposFiltrados = filteredEquipos.filter((e: Equipo) =>
-      !otherTeam || e.id_equipo !== otherTeam.id_equipo
+    const result = await safeAsync(
+      async () => {
+        const response = await api.rondas.create(rondaData);
+        return response;
+      },
+      'CreateRondaAmistosaScreen - createRonda',
+      {
+        fallbackValue: null,
+        onError: (error) => {
+          showError('Error al crear la ronda');
+        },
+      }
     );
 
-    return (
-      <View style={styles.teamSelector}>
-        <Text style={styles.teamSelectorLabel}>
-          {isLocal ? 'Equipo Local' : 'Equipo Visitante'}
-        </Text>
-        
-        {selectedEquipo ? (
-          <View style={styles.selectedTeam}>
-            <Image
-              source={require('../../assets/InterLOGO.png')}
-              style={styles.selectedTeamLogo}
-              resizeMode="contain"
-            />
-            <Text style={styles.selectedTeamName}>{selectedEquipo.nombre}</Text>
-            <TouchableOpacity
-              onPress={() => isLocal ? setSelectedLocal(null) : setSelectedVisitante(null)}
-            >
-              <MaterialCommunityIcons name="close" size={24} color={colors.error} />
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <>
-            <SearchBar
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholder="Buscar equipo..."
-              onClear={() => setSearchQuery('')}
-            />
+    setLoading(false);
 
-            <ScrollView style={styles.teamList} nestedScrollEnabled>
-              {equiposFiltrados.map(equipo => (
-                <TouchableOpacity
-                  key={equipo.id_equipo}
-                  style={styles.teamItem}
-                  onPress={() => {
-                    if (isLocal) {
-                      setSelectedLocal(equipo);
-                      setSearchQueryLocal('');
-                    } else {
-                      setSelectedVisitante(equipo);
-                      setSearchQueryVisitante('');
-                    }
-                  }}
-                >
-                  <Image
-                    source={require('../../assets/InterLOGO.png')}
-                    style={styles.teamItemLogo}
-                    resizeMode="contain"
-                  />
-                  <Text style={styles.teamItemName}>{equipo.nombre}</Text>
-                </TouchableOpacity>
-              ))}
-              
-              {equiposFiltrados.length === 0 && (
-                <Text style={styles.noTeamsText}>
-                  {searchQuery ? 'No se encontraron equipos' : 'No hay equipos disponibles'}
-                </Text>
-              )}
-            </ScrollView>
-          </>
-        )}
-      </View>
-    );
+    if (result && result.success && result.data) {
+      const rondaId = result.data.id_ronda || result.data.id;
+      showSuccess(`Ronda "${nombre}" creada exitosamente`);
+
+      // Navegar a la pantalla de generación de fixture
+      navigation.navigate('CreateRondaFlow', {
+        idEdicionCategoria,
+        step: 2,
+        rondaData: {
+          id_ronda: rondaId,
+          id_fase: fasesResult.id_fase,
+          nombre: nombre,
+          tipo: 'amistosa',
+          fecha_inicio: fechaInicio,
+          fecha_fin: '',
+          orden: 1,
+        }
+      });
+    }
   };
+
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -443,42 +160,9 @@ export const CreateRondaAmistosaScreen: React.FC<CreateRondaAmistosaScreenProps>
             <MaterialCommunityIcons name="information" size={20} color={colors.info} />
             <Text style={styles.infoText}>
               En rondas amistosas, los equipos se enfrentan contra equipos de otros grupos.
-              Los resultados no afectan la tabla de posiciones.
+              Los resultados no afectan la tabla de posiciones. Después de crear la ronda,
+              podrás generar el fixture automáticamente.
             </Text>
-          </View>
-
-          {/* Lista de Partidos */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Partidos ({partidos.length})</Text>
-              <View style={styles.actionButtons}>
-                <TouchableOpacity
-                  style={styles.autoGenButton}
-                  onPress={handleGenerarAutomaticamente}
-                >
-                  <MaterialCommunityIcons name="auto-fix" size={20} color={colors.white} />
-                  <Text style={styles.autoGenButtonText}>Auto</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.addButton}
-                  onPress={() => setShowAddPartidoModal(true)}
-                >
-                  <MaterialCommunityIcons name="plus-circle" size={24} color={colors.success} />
-                  <Text style={styles.addButtonText}>Manual</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {partidos.length === 0 ? (
-              <View style={styles.emptyPartidos}>
-                <MaterialCommunityIcons name="soccer" size={48} color={colors.textLight} />
-                <Text style={styles.emptyText}>
-                  No hay partidos agregados. Agrega al menos un partido para crear la ronda.
-                </Text>
-              </View>
-            ) : (
-              partidos.map(partido => renderPartidoItem(partido))
-            )}
           </View>
         </View>
 
@@ -488,65 +172,13 @@ export const CreateRondaAmistosaScreen: React.FC<CreateRondaAmistosaScreenProps>
       {/* Botón Crear */}
       <View style={styles.footer}>
         <Button
-          title={`Crear Ronda con ${partidos.length} partido${partidos.length !== 1 ? 's' : ''}`}
+          title="Crear Ronda y Generar Fixture"
           onPress={handleCreateRonda}
-          disabled={partidos.length === 0}
+          loading={loading}
+          disabled={loading}
           style={styles.createButton}
         />
       </View>
-
-      {/* Modal para Agregar Partido */}
-      <Modal
-        visible={showAddPartidoModal}
-        onClose={() => {
-          setShowAddPartidoModal(false);
-          setSelectedLocal(null);
-          setSelectedVisitante(null);
-          setFechaPartido('');
-          setHoraPartido('');
-          setSearchQueryLocal('');
-          setSearchQueryVisitante('');
-        }}
-        title="Agregar Partido Amistoso"
-        fullHeight
-      >
-        <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
-          {/* Selector de Equipos */}
-          {renderTeamSelector('local')}
-          {renderTeamSelector('visitante')}
-
-          {/* Fecha y Hora */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Fecha del Partido * (YYYY-MM-DD)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Ej: 2025-12-25"
-              value={fechaPartido}
-              onChangeText={setFechaPartido}
-              placeholderTextColor={colors.textLight}
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Hora del Partido * (HH:MM)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Ej: 15:00"
-              value={horaPartido}
-              onChangeText={setHoraPartido}
-              placeholderTextColor={colors.textLight}
-            />
-          </View>
-
-          <Button
-            title="Agregar"
-            onPress={handleAddPartido}
-            style={styles.modalButton}
-          />
-          
-          <View style={{ height: 40 }} />
-        </ScrollView>
-      </Modal>
     </SafeAreaView>
   );
 };

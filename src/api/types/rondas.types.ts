@@ -22,8 +22,10 @@ export interface CreateRondaRequest {
   subtipo_eliminatoria?: 'oro' | 'plata' | 'bronce';
   es_amistosa?: boolean;
   fecha_inicio?: string;
+  count_enfrentamientos?: number;
   fecha_fin?: string;
   orden: number;
+  cantidad_enfrentamientos?: number;
 }
 
 export interface FixtureGenerateRequest {
@@ -31,6 +33,7 @@ export interface FixtureGenerateRequest {
   tipo_generacion: 'round_robin' | 'amistoso_aleatorio' | 'amistoso_intergrupos';
   ida_vuelta?: boolean;
   cantidad_partidos?: number; // Solo para amistosos
+  jornada?: number;
 }
 
 export interface EnfrentamientoFixture {

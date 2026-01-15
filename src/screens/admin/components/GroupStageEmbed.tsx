@@ -31,6 +31,7 @@ interface GroupStageEmbedProps {
   isAdmin?: boolean;
   idFase?: number;
   idEdicionCategoria?: number;
+  onRefresh?: () => void;
 }
 
 // Función helper para determinar el color de clasificación basado en la posición y configuración del grupo
@@ -62,7 +63,8 @@ const GroupStageEmbedComponent: React.FC<GroupStageEmbedProps & { refreshTrigger
   isAdmin = false,
   idFase,
   idEdicionCategoria,
-  refreshTrigger
+  refreshTrigger,
+  onRefresh
 }) => {
 
   const [grupos, setGrupos] = useState<Grupo[]>([]);
@@ -179,10 +181,11 @@ const GroupStageEmbedComponent: React.FC<GroupStageEmbedProps & { refreshTrigger
       return;
     }
 
-    navigation.navigate('CreateGroupsFlow', { 
+    navigation.navigate('CreateGroupsFlow', {
       idEdicionCategoria,
       onGroupsCreated: () => {
         // Recargar los grupos cuando se crea uno nuevo
+        if (onRefresh) onRefresh();
         loadGruposAndClasificacion();
       }
     });

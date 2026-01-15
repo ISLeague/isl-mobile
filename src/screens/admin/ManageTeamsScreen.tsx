@@ -24,6 +24,7 @@ export const ManageTeamsScreen = ({ navigation, route }: any) => {
   const [equipos, setEquipos] = useState<Equipo[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showChoiceModal, setShowChoiceModal] = useState(false);
 
   // Filtrar equipos por búsqueda
   const equiposFiltrados = equipos.filter(equipo =>
@@ -244,14 +245,7 @@ export const ManageTeamsScreen = ({ navigation, route }: any) => {
         <View style={styles.actionsContainer}>
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() => navigation.navigate('CreateTeam', {
-              idEdicionCategoria: route.params?.idEdicionCategoria || torneo?.id_edicion_categoria,
-              onTeamCreated: () => {
-                // Trigger reload
-                setLoading(true);
-                // The useEffect will handle it
-              }
-            })}
+            onPress={() => setShowChoiceModal(true)}
           >
             <Text style={styles.actionIcon}>➕</Text>
             <Text style={styles.actionText}>Nuevo Equipo</Text>
@@ -307,6 +301,53 @@ export const ManageTeamsScreen = ({ navigation, route }: any) => {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* Tipo de creación Modal */}
+      <Modal
+        visible={showChoiceModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowChoiceModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Crear Nuevo Equipo</Text>
+
+            <TouchableOpacity
+              style={[styles.modalButton, styles.confirmButton, { marginBottom: 12 }]}
+              onPress={() => {
+                setShowChoiceModal(false);
+                navigation.navigate('CreateTeam', {
+                  idEdicionCategoria: route.params?.idEdicionCategoria || torneo?.id_edicion_categoria,
+                  onTeamCreated: () => loadEquipos()
+                });
+              }}
+            >
+              <Text style={styles.confirmButtonText}>Crear Manualmente</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.modalButton, styles.confirmButton]}
+              onPress={() => {
+                setShowChoiceModal(false);
+                navigation.navigate('SelectMasterTeams', {
+                  idEdicionCategoria: route.params?.idEdicionCategoria || torneo?.id_edicion_categoria,
+                  onTeamsAdded: () => loadEquipos()
+                });
+              }}
+            >
+              <Text style={styles.confirmButtonText}>Seleccionar Existente</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.modalButton, styles.cancelButton, { marginTop: 12 }]}
+              onPress={() => setShowChoiceModal(false)}
+            >
+              <Text style={styles.cancelButtonText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
     </SafeAreaView>
   );

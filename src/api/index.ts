@@ -35,6 +35,8 @@ export { reglasClasificacionService } from './services/reglas-clasificacion.serv
 export { sponsorsService } from './services/sponsors.service';
 export { minigamesService } from './services/minigames.service';
 export { seguimientoEquiposService } from './services/seguimiento-equipos.service';
+export { mjEquiposService } from './services/mj-equipos.service';
+export { mjPaisesService } from './services/mj-paises.service';
 export { asistenciaService } from './services/asistencia.service';
 export { cambiosService } from './services/cambios.service';
 
@@ -67,6 +69,8 @@ import { reglasClasificacionService } from './services/reglas-clasificacion.serv
 import { sponsorsService } from './services/sponsors.service';
 import { minigamesService } from './services/minigames.service';
 import { seguimientoEquiposService } from './services/seguimiento-equipos.service';
+import { mjEquiposService } from './services/mj-equipos.service';
+import { mjPaisesService } from './services/mj-paises.service';
 import { asistenciaService } from './services/asistencia.service';
 import { cambiosService } from './services/cambios.service';
 
@@ -110,6 +114,8 @@ export const api = {
   sponsors: sponsorsService,
   minigames: minigamesService,
   seguimientoEquipos: seguimientoEquiposService,
+  mjEquipos: mjEquiposService,
+  mjPaises: mjPaisesService,
   asistencia: asistenciaService,
   cambios: cambiosService,
 };

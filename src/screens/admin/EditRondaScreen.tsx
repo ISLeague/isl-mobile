@@ -14,6 +14,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import { Button, Card, GradientHeader } from '../../components/common';
 import { useToast } from '../../contexts/ToastContext';
+import api from '../../api';
+import { safeAsync } from '../../utils/errorHandling';
 
 export const EditRondaScreen = ({ navigation, route }: any) => {
   const { ronda } = route.params;
@@ -31,6 +33,7 @@ export const EditRondaScreen = ({ navigation, route }: any) => {
   const [aplicarFechaAutomatica, setAplicarFechaAutomatica] = useState(
     ronda.aplicar_fecha_automatica || false
   );
+  const [loading, setLoading] = useState(false);
 
   const handleUpdate = () => {
     if (!nombre.trim()) {
@@ -55,13 +58,33 @@ export const EditRondaScreen = ({ navigation, route }: any) => {
         {
           text: 'Actualizar',
           onPress: async () => {
-            try {
-              // TODO: Llamar API
-              // await api.rounds.updateRound(ronda.id_ronda, { nombre, fecha, orden, tipo, subtipo_eliminatoria: subtipoEliminatoria, aplicar_fecha_automatica: aplicarFechaAutomatica });
+            setLoading(true);
+            const result = await safeAsync(
+              async () => {
+                const response = await api.rondas.update({
+                  id: ronda.id_ronda,
+                  nombre,
+                  fecha_inicio: fecha,
+                  orden: parseInt(orden),
+                  tipo,
+                  subtipo_eliminatoria: tipo === 'eliminatorias' ? subtipoEliminatoria : undefined,
+                });
+                return response;
+              },
+              'EditRonda - handleUpdate',
+              {
+                fallbackValue: null,
+                onError: (error) => {
+                  showError('Error al actualizar la ronda');
+                },
+              }
+            );
+
+            setLoading(false);
+
+            if (result && result.success) {
               showSuccess('Ronda actualizada exitosamente');
               navigation.goBack();
-            } catch (error) {
-              showError('Error al actualizar la ronda');
             }
           },
         },
@@ -144,13 +167,26 @@ export const EditRondaScreen = ({ navigation, route }: any) => {
           text: 'Eliminar',
           style: 'destructive',
           onPress: async () => {
-            try {
-              // TODO: Llamar API
-              // await api.rounds.deleteRound(ronda.id_ronda);
+            setLoading(true);
+            const result = await safeAsync(
+              async () => {
+                const response = await api.rondas.delete(ronda.id_ronda);
+                return response;
+              },
+              'EditRonda - handleDelete',
+              {
+                fallbackValue: null,
+                onError: (error) => {
+                  showError('Error al eliminar la ronda');
+                },
+              }
+            );
+
+            setLoading(false);
+
+            if (result && result.success) {
               showSuccess('Ronda eliminada exitosamente');
               navigation.goBack();
-            } catch (error) {
-              showError('Error al eliminar la ronda');
             }
           },
         },
@@ -350,10 +386,16 @@ export const EditRondaScreen = ({ navigation, route }: any) => {
           <Button
             title="Actualizar Ronda"
             onPress={handleUpdate}
+            loading={loading}
+            disabled={loading}
             style={styles.updateButton}
           />
 
-          <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
+          <TouchableOpacity
+            style={[styles.deleteButton, loading && styles.deleteButtonDisabled]}
+            onPress={handleDelete}
+            disabled={loading}
+          >
             <MaterialCommunityIcons name="delete" size={20} color={colors.white} />
             <Text style={styles.deleteButtonText}>Eliminar Ronda</Text>
           </TouchableOpacity>
@@ -439,6 +481,9 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 24,
     backgroundColor: colors.error,
+  },
+  deleteButtonDisabled: {
+    opacity: 0.5,
   },
   deleteButtonText: {
     fontSize: 16,

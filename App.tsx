@@ -60,7 +60,9 @@ import ResultPage from './src/screens/admin/ResultPage';
 import { PreMatchValidationScreen } from './src/screens/admin/PreMatchValidationScreen';
 import { MatchSubstitutionsScreen } from './src/screens/admin/MatchSubstitutionsScreen';
 import { CreateTeamScreen } from './src/screens/admin/CreateTeamScreen';
+import { SelectMasterTeamsScreen } from './src/screens/admin/SelectMasterTeamsScreen';
 import { BulkCreateTeamsScreen } from './src/screens/admin/BulkCreateTeamsScreen';
+import { BulkImportPlayersScreen } from './src/screens/admin/BulkImportPlayersScreen';
 import { GrupoDetailScreen } from './src/screens/admin/GrupoDetailScreen';
 import { MoveTeamToGroupScreen } from './src/screens/admin/MoveTeamToGroupScreen';
 import { CreateKnockoutFlowScreen } from './src/screens/admin/CreateKnockoutFlowScreen';
@@ -97,93 +99,95 @@ function AppNavigator() {
       >
         {/* Splash */}
         <Stack.Screen name="Splash" component={SplashScreen} />
-          
-          {/* Auth Stack */}
-          <Stack.Screen name="Login" component={LoginScreen} />
-          <Stack.Screen name="Register" component={RegisterScreen} />
-          <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
-          
-          {/* Main App (Fans) */}
-          <Stack.Screen name="Main" component={MainNavigator} />
-          <Stack.Screen name="PrivacySettings" component={PrivacySettingsScreen} />
-          
-          {/* Admin Flow - BASADO EN FLUJO.DOCX */}
-          <Stack.Screen name="ManageCountries" component={ManageCountriesScreen} />
-          <Stack.Screen name="EditCountry" component={EditCountryScreen} />
-          <Stack.Screen name="TournamentAdminDashboard" component={TournamentAdminDashboardScreen} />
-          <Stack.Screen name="CreateTournamentAdmin" component={CreateTournamentAdminScreen} />
 
-          {/* Camarografo Flow */}
-          <Stack.Screen name="Camarografo" component={CamarografoScreen} />
+        {/* Auth Stack */}
+        <Stack.Screen name="Login" component={LoginScreen} />
+        <Stack.Screen name="Register" component={RegisterScreen} />
+        <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
 
-          <Stack.Screen name="CountrySelection" component={CountrySelectionScreen} />
-          <Stack.Screen name="AdminTournaments" component={AdminTournamentsScreen} />
-          <Stack.Screen name="CreateTournament" component={CreateTournamentScreen} />
-          <Stack.Screen name="TournamentDetails" component={TournamentDetailsScreen} />
-          <Stack.Screen name="EditTournament" component={EditTournamentScreen} />
-          <Stack.Screen name="EditEdition" component={EditEditionScreen} />
-          <Stack.Screen name="ManageCategories" component={ManageCategoriesScreen} />
-          <Stack.Screen name="CreateEdition" component={CreateEditionScreen} />
-          <Stack.Screen name="TournamentCategories" component={TournamentCategoriesScreen} />
-          <Stack.Screen name="CategoryManagement" component={CategoryManagementScreen} />
-          
-          {/* Category Management Options */}
-          <Stack.Screen name="ManageTeams" component={ManageTeamsScreen} />
-          <Stack.Screen name="ManageFixture" component={ManageFixtureScreen} />
-          <Stack.Screen name="LoadResults" component={ResultPage} />
-          <Stack.Screen name="PreMatchValidation" component={PreMatchValidationScreen} />
-          <Stack.Screen name="MatchSubstitutions" component={MatchSubstitutionsScreen} />
-          <Stack.Screen name="ResultPage" component={ResultPage} />
-          
-          {/* Group Management */}
-          <Stack.Screen name="CreateGroup" component={CreateGroupScreen} />
-          <Stack.Screen name="CreateGroupsFlow" component={CreateGroupsFlowScreen} />
-          <Stack.Screen name="EditGroup" component={EditGroupScreen} />
-          <Stack.Screen name="GrupoDetail" component={GrupoDetailScreen} />
+        {/* Main App (Fans) */}
+        <Stack.Screen name="Main" component={MainNavigator} />
+        <Stack.Screen name="PrivacySettings" component={PrivacySettingsScreen} />
 
-          {/* Knockout Management */}
-          <Stack.Screen name="CreateFase" component={CreateKnockoutFlowScreen} />
+        {/* Admin Flow - BASADO EN FLUJO.DOCX */}
+        <Stack.Screen name="ManageCountries" component={ManageCountriesScreen} />
+        <Stack.Screen name="EditCountry" component={EditCountryScreen} />
+        <Stack.Screen name="TournamentAdminDashboard" component={TournamentAdminDashboardScreen} />
+        <Stack.Screen name="CreateTournamentAdmin" component={CreateTournamentAdminScreen} />
 
-          {/* Fixture Management */}
-          <Stack.Screen name="FixtureManagement" component={FixtureManagementScreen} />
-          <Stack.Screen name="RondasList" component={RondasListScreen} />
-          <Stack.Screen name="RondaDetail" component={RondaDetailScreen} />
-          <Stack.Screen name="CreateRondaFlow" component={CreateRondaFlowScreen} />
-          <Stack.Screen name="CreateRonda" component={CreateRondaFlowScreen} />
-          <Stack.Screen name="EditRonda" component={EditRondaScreen} />
-          <Stack.Screen name="CreateRondaAmistosa" component={CreateRondaAmistosaScreen} />
-          <Stack.Screen name="CreatePartido" component={CreatePartidoScreen} />
-          <Stack.Screen name="EditPartido" component={EditPartidoScreen} />
-          
-          {/* Team Management */}
-          <Stack.Screen name="EditTeam" component={EditTeamScreen} />
-          <Stack.Screen name="CreateTeam" component={CreateTeamScreen} />
-          <Stack.Screen name="BulkCreateTeams" component={BulkCreateTeamsScreen} />
-          <Stack.Screen name="MoveTeamToGroup" component={MoveTeamToGroupScreen} />
+        {/* Camarografo Flow */}
+        <Stack.Screen name="Camarografo" component={CamarografoScreen} />
 
-          {/* Local & Cancha Management */}
-          <Stack.Screen name="CreateLocal" component={CreateLocalScreen} />
-          <Stack.Screen name="CreateCancha" component={CreateCanchaScreen} />
-          <Stack.Screen name="EditLocal" component={EditLocalScreen} />
-          <Stack.Screen name="EditCancha" component={EditCanchaScreen} />
-          <Stack.Screen name="LocalDetail" component={LocalDetailScreen} />
-          
-          {/* Sponsor Management */}
-          <Stack.Screen name="CreateSponsor" component={CreateSponsorScreen} />
-          <Stack.Screen name="EditSponsor" component={EditSponsorScreen} />
-          
-          {/* Fase de Grupos & Rankings */}
-          <Stack.Screen name="GroupStage" component={GroupStageScreen} />
-          <Stack.Screen name="TeamDetail" component={TeamDetailScreen} />
-          <Stack.Screen name="PlayerForm" component={PlayerFormScreen} />
-          <Stack.Screen name="PlayerDetail" component={PlayerDetailScreen} />
-          <Stack.Screen name="MyTeam" component={MyTeamScreen} />
-          <Stack.Screen name="FavoriteTeams" component={FavoriteTeamsScreen} />
-          
-          {/* Placeholders (Próximamente) */}
-          <Stack.Screen name="ManageGroups" component={CategoryManagementScreen} />
-          <Stack.Screen name="Standings" component={CategoryManagementScreen} />
-          <Stack.Screen name="ManageKnockout" component={CategoryManagementScreen} />
+        <Stack.Screen name="CountrySelection" component={CountrySelectionScreen} />
+        <Stack.Screen name="AdminTournaments" component={AdminTournamentsScreen} />
+        <Stack.Screen name="CreateTournament" component={CreateTournamentScreen} />
+        <Stack.Screen name="TournamentDetails" component={TournamentDetailsScreen} />
+        <Stack.Screen name="EditTournament" component={EditTournamentScreen} />
+        <Stack.Screen name="EditEdition" component={EditEditionScreen} />
+        <Stack.Screen name="ManageCategories" component={ManageCategoriesScreen} />
+        <Stack.Screen name="CreateEdition" component={CreateEditionScreen} />
+        <Stack.Screen name="TournamentCategories" component={TournamentCategoriesScreen} />
+        <Stack.Screen name="CategoryManagement" component={CategoryManagementScreen} />
+
+        {/* Category Management Options */}
+        <Stack.Screen name="ManageTeams" component={ManageTeamsScreen} />
+        <Stack.Screen name="ManageFixture" component={ManageFixtureScreen} />
+        <Stack.Screen name="LoadResults" component={ResultPage} />
+        <Stack.Screen name="PreMatchValidation" component={PreMatchValidationScreen} />
+        <Stack.Screen name="MatchSubstitutions" component={MatchSubstitutionsScreen} />
+        <Stack.Screen name="ResultPage" component={ResultPage} />
+
+        {/* Group Management */}
+        <Stack.Screen name="CreateGroup" component={CreateGroupScreen} />
+        <Stack.Screen name="CreateGroupsFlow" component={CreateGroupsFlowScreen} />
+        <Stack.Screen name="EditGroup" component={EditGroupScreen} />
+        <Stack.Screen name="GrupoDetail" component={GrupoDetailScreen} />
+
+        {/* Knockout Management */}
+        <Stack.Screen name="CreateFase" component={CreateKnockoutFlowScreen} />
+
+        {/* Fixture Management */}
+        <Stack.Screen name="FixtureManagement" component={FixtureManagementScreen} />
+        <Stack.Screen name="RondasList" component={RondasListScreen} />
+        <Stack.Screen name="RondaDetail" component={RondaDetailScreen} />
+        <Stack.Screen name="CreateRondaFlow" component={CreateRondaFlowScreen} />
+        <Stack.Screen name="CreateRonda" component={CreateRondaFlowScreen} />
+        <Stack.Screen name="EditRonda" component={EditRondaScreen} />
+        <Stack.Screen name="CreateRondaAmistosa" component={CreateRondaAmistosaScreen} />
+        <Stack.Screen name="CreatePartido" component={CreatePartidoScreen} />
+        <Stack.Screen name="EditPartido" component={EditPartidoScreen} />
+
+        {/* Team Management */}
+        <Stack.Screen name="EditTeam" component={EditTeamScreen} />
+        <Stack.Screen name="CreateTeam" component={CreateTeamScreen} />
+        <Stack.Screen name="SelectMasterTeams" component={SelectMasterTeamsScreen} />
+        <Stack.Screen name="BulkCreateTeams" component={BulkCreateTeamsScreen} />
+        <Stack.Screen name="BulkImportPlayers" component={BulkImportPlayersScreen} />
+        <Stack.Screen name="MoveTeamToGroup" component={MoveTeamToGroupScreen} />
+
+        {/* Local & Cancha Management */}
+        <Stack.Screen name="CreateLocal" component={CreateLocalScreen} />
+        <Stack.Screen name="CreateCancha" component={CreateCanchaScreen} />
+        <Stack.Screen name="EditLocal" component={EditLocalScreen} />
+        <Stack.Screen name="EditCancha" component={EditCanchaScreen} />
+        <Stack.Screen name="LocalDetail" component={LocalDetailScreen} />
+
+        {/* Sponsor Management */}
+        <Stack.Screen name="CreateSponsor" component={CreateSponsorScreen} />
+        <Stack.Screen name="EditSponsor" component={EditSponsorScreen} />
+
+        {/* Fase de Grupos & Rankings */}
+        <Stack.Screen name="GroupStage" component={GroupStageScreen} />
+        <Stack.Screen name="TeamDetail" component={TeamDetailScreen} />
+        <Stack.Screen name="PlayerForm" component={PlayerFormScreen} />
+        <Stack.Screen name="PlayerDetail" component={PlayerDetailScreen} />
+        <Stack.Screen name="MyTeam" component={MyTeamScreen} />
+        <Stack.Screen name="FavoriteTeams" component={FavoriteTeamsScreen} />
+
+        {/* Placeholders (Próximamente) */}
+        <Stack.Screen name="ManageGroups" component={CategoryManagementScreen} />
+        <Stack.Screen name="Standings" component={CategoryManagementScreen} />
+        <Stack.Screen name="ManageKnockout" component={CategoryManagementScreen} />
 
         {/* Minijuegos */}
         <Stack.Screen name="ImpostorMenu" component={ImpostorMenuScreen} />
