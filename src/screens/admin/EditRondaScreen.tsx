@@ -200,20 +200,43 @@ export const EditRondaScreen = ({ navigation, route }: any) => {
       return;
     }
 
+    // Validar formato de fecha
+    const dateRegex = /^\d{2}\/\d{2}\/\d{4}$/;
+    if (!dateRegex.test(fecha)) {
+      showError('El formato de la fecha debe ser DD/MM/YYYY (ej: 25/12/2025)');
+      return;
+    }
+
+    // Convertir fecha de DD/MM/YYYY a YYYY-MM-DD para la base de datos
+    const [day, month, year] = fecha.split('/');
+    const fechaISO = `${year}-${month}-${day}`;
+
     Alert.alert(
       'Aplicar Fecha',
-      `¿Deseas aplicar la fecha "${fecha}" a todos los partidos sin fecha de esta ronda?`,
+      `¿Deseas aplicar la fecha "${fecha}" a todos los partidos de esta ronda?`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
           text: 'Aplicar',
           onPress: async () => {
-            try {
-              // TODO: Llamar API
-              // await api.rounds.applyDateToAllMatches(ronda.id_ronda, fecha);
-              showSuccess('Fecha aplicada a todos los partidos');
-            } catch (error) {
-              showError('Error al aplicar la fecha');
+            setLoading(true);
+            const result = await safeAsync(
+              async () => {
+                const response = await api.rondas.applyDateToMatches(ronda.id_ronda, fechaISO);
+                return response;
+              },
+              'EditRonda - applyDateToMatches',
+              {
+                fallbackValue: null,
+                onError: () => {
+                  showError('Error al aplicar la fecha a los partidos');
+                },
+              }
+            );
+            setLoading(false);
+
+            if (result && result.success) {
+              showSuccess(`Fecha aplicada a ${result.data?.updated || 0} partidos`);
             }
           },
         },
@@ -316,22 +339,20 @@ export const EditRondaScreen = ({ navigation, route }: any) => {
             </View>
           )}
 
-          {/* Fecha (opcional) - Solo para Amistosos */}
-          {tipo === 'amistosa' && (
-            <View style={styles.fieldContainer}>
-              <Text style={styles.label}>Fecha (opcional)</Text>
-              <TextInput
-                style={styles.input}
-                value={fecha}
-                onChangeText={setFecha}
-                placeholder="DD/MM/YYYY"
-                placeholderTextColor={colors.textSecondary}
-              />
-              <Text style={styles.helperText}>
-                Formato: DD/MM/YYYY (25/12/2024)
-              </Text>
-            </View>
-          )}
+          {/* Fecha de la Ronda */}
+          <View style={styles.fieldContainer}>
+            <Text style={styles.label}>Fecha de la Ronda (opcional)</Text>
+            <TextInput
+              style={styles.input}
+              value={fecha}
+              onChangeText={setFecha}
+              placeholder="DD/MM/YYYY"
+              placeholderTextColor={colors.textSecondary}
+            />
+            <Text style={styles.helperText}>
+              Formato: DD/MM/YYYY (ej: 25/12/2024). Puedes aplicar esta fecha a todos los partidos.
+            </Text>
+          </View>
 
           {/* Orden */}
           <View style={styles.fieldContainer}>

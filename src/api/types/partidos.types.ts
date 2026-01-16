@@ -50,11 +50,12 @@ export interface CreatePartidoFromFixtureRequest {
   id_equipo_visitante: number;
   id_ronda: number;
   id_fase: number;
-  id_cancha: number;
-  fecha: string;
-  hora: string;
+  id_cancha?: number | null;
+  fecha?: string | null;
+  hora?: string | null;
   tipo_partido: 'clasificacion' | 'eliminatoria' | 'amistoso';
   afecta_clasificacion: boolean;
+  estado_partido?: string;
   observaciones?: string;
 }
 

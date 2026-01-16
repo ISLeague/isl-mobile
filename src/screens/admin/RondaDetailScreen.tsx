@@ -496,21 +496,25 @@ export const RondaDetailScreen: React.FC<RondaDetailScreenProps> = ({ navigation
           {/* Info */}
           <View style={styles.partidoInfo}>
             <View style={styles.partidoInfoItem}>
-              <MaterialCommunityIcons name="calendar" size={14} color={colors.textSecondary} />
-              <Text style={styles.partidoInfoText}>{partido.fecha}</Text>
+              <MaterialCommunityIcons name="calendar" size={14} color={partido.fecha ? colors.textSecondary : colors.warning} />
+              <Text style={[styles.partidoInfoText, !partido.fecha && styles.pendienteText]}>
+                {partido.fecha || 'Fecha Pendiente'}
+              </Text>
             </View>
 
             <View style={styles.partidoInfoItem}>
-              <MaterialCommunityIcons name="clock-outline" size={14} color={colors.textSecondary} />
-              <Text style={styles.partidoInfoText}>{partido.hora}</Text>
+              <MaterialCommunityIcons name="clock-outline" size={14} color={partido.hora ? colors.textSecondary : colors.warning} />
+              <Text style={[styles.partidoInfoText, !partido.hora && styles.pendienteText]}>
+                {partido.hora || 'Hora Pendiente'}
+              </Text>
             </View>
 
-            {partido.cancha && (
-              <View style={styles.partidoInfoItem}>
-                <MaterialCommunityIcons name="soccer-field" size={14} color={colors.textSecondary} />
-                <Text style={styles.partidoInfoText}>{partido.cancha.nombre}</Text>
-              </View>
-            )}
+            <View style={styles.partidoInfoItem}>
+              <MaterialCommunityIcons name="soccer-field" size={14} color={partido.cancha ? colors.textSecondary : colors.warning} />
+              <Text style={[styles.partidoInfoText, !partido.cancha && styles.pendienteText]}>
+                {partido.cancha?.nombre || 'Campo Pendiente'}
+              </Text>
+            </View>
           </View>
 
           {/* Status Badge */}
@@ -938,6 +942,10 @@ const styles = StyleSheet.create({
   partidoInfoText: {
     fontSize: 12,
     color: colors.textSecondary,
+  },
+  pendienteText: {
+    color: colors.warning,
+    fontStyle: 'italic',
   },
   partidoStatus: {
     alignItems: 'flex-end',

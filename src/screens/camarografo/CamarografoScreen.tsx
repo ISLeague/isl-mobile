@@ -207,8 +207,9 @@ export const CamarografoScreen = ({ navigation }: any) => {
     console.log(`🚀 [CamarografoScreen] loadTorneos - Cargando torneos para país: ${idPais}`);
     setLoadingFilters(true);
     try {
-      const response = await api.torneos.list({ id_pais: idPais });
-      console.log('✅ [CamarografoScreen] api.torneos.list - Respuesta:', response);
+      // Usar getByCountry para filtrar correctamente por país, con activo='todos' para ver todos
+      const response = await api.torneos.getByCountry(idPais, { activo: 'todos' });
+      console.log('✅ [CamarografoScreen] api.torneos.getByCountry - Respuesta:', response);
       setFilteredTorneos(response.data || []);
     } catch (error) {
       console.error('❌ [CamarografoScreen] Error al cargar torneos:', error);
@@ -260,7 +261,11 @@ export const CamarografoScreen = ({ navigation }: any) => {
     try {
       const response = await api.rondas.list({ id_edicion_categoria: idEdicionCategoria });
       console.log('✅ [CamarografoScreen] api.rondas.list - Respuesta:', response);
-      setFilteredRondas(response.data || []);
+      // El backend devuelve { data: { rondas: [...], total: n } }
+      // response ya es el body parseado, así que response.data contiene { rondas, total }
+      const rondas = response.data?.rondas || response.rondas || [];
+      console.log(`📋 [CamarografoScreen] Rondas encontradas: ${rondas.length}`);
+      setFilteredRondas(rondas);
     } catch (error: any) {
       const is404 = error.response?.status === 404;
       const endpoint = error.config?.url || '/rondas';
@@ -1177,11 +1182,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   watermarkImage: {
-    width: '120%',
-    height: '120%',
-    resizeMode: 'contain',
-    opacity: 0.15,
-    transform: [{ rotate: '-30deg' }],
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+    opacity: 0.25,
   },
   lowResBadge: {
     position: 'absolute',

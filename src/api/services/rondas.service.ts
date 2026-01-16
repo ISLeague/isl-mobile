@@ -78,9 +78,22 @@ export const rondasService = {
   },
 
   delete: async (id: number) => {
-    const response = await apiClient.delete('/rondas', { 
+    const response = await apiClient.delete('/rondas', {
       params: { action: 'delete' },
       data: { id_ronda: id }
+    });
+    return response.data;
+  },
+
+  /**
+   * Aplicar fecha a todos los partidos de una ronda
+   */
+  applyDateToMatches: async (id_ronda: number, fecha: string) => {
+    const response = await apiClient.post('/rondas', {
+      id_ronda,
+      fecha,
+    }, {
+      params: { action: 'apply-date-to-matches' }
     });
     return response.data;
   },

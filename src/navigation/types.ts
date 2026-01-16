@@ -21,6 +21,15 @@ export type RootStackParamList = {
         codigo_sala: string;
     };
 
+    // Team screens
+    TeamDetail: {
+        equipoId: number;
+    };
+    ImportTeamCSV: {
+        equipoId: number;
+        equipoNombre: string;
+    };
+
     // Add other routes as needed
     [key: string]: any;
 };

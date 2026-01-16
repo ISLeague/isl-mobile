@@ -322,9 +322,10 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
       const veces = parseInt(vecesEnfrentamiento) || 1;
       const totalRondas = (numEquipos - 1) * veces;
 
-      let successCount = 0;
+      let rondasCreadas = 0;
+      let partidosCreados = 0;
 
-      // 2. Crear rondas y generar fixtures
+      // 2. Crear rondas, generar fixtures y crear partidos
       for (let i = 1; i <= totalRondas; i++) {
         // Crear Ronda
         const rondaData = {
@@ -343,19 +344,57 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
           const jornadaActual = ((i - 1) % (numEquipos - 1)) + 1;
 
           // Generar Fixture para esta ronda con la lógica de posiciones
-          // El fixture debe emparejar: 1° con último, 2° con penúltimo, etc.
-          await api.rondas.generarFixture({
+          const fixtureRes = await api.rondas.generarFixture({
             id_ronda: rondaId,
             tipo_generacion: 'round_robin',
             jornada: jornadaActual,
             ida_vuelta: veces > 1
           });
 
-          successCount++;
+          rondasCreadas++;
+
+          // Crear partidos automáticamente a partir de los fixtures generados
+          console.log(`🔍 [AUTO] Fixture response para ronda ${rondaId}:`, JSON.stringify(fixtureRes.data, null, 2));
+
+          if (fixtureRes.success && fixtureRes.data?.jornadas) {
+            for (const jornada of fixtureRes.data.jornadas) {
+              console.log(`📋 [AUTO] Procesando jornada ${jornada.jornada} con ${jornada.enfrentamientos?.length || 0} enfrentamientos`);
+
+              for (const enfrentamiento of jornada.enfrentamientos) {
+                console.log(`⚽ [AUTO] Enfrentamiento:`, enfrentamiento);
+
+                const partidoData = {
+                  id_fixture: enfrentamiento.fixture_id,
+                  id_equipo_local: enfrentamiento.id_equipo_local,
+                  id_equipo_visitante: enfrentamiento.id_equipo_visitante,
+                  id_ronda: rondaId,
+                  id_fase: idFase,
+                  tipo_partido: 'clasificacion' as const,
+                  afecta_clasificacion: true,
+                  estado_partido: 'Pendiente',
+                  observaciones: enfrentamiento.nombre_grupo
+                    ? `Partido de clasificación - Grupo ${enfrentamiento.nombre_grupo}`
+                    : 'Partido de clasificación',
+                };
+
+                console.log(`📤 [AUTO] Creando partido con datos:`, partidoData);
+                const partidoRes = await api.partidos.createFromFixture(partidoData);
+                console.log(`📥 [AUTO] Respuesta crear partido:`, partidoRes);
+
+                if (partidoRes.success) {
+                  partidosCreados++;
+                } else {
+                  console.error(`❌ [AUTO] Error creando partido:`, partidoRes.error);
+                }
+              }
+            }
+          } else {
+            console.warn(`⚠️ [AUTO] No hay jornadas en fixtureRes:`, fixtureRes);
+          }
         }
       }
 
-      showSuccess(`Se crearon ${successCount} rondas con sus fixtures automáticamente.`);
+      showSuccess(`Se crearon ${rondasCreadas} rondas y ${partidosCreados} partidos automáticamente.`);
       navigation.goBack();
     } catch (error) {
       showError('Error durante la creación automática de rondas.');

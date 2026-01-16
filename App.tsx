@@ -33,6 +33,7 @@ import { ManageCountriesScreen } from './src/screens/admin/ManageCountriesScreen
 import { EditCountryScreen } from './src/screens/admin/EditCountryScreen';
 import { GroupStageScreen } from './src/screens/home/GroupStageScreen';
 import { TeamDetailScreen } from './src/screens/home/TeamDetailScreen';
+import { ImportTeamCSVScreen } from './src/screens/home/ImportTeamCSVScreen';
 import { PlayerFormScreen } from './src/screens/home/PlayerFormScreen';
 import { PlayerDetailScreen } from './src/screens/home/PlayerDetailScreen';
 import { MyTeamScreen } from './src/screens/home/MyTeamScreen';
@@ -180,6 +181,7 @@ function AppNavigator() {
         {/* Fase de Grupos & Rankings */}
         <Stack.Screen name="GroupStage" component={GroupStageScreen} />
         <Stack.Screen name="TeamDetail" component={TeamDetailScreen} />
+        <Stack.Screen name="ImportTeamCSV" component={ImportTeamCSVScreen} />
         <Stack.Screen name="PlayerForm" component={PlayerFormScreen} />
         <Stack.Screen name="PlayerDetail" component={PlayerDetailScreen} />
         <Stack.Screen name="MyTeam" component={MyTeamScreen} />

@@ -31,9 +31,9 @@ export const BulkImportPlayersScreen: React.FC<BulkImportPlayersScreenProps> = (
 
   const [loading, setLoading] = useState(true);
   const [equipos, setEquipos] = useState<Equipo[]>([]);
-  const [selectedEquipos, setSelectedEquipos] = useState<Set<number>>(new Set());
   const [importing, setImporting] = useState(false);
   const [currentImportIndex, setCurrentImportIndex] = useState(0);
+  const [totalTeamsToImport, setTotalTeamsToImport] = useState(0);
   const [importResults, setImportResults] = useState<Array<{
     equipoId: number;
     equipoNombre: string;
@@ -44,7 +44,6 @@ export const BulkImportPlayersScreen: React.FC<BulkImportPlayersScreenProps> = (
   }>>([]);
   const [showFormatModal, setShowFormatModal] = useState(false);
   const [showResultsModal, setShowResultsModal] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     loadEquipos();
@@ -67,161 +66,199 @@ export const BulkImportPlayersScreen: React.FC<BulkImportPlayersScreenProps> = (
     setLoading(false);
   };
 
-  const toggleEquipo = (equipoId: number) => {
-    setSelectedEquipos((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(equipoId)) {
-        newSet.delete(equipoId);
-      } else {
-        newSet.add(equipoId);
-      }
-      return newSet;
-    });
-  };
-
-  const handleSelectAll = () => {
-    if (selectedEquipos.size === filteredEquipos.length) {
-      setSelectedEquipos(new Set());
-    } else {
-      setSelectedEquipos(new Set(filteredEquipos.map(e => e.id_equipo)));
-    }
-  };
-
   const handleShowFormat = () => {
     setShowFormatModal(true);
   };
 
-  const handleStartImport = async () => {
-    if (selectedEquipos.size === 0) {
-      showError('Selecciona al menos un equipo');
-      return;
-    }
+  const handleStartImportFromModal = async () => {
+    // Close the format modal first
+    setShowFormatModal(false);
+    // Wait for modal to close before opening document picker
+    await new Promise(resolve => setTimeout(resolve, 300));
+    handleStartImport();
+  };
 
+  const handleStartImport = async () => {
+    console.log('📂 [BulkImport] Iniciando selección de archivo...');
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: ['text/csv', 'text/comma-separated-values', 'application/csv', '*/*'],
         copyToCacheDirectory: true,
       });
 
-      if (result.canceled) return;
+      console.log('📂 [BulkImport] DocumentPicker result:', result);
 
-      const file = result.assets[0];
-      const response = await fetch(file.uri);
-      const csvText = await response.text();
-
-      setImporting(true);
-      setCurrentImportIndex(0);
-      setImportResults([]);
-
-      const selectedEquiposList = equipos.filter(e => selectedEquipos.has(e.id_equipo));
-
-      // Parse CSV
-      const lines = csvText.split(/\r?\n/).filter(line => line.trim() !== '');
-      if (lines.length < 2) {
-        showError('El archivo CSV está vacío o no tiene el formato correcto');
-        setImporting(false);
+      if (result.canceled) {
+        console.log('📂 [BulkImport] Usuario canceló la selección');
         return;
       }
 
-      const headers = lines[0].split(',').map(h => h.trim());
+      const file = result.assets[0];
+      console.log('📂 [BulkImport] Archivo seleccionado:', file.name, 'URI:', file.uri);
+
+      // Leer el contenido del archivo
+      console.log('📂 [BulkImport] Leyendo contenido del archivo...');
+      const response = await fetch(file.uri);
+      const csvText = await response.text();
+      console.log('📂 [BulkImport] Contenido leído, longitud:', csvText.length);
+
+      // Parse CSV
+      const lines = csvText.split(/\r?\n/).filter(line => line.trim() !== '');
+      console.log('📂 [BulkImport] Líneas parseadas:', lines.length);
+
+      if (lines.length < 2) {
+        console.log('📂 [BulkImport] Error: CSV vacío o sin datos');
+        showError('El archivo CSV está vacío o no tiene el formato correcto');
+        return;
+      }
+
+      // Limpiar comillas de los headers y valores
+      const cleanValue = (val: string) => val.replace(/^["']|["']$/g, '').trim();
+
+      const headers = lines[0].split(',').map(h => cleanValue(h));
+      console.log('📂 [BulkImport] Headers encontrados:', headers);
+
       const rows = lines.slice(1).map(line => {
-        const values = line.split(',').map(v => v.trim());
+        const values = line.split(',').map(v => cleanValue(v));
         const obj: any = {};
         headers.forEach((header, index) => {
           obj[header] = values[index];
         });
         return obj;
       });
+      console.log('📂 [BulkImport] Filas parseadas:', rows.length);
 
       // Validar columna nombre_equipo
       if (!headers.includes('nombre_equipo')) {
+        console.log('📂 [BulkImport] Error: Falta columna nombre_equipo. Headers:', headers);
+        Alert.alert(
+          'Error en formato CSV',
+          `El CSV debe incluir la columna "nombre_equipo".\n\nColumnas encontradas:\n${headers.join(', ')}`,
+          [{ text: 'Entendido', style: 'default' }]
+        );
         showError('El CSV debe incluir la columna "nombre_equipo"');
-        setImporting(false);
         return;
       }
 
-      for (let i = 0; i < selectedEquiposList.length; i++) {
-        const equipo = selectedEquiposList[i];
-        setCurrentImportIndex(i + 1);
+      // Obtener nombres únicos de equipos del CSV
+      const uniqueTeamNames = [...new Set(rows.map(row => row.nombre_equipo).filter(Boolean))];
+      console.log('📂 [BulkImport] Equipos únicos en CSV:', uniqueTeamNames);
 
-        // Filtrar filas para este equipo
-        const equipoRows = rows.filter(row => row.nombre_equipo === equipo.nombre);
+      if (uniqueTeamNames.length === 0) {
+        console.log('📂 [BulkImport] Error: No se encontraron nombres de equipo');
+        showError('No se encontraron nombres de equipo válidos en el CSV');
+        return;
+      }
 
-        if (equipoRows.length === 0) {
-          setImportResults(prev => [...prev, {
-            equipoId: equipo.id_equipo,
-            equipoNombre: equipo.nombre,
-            success: false,
-            successful: 0,
-            failed: 0,
-            errors: [{ row: 0, error: 'No se encontraron jugadores para este equipo en el CSV' }],
-          }]);
-          continue;
-        }
+      // Hacer match con equipos existentes
+      const matchedTeams: Array<{ equipo: Equipo; rows: any[] }> = [];
+      const unmatchedTeams: string[] = [];
 
-        // Generar CSV para este equipo (sin la columna nombre_equipo y arreglando el header de nombre completo)
-        // El usuario reportó que el backend pide "nombre completo"
-        const teamHeaders = headers.filter(h => h !== 'nombre_equipo');
-        const teamLines = [
-          teamHeaders.map(h => h === 'nombre_completo' ? 'nombre completo' : h).join(','),
-          ...equipoRows.map(row => teamHeaders.map(h => row[h]).join(','))
-        ];
-        const teamCsvString = teamLines.join('\n');
+      console.log('📂 [BulkImport] Equipos registrados para matching:', equipos.map(e => e.nombre));
 
-        // En React Native, para enviar como archivo, podemos usar un Blob si está disponible o enviarlo como string si el backend lo acepta
-        // Pero api.jugadores.createBulk espera un objeto tipo archivo para FormData.
-        // Vamos a intentar enviarlo convirtiendo el string a una simulación de archivo.
-        const teamCsvFile = {
-          uri: 'data:text/csv;base64,' + btoa(unescape(encodeURIComponent(teamCsvString))),
-          type: 'text/csv',
-          name: `${equipo.nombre}_import.csv`,
-        } as any;
-
-        const uploadResult = await safeAsync(
-          async () => {
-            const apiResponse = await api.jugadores.createBulk(equipo.id_equipo, teamCsvFile);
-            return apiResponse;
-          },
-          'importCSV',
-          { fallbackValue: null }
+      for (const teamName of uniqueTeamNames) {
+        const equipo = equipos.find(e =>
+          e.nombre.toLowerCase() === teamName.toLowerCase() ||
+          e.nombre_corto?.toLowerCase() === teamName.toLowerCase()
         );
-
-        if (uploadResult && uploadResult.success) {
-          const { successful, failed, errors } = uploadResult.data;
-          setImportResults(prev => [...prev, {
-            equipoId: equipo.id_equipo,
-            equipoNombre: equipo.nombre,
-            success: true,
-            successful: successful || 0,
-            failed: failed || 0,
-            errors: errors || [],
-          }]);
+        if (equipo) {
+          const teamRows = rows.filter(row => row.nombre_equipo === teamName);
+          matchedTeams.push({ equipo, rows: teamRows });
+          console.log(`📂 [BulkImport] Match encontrado: "${teamName}" -> "${equipo.nombre}" (${teamRows.length} jugadores)`);
         } else {
-          setImportResults(prev => [...prev, {
-            equipoId: equipo.id_equipo,
-            equipoNombre: equipo.nombre,
-            success: false,
-            successful: 0,
-            failed: 0,
-            errors: [{ row: 0, error: 'Error al procesar este equipo' }],
-          }]);
+          unmatchedTeams.push(teamName);
+          console.log(`📂 [BulkImport] Sin match: "${teamName}"`);
         }
       }
 
-      setImporting(false);
-      setShowResultsModal(true);
-    } catch (error) {
-      console.error('Error in import process:', error);
+      console.log('📂 [BulkImport] Resumen: matched:', matchedTeams.length, 'unmatched:', unmatchedTeams.length);
+
+      if (unmatchedTeams.length > 0) {
+        Alert.alert(
+          'Equipos no encontrados',
+          `Los siguientes equipos del CSV no coinciden con ningún equipo registrado:\n\n${unmatchedTeams.join('\n')}\n\n¿Deseas continuar con los equipos que sí coinciden (${matchedTeams.length})?`,
+          [
+            { text: 'Cancelar', style: 'cancel' },
+            {
+              text: 'Continuar',
+              onPress: () => processImport(matchedTeams, headers),
+            },
+          ]
+        );
+      } else {
+        processImport(matchedTeams, headers);
+      }
+    } catch (error: any) {
+      console.error('❌ [BulkImport] Error en proceso de importación:', error);
+      console.error('❌ [BulkImport] Error message:', error?.message);
+      console.error('❌ [BulkImport] Error stack:', error?.stack);
       showError('Error al procesar el archivo CSV');
-      setImporting(false);
     }
   };
 
+  const processImport = async (matchedTeams: Array<{ equipo: Equipo; rows: any[] }>, headers: string[]) => {
+    if (matchedTeams.length === 0) {
+      showError('No hay equipos para importar');
+      return;
+    }
 
+    setImporting(true);
+    setCurrentImportIndex(0);
+    setTotalTeamsToImport(matchedTeams.length);
+    setImportResults([]);
 
-  const filteredEquipos = equipos.filter((equipo) =>
-    equipo.nombre.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+    for (let i = 0; i < matchedTeams.length; i++) {
+      const { equipo, rows: equipoRows } = matchedTeams[i];
+      setCurrentImportIndex(i + 1);
+
+      // Generar CSV para este equipo (sin la columna nombre_equipo)
+      const teamHeaders = headers.filter(h => h !== 'nombre_equipo');
+      const teamLines = [
+        teamHeaders.join(','),
+        ...equipoRows.map(row => teamHeaders.map(h => row[h]).join(','))
+      ];
+      const teamCsvString = teamLines.join('\n');
+
+      const teamCsvFile = {
+        uri: 'data:text/csv;base64,' + btoa(unescape(encodeURIComponent(teamCsvString))),
+        type: 'text/csv',
+        name: `${equipo.nombre}_import.csv`,
+      } as any;
+
+      const uploadResult = await safeAsync(
+        async () => {
+          const apiResponse = await api.jugadores.createBulk(equipo.id_equipo, teamCsvFile);
+          return apiResponse;
+        },
+        'importCSV',
+        { fallbackValue: null }
+      );
+
+      if (uploadResult && uploadResult.success) {
+        const { successful, failed, errors } = uploadResult.data;
+        setImportResults(prev => [...prev, {
+          equipoId: equipo.id_equipo,
+          equipoNombre: equipo.nombre,
+          success: true,
+          successful: successful || 0,
+          failed: failed || 0,
+          errors: errors || [],
+        }]);
+      } else {
+        setImportResults(prev => [...prev, {
+          equipoId: equipo.id_equipo,
+          equipoNombre: equipo.nombre,
+          success: false,
+          successful: 0,
+          failed: 0,
+          errors: [{ row: 0, error: 'Error al procesar este equipo' }],
+        }]);
+      }
+    }
+
+    setImporting(false);
+    setShowResultsModal(true);
+  };
 
   if (loading) {
     return (
@@ -241,7 +278,7 @@ export const BulkImportPlayersScreen: React.FC<BulkImportPlayersScreenProps> = (
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <GradientHeader
-        title="Importación Masiva de Jugadores"
+        title="Importación Masiva"
         onBackPress={() => navigation.goBack()}
       />
 
@@ -253,80 +290,30 @@ export const BulkImportPlayersScreen: React.FC<BulkImportPlayersScreenProps> = (
             <Text style={styles.infoTitle}>¿Cómo funciona?</Text>
           </View>
           <Text style={styles.infoText}>
-            1. Selecciona los equipos que quieres importar{'\n'}
-            2. Presiona "Iniciar Importación" y selecciona UN SOLO archivo CSV con todos los jugadores{'\n'}
-            3. El CSV debe tener la columna "nombre_equipo" para asignar cada jugador{'\n'}
-            4. Revisa los resultados al final
+            1. Prepara UN SOLO archivo CSV con todos los jugadores{'\n'}
+            2. El CSV debe tener "nombre_equipo" como primera columna{'\n'}
+            3. El nombre del equipo debe coincidir exactamente con los registrados{'\n'}
+            4. Presiona "Iniciar Importación" y selecciona el archivo
           </Text>
         </Card>
 
-        {/* Search Bar */}
-        <View style={styles.searchContainer}>
-          <MaterialCommunityIcons name="magnify" size={20} color={colors.textSecondary} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Buscar equipos..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            placeholderTextColor={colors.textSecondary}
-          />
-        </View>
-
-        {/* Select All Button */}
-        <View style={styles.selectAllContainer}>
-          <TouchableOpacity
-            style={styles.selectAllButton}
-            onPress={handleSelectAll}
-          >
-            <MaterialCommunityIcons
-              name={selectedEquipos.size === filteredEquipos.length ? 'checkbox-marked' : 'checkbox-blank-outline'}
-              size={24}
-              color={colors.primary}
-            />
-            <Text style={styles.selectAllText}>
-              {selectedEquipos.size === filteredEquipos.length ? 'Deseleccionar todos' : 'Seleccionar todos'}
-            </Text>
-          </TouchableOpacity>
-          <Text style={styles.selectedCount}>
-            {selectedEquipos.size} seleccionado{selectedEquipos.size !== 1 ? 's' : ''}
-          </Text>
-        </View>
-
-        {/* Equipos List */}
-        <View style={styles.equiposList}>
-          {filteredEquipos.map((equipo) => {
-            const isSelected = selectedEquipos.has(equipo.id_equipo);
-            return (
-              <TouchableOpacity
-                key={equipo.id_equipo}
-                style={[styles.equipoCard, isSelected && styles.equipoCardSelected]}
-                onPress={() => toggleEquipo(equipo.id_equipo)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.equipoInfo}>
-                  <MaterialCommunityIcons
-                    name={isSelected ? 'checkbox-marked-circle' : 'checkbox-blank-circle-outline'}
-                    size={28}
-                    color={isSelected ? colors.primary : colors.textLight}
-                  />
-                  <View style={styles.equipoTextContainer}>
-                    <Text style={styles.equipoNombre}>{equipo.nombre}</Text>
-                    {equipo.nombre_corto && (
-                      <Text style={styles.equipoNombreCorto}>{equipo.nombre_corto}</Text>
-                    )}
-                  </View>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
-        {filteredEquipos.length === 0 && (
-          <View style={styles.emptyContainer}>
-            <MaterialCommunityIcons name="shield-search" size={64} color={colors.textLight} />
-            <Text style={styles.emptyText}>No se encontraron equipos</Text>
+        {/* Equipos disponibles */}
+        <Card style={styles.equiposCard}>
+          <View style={styles.infoHeader}>
+            <MaterialCommunityIcons name="shield-check" size={24} color={colors.success} />
+            <Text style={styles.infoTitle}>Equipos registrados ({equipos.length})</Text>
           </View>
-        )}
+          <Text style={styles.equiposHint}>
+            El CSV buscará coincidencias con estos nombres:
+          </Text>
+          <View style={styles.equiposChipsContainer}>
+            {equipos.map((equipo) => (
+              <View key={equipo.id_equipo} style={styles.equipoChip}>
+                <Text style={styles.equipoChipText}>{equipo.nombre}</Text>
+              </View>
+            ))}
+          </View>
+        </Card>
 
         <View style={{ height: 100 }} />
       </ScrollView>
@@ -341,9 +328,8 @@ export const BulkImportPlayersScreen: React.FC<BulkImportPlayersScreenProps> = (
             style={styles.buttonHalf}
           />
           <Button
-            title={`Iniciar Importación (${selectedEquipos.size})`}
+            title="Iniciar Importación"
             onPress={handleStartImport}
-            disabled={selectedEquipos.size === 0}
             style={styles.buttonHalf}
           />
         </View>
@@ -356,13 +342,13 @@ export const BulkImportPlayersScreen: React.FC<BulkImportPlayersScreenProps> = (
             <ActivityIndicator size="large" color={colors.primary} />
             <Text style={styles.importingTitle}>Importando Jugadores</Text>
             <Text style={styles.importingText}>
-              Equipo {currentImportIndex} de {selectedEquipos.size}
+              Equipo {currentImportIndex} de {totalTeamsToImport}
             </Text>
             <View style={styles.progressBar}>
               <View
                 style={[
                   styles.progressFill,
-                  { width: `${(currentImportIndex / selectedEquipos.size) * 100}%` },
+                  { width: `${totalTeamsToImport > 0 ? (currentImportIndex / totalTeamsToImport) * 100 : 0}%` },
                 ]}
               />
             </View>
@@ -391,7 +377,7 @@ export const BulkImportPlayersScreen: React.FC<BulkImportPlayersScreenProps> = (
               <View style={styles.formatList}>
                 <Text style={styles.formatItem}>• nombre_equipo (debe coincidir exactamente) *</Text>
                 <Text style={styles.formatItem}>• nombre_completo (texto) *</Text>
-                <Text style={styles.formatItem}>• dni (texto, único) *</Text>
+                <Text style={styles.formatItem}>• dni (texto, único por equipo) *</Text>
                 <Text style={styles.formatItem}>• fecha_nacimiento (DD/MM/YYYY) *</Text>
                 <Text style={styles.formatItem}>• es_refuerzo (si/no) *</Text>
               </View>
@@ -413,7 +399,8 @@ export const BulkImportPlayersScreen: React.FC<BulkImportPlayersScreenProps> = (
                 <MaterialCommunityIcons name="alert" size={20} color={colors.warning} />
                 <Text style={styles.warningText}>
                   Importante:{'\n'}
-                  • Los DNI duplicados serán rechazados{'\n'}
+                  • Los DNI duplicados en el mismo equipo serán rechazados{'\n'}
+                  • Un jugador puede estar en varios equipos{'\n'}
                   • Si no tiene número de camiseta, usa "-"{'\n'}
                   • es_refuerzo debe ser "si" o "no"
                 </Text>
@@ -422,7 +409,7 @@ export const BulkImportPlayersScreen: React.FC<BulkImportPlayersScreenProps> = (
 
             <Button
               title="Entendido, Iniciar"
-              onPress={handleStartImport}
+              onPress={handleStartImportFromModal}
               style={styles.modalButton}
             />
           </View>
@@ -488,7 +475,6 @@ export const BulkImportPlayersScreen: React.FC<BulkImportPlayersScreenProps> = (
               title="Cerrar"
               onPress={() => {
                 setShowResultsModal(false);
-                setSelectedEquipos(new Set());
                 setImportResults([]);
               }}
               style={styles.modalButton}
@@ -537,6 +523,34 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
     lineHeight: 22,
+  },
+  equiposCard: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    padding: 16,
+  },
+  equiposHint: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginBottom: 12,
+  },
+  equiposChipsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  equipoChip: {
+    backgroundColor: colors.backgroundGray,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  equipoChipText: {
+    fontSize: 13,
+    color: colors.textPrimary,
+    fontWeight: '500',
   },
   searchContainer: {
     flexDirection: 'row',

@@ -104,15 +104,16 @@ export const ManageTeamsScreen = ({ navigation, route }: any) => {
       'Formato del Archivo CSV',
       'El archivo CSV debe tener las siguientes columnas (el orden de columnas no importa si usas cabeceras correctas):\n\n' +
       '1. nombre_completo\n' +
-      '2. dni\n' +
-      '3. fecha_nacimiento (YYYY-MM-DD)\n' +
-      '4. numero_camiseta\n' +
+      '2. dni (único por equipo)\n' +
+      '3. fecha_nacimiento (DD/MM/YYYY)\n' +
+      '4. numero_camiseta (1-99 o "-")\n' +
       '5. pie_dominante (opcional: derecho, izquierdo, ambidiestro)\n' +
-      '6. es_refuerzo (0 o 1)\n' +
+      '6. es_refuerzo (si/no)\n' +
       '7. es_capitan (0 o 1)\n\n' +
+      'Nota: Un jugador puede estar en varios equipos.\n\n' +
       'Ejemplo:\n' +
       'nombre_completo,dni,fecha_nacimiento,numero_camiseta,pie_dominante,es_refuerzo,es_capitan\n' +
-      'Juan Pérez,12345678,2000-05-15,10,derecho,0,0\n\n' +
+      'Juan Pérez,12345678,15/05/2000,10,derecho,no,0\n\n' +
       '¿Deseas continuar?',
       [
         { text: 'Cancelar', style: 'cancel' },

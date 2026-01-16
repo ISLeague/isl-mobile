@@ -71,15 +71,10 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
   // Estado de carga
   const [loading, setLoading] = useState(true);
 
-  // Estados de feedback para operaciones
-  const [importingCSV, setImportingCSV] = useState(false);
-  const [importStatus, setImportStatus] = useState<string>('');
-
-  // Estados para modales de registro de jugadores
-  const [showCSVFormatModal, setShowCSVFormatModal] = useState(false);
+  // Estados para modales de registro de jugadores individuales
   const [showResultsModal, setShowResultsModal] = useState(false);
   const [registrationResults, setRegistrationResults] = useState<{
-    type: 'csv' | 'individual';
+    type: 'individual';
     successful: number;
     failed: number;
     total: number;
@@ -338,189 +333,10 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
   };
 
   const handleImportCSV = () => {
-    // Show CSV format modal first
-    setShowCSVFormatModal(true);
+    // Navigate to ImportTeamCSVScreen instead of showing modal
+    navigation.navigate('ImportTeamCSV', { equipoId, equipoNombre: equipo?.nombre });
   };
 
-  const handleProceedWithCSVSelection = async () => {
-    try {
-      // Close format modal
-      setShowCSVFormatModal(false);
-
-      // Pick CSV file from device
-      const result = await DocumentPicker.getDocumentAsync({
-        type: ['text/csv', 'text/comma-separated-values', 'application/csv', '*/*'],
-        copyToCacheDirectory: true,
-      });
-
-      if (result.canceled) {
-        return;
-      }
-
-      const file = result.assets[0];
-
-      // Start import process immediately
-      setImportingCSV(true);
-      setImportStatus('Procesando archivo CSV...');
-
-
-      // Create file object in React Native format
-      const csvFile = {
-        uri: file.uri,
-        type: 'text/csv',
-        name: file.name,
-      } as any;
-
-      setImportStatus('Enviando datos al servidor...');
-
-      // Upload CSV
-      const uploadResult = await safeAsync(
-        async () => {
-          const apiResponse = await api.jugadores.createBulk(equipoId, csvFile);
-          return apiResponse;
-        },
-        'importCSV',
-        {
-          severity: 'high',
-          fallbackValue: null,
-          onError: (error: any) => {
-            // console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-            // console.error('❌ [ImportCSV] ERROR AL IMPORTAR');
-            // console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-            // console.error('❌ [ImportCSV] Error completo:', error);
-            // console.error('❌ [ImportCSV] Error message:', error?.message);
-            // console.error('❌ [ImportCSV] Error name:', error?.name);
-
-            // Información detallada de la respuesta HTTP
-            if (error?.response) {
-              // console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-              // console.error('📡 [ImportCSV] HTTP RESPONSE ERROR:');
-              // console.error('  - Status:', error.response.status);
-              // console.error('  - Status Text:', error.response.statusText);
-              // console.error('  - Data:', JSON.stringify(error.response.data, null, 2));
-              // console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-
-              // Obtener mensaje específico del servidor
-              const serverMessage = error.response.data?.message || error.response.data?.error;
-
-              // Error 400 - Bad Request (formato inválido, datos incorrectos)
-              if (error.response.status === 400) {
-                // console.error('⚠️ [ImportCSV] ERROR 400 - BAD REQUEST');
-                // console.error('⚠️ [ImportCSV] Mensaje del servidor:', serverMessage);
-
-                setImportingCSV(false);
-                setImportStatus('');
-
-                // Mostrar mensaje específico del servidor
-                showError(
-                  serverMessage || 'El archivo CSV no cumple con el formato requerido.\n\nVerifica que tenga todas las columnas necesarias y que los datos estén en el formato correcto.',
-                  'Formato de CSV Inválido'
-                );
-                return;
-              }
-
-              // Otros errores HTTP
-              setImportingCSV(false);
-              setImportStatus('');
-              showError(
-                serverMessage || 'Error al importar el archivo CSV',
-                `Error (${error.response.status})`
-              );
-            } else if (error?.request) {
-              // console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-              // console.error('📡 [ImportCSV] REQUEST ERROR (Sin respuesta del servidor)');
-              // console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-
-              setImportingCSV(false);
-              setImportStatus('');
-              showError('No se pudo conectar con el servidor', 'Error de Conexión');
-            } else {
-              // Error desconocido
-              setImportingCSV(false);
-              setImportStatus('');
-              showError('Error al importar el archivo CSV', 'Error');
-            }
-
-            // console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-          }
-        }
-      );
-
-      if (uploadResult && uploadResult.success) {
-        const { total_processed, successful, failed, errors } = uploadResult.data;
-
-
-        let newPlayers: Jugador[] = [];
-        let newPlayersVal: Jugador[] = [];
-        if (successful > 0) {
-          setImportStatus('Recargando lista de jugadores...');
-
-          const jugadoresResponse = await safeAsync(
-            async () => {
-              const response = await api.jugadores.list(equipoId);
-              return response;
-            },
-            'ImportCSV - reloadPlayers',
-            {
-              fallbackValue: null,
-              onError: (error) => {
-                // console.error('⚠️ [ImportCSV] Error al recargar jugadores:', error);
-              }
-            }
-          );
-
-          if (jugadoresResponse) {
-            if (jugadoresResponse.data && Array.isArray(jugadoresResponse.data.jugadores)) {
-              newPlayersVal = jugadoresResponse.data.jugadores;
-            } else if (Array.isArray(jugadoresResponse.data)) {
-              newPlayersVal = jugadoresResponse.data;
-            } else if (jugadoresResponse.jugadores && Array.isArray(jugadoresResponse.jugadores)) {
-              newPlayersVal = jugadoresResponse.jugadores;
-            } else if (Array.isArray(jugadoresResponse)) {
-              newPlayersVal = jugadoresResponse as unknown as Jugador[];
-            }
-          }
-
-          if (newPlayersVal.length > 0) {
-            newPlayers = newPlayersVal; // update reference for modal
-            setJugadores(newPlayersVal);
-          }
-        }
-
-        // Hide loading
-        setImportingCSV(false);
-        setImportStatus('');
-
-        // Show results modal SIEMPRE (con errores o sin errores)
-        setRegistrationResults({
-          type: 'csv',
-          successful,
-          failed,
-          total: total_processed,
-          errors: errors || [],
-          newPlayers,
-        });
-        setShowResultsModal(true);
-
-        // Si TODOS fallaron, mostrar mensaje adicional
-        if (successful === 0 && failed > 0) {
-          // console.error('❌ [ImportCSV] TODOS LOS JUGADORES FALLARON');
-        } else {
-        }
-      } else {
-        setImportingCSV(false);
-        setImportStatus('');
-      }
-    } catch (error) {
-      // console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      // console.error('❌ [ImportCSV] ERROR INESPERADO AL PROCESAR CSV');
-      // console.error('Error:', error);
-      // console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      setImportingCSV(false);
-      setImportStatus('');
-      showError('Error inesperado al procesar el archivo CSV', 'Error');
-    }
-  };
 
   const handleEditPlayer = (jugador: Jugador) => {
     navigation.navigate('PlayerForm', { equipoId, jugador, mode: 'edit' });
@@ -896,9 +712,6 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
               <TouchableOpacity onPress={handleMoveToGroup} style={styles.headerButton}>
                 <MaterialCommunityIcons name="swap-horizontal" size={24} color={colors.white} />
               </TouchableOpacity>
-              <TouchableOpacity onPress={handleManagePhotoLinks} style={styles.headerButton}>
-                <MaterialCommunityIcons name="camera" size={24} color={colors.white} />
-              </TouchableOpacity>
               <TouchableOpacity onPress={handleClearRoster} style={styles.headerButton}>
                 <MaterialCommunityIcons name="account-remove" size={24} color={colors.white} />
               </TouchableOpacity>
@@ -1106,7 +919,6 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
                       <TouchableOpacity
                         style={[styles.adminButton, { flex: 1 }]}
                         onPress={handleImportCSV}
-                        disabled={importingCSV}
                       >
                         <MaterialCommunityIcons name="file-upload" size={20} color={colors.white} />
                         <Text style={styles.adminButtonText}>Importar CSV</Text>
@@ -1218,95 +1030,6 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
           return null;
         })}
       </PagerView>
-
-      {/* Loading Overlay para operaciones */}
-      {importingCSV && (
-        <View style={styles.loadingOverlay}>
-          <View style={styles.loadingContent}>
-            <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={styles.loadingOverlayText}>{importStatus}</Text>
-          </View>
-        </View>
-      )}
-
-      {/* CSV Format Modal */}
-      <Modal
-        visible={showCSVFormatModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowCSVFormatModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {/* Modal Header */}
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Formato del Archivo CSV</Text>
-                <TouchableOpacity
-                  onPress={() => setShowCSVFormatModal(false)}
-                  style={styles.modalCloseButton}
-                >
-                  <MaterialCommunityIcons name="close" size={24} color={colors.textSecondary} />
-                </TouchableOpacity>
-              </View>
-
-              {/* Modal Content */}
-              <View style={styles.modalContent}>
-                <Text style={styles.columnListTitle}>Columnas requeridas:</Text>
-                <View style={styles.columnListCard}>
-                  <Text style={styles.columnItemText}>• nombre_completo (texto) *</Text>
-                  <Text style={styles.columnItemText}>• dni (texto, único) *</Text>
-                  <Text style={styles.columnItemText}>• fecha_nacimiento (DD/MM/YYYY) *</Text>
-                  <Text style={styles.columnItemText}>• es_refuerzo (si/no) *</Text>
-                </View>
-
-                <Text style={[styles.columnListTitle, { marginTop: 12 }]}>Columnas opcionales:</Text>
-                <View style={styles.columnListCard}>
-                  <Text style={styles.columnItemText}>• numero_camiseta (número 1-99, o "-" si no tiene)</Text>
-                  <Text style={styles.columnItemText}>• posicion (texto, opcional)</Text>
-                </View>
-
-                <Text style={[styles.columnListTitle, { marginTop: 12 }]}>Ejemplo:</Text>
-                <View style={styles.exampleBox}>
-                  <Text style={styles.exampleText}>nombre_completo,dni,fecha_nacimiento,es_refuerzo,numero_camiseta,posicion</Text>
-                  <Text style={styles.exampleText}>Juan Pérez,12345678,15/03/2000,no,10,Delantero</Text>
-                  <Text style={styles.exampleText}>María García,87654321,22/07/1999,si,-,</Text>
-                  <Text style={styles.exampleText}>Pedro López,11223344,01/01/2001,no,7,Mediocampista</Text>
-                </View>
-
-                <View style={[styles.instructionsCard, { borderLeftColor: colors.warning, marginTop: 16 }]}>
-                  <MaterialCommunityIcons name="alert" size={20} color={colors.warning} />
-                  <View style={styles.instructionsTextContainer}>
-                    <Text style={styles.instructionsText}>
-                      Importante:{'\n'}
-                      • Los DNI duplicados serán rechazados{'\n'}
-                      • Si no tiene número de camiseta, usa "-"{'\n'}
-                      • es_refuerzo debe ser "si" o "no"
-                    </Text>
-                  </View>
-                </View>
-
-                {/* Buttons */}
-                <View style={styles.modalButtons}>
-                  <TouchableOpacity
-                    style={styles.cancelButton}
-                    onPress={() => setShowCSVFormatModal(false)}
-                  >
-                    <Text style={styles.cancelButtonText}>Cancelar</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.confirmButton}
-                    onPress={handleProceedWithCSVSelection}
-                  >
-                    <MaterialCommunityIcons name="file-document" size={20} color={colors.white} />
-                    <Text style={styles.confirmButtonText}>Seleccionar CSV</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
 
       {/* Results Modal */}
       <Modal
