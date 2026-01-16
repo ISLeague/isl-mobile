@@ -61,8 +61,7 @@ export const EditRondaScreen = ({ navigation, route }: any) => {
             setLoading(true);
             const result = await safeAsync(
               async () => {
-                const response = await api.rondas.update({
-                  id: ronda.id_ronda,
+                const response = await api.rondas.update(ronda.id_ronda, {
                   nombre,
                   fecha_inicio: fecha,
                   orden: parseInt(orden),

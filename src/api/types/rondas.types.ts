@@ -71,7 +71,14 @@ export interface FixtureGenerateResponse {
 }
 
 export interface UpdateRondaRequest {
-  id: number;
+  nombre?: string;
+  fecha_inicio?: string;
+  fecha_fin?: string;
+  orden?: number;
+  activo?: boolean;
+  id_fase?: number;
+  tipo?: 'fase_grupos' | 'eliminatorias' | 'amistosa';
+  subtipo_eliminatoria?: 'oro' | 'plata' | 'bronce';
   numero?: number;
 }
 

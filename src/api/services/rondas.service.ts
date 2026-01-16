@@ -70,10 +70,13 @@ export const rondasService = {
     return response.data;
   },
 
-  update: async (data: UpdateRondaRequest) => {
+  update: async (id: number, data: UpdateRondaRequest) => {
+    console.log('🔁 [rondasService.update] PATCH /rondas?id=', id, ' payload:', data);
     const response = await apiClient.patch('/rondas', data, {
-      params: { action: 'update', id: data.id }
+      // Call the function directly with the id query param as requested
+      params: { id }
     });
+    console.log('✅ [rondasService.update] response:', response.data);
     return response.data;
   },
 

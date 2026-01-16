@@ -256,6 +256,43 @@ export const EditTournamentScreen = ({ navigation, route }: any) => {
     }
   };
 
+  const handleDeleteTournament = () => {
+    Alert.alert(
+      'Eliminar Torneo',
+      `¿Estás seguro que deseas eliminar el torneo "${torneo.nombre}"? Esta acción no se puede deshacer.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setIsSaving(true);
+              console.log('🔗 [EditTournament] Deleting tournament id:', torneo.id_torneo);
+              const response = await api.torneos.delete(torneo.id_torneo);
+              console.log('✅ [EditTournament] Delete response:', response);
+              Alert.alert('Éxito', 'Torneo eliminado correctamente', [
+                {
+                  text: 'OK',
+                  onPress: () => {
+                    navigation.navigate('AdminTournaments', { pais, refresh: true });
+                  },
+                },
+              ]);
+            } catch (error: any) {
+              console.error('❌ [EditTournament] Error deleting tournament:', error);
+              // Show detailed error if available
+              const msg = error?.response?.data || error?.message || 'No se pudo eliminar el torneo';
+              Alert.alert('Error', typeof msg === 'string' ? msg : 'No se pudo eliminar el torneo');
+            } finally {
+              setIsSaving(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       {/* Header */}
@@ -326,6 +363,20 @@ export const EditTournamentScreen = ({ navigation, route }: any) => {
               {activo ? 'Activo' : 'Inactivo'}
             </Text>
           </View>
+
+          {/* Delete tournament button */}
+          {canEditTournament && (
+            <View style={{ marginTop: 12 }}>
+              <TouchableOpacity
+                style={styles.deleteButton}
+                onPress={handleDeleteTournament}
+                activeOpacity={0.8}
+              >
+                <MaterialCommunityIcons name="trash-can-outline" size={18} color={colors.white} />
+                <Text style={styles.deleteButtonText}>Eliminar Torneo</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
         {/* Admins Section */}
@@ -749,6 +800,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: colors.primary,
+  },
+  deleteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: colors.error,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  deleteButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.white,
+    marginLeft: 6,
   },
   modalOverlay: {
     flex: 1,
