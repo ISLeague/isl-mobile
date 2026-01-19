@@ -4,7 +4,7 @@
 
 import { TipoCopa } from './fases.types';
 
-export type RondaEliminatoria = 'octavos' | 'cuartos' | 'semifinal' | 'final';
+export type RondaEliminatoria = 'eliminatoria' | '16avos' | 'octavos' | 'cuartos' | 'semifinal' | 'final';
 export type EstadoLlave = 'pendiente' | 'en_curso' | 'finalizado';
 
 export interface Eliminatoria {
@@ -43,6 +43,8 @@ export interface LlavesListParams {
 }
 
 export interface LlavesPorRonda {
+  eliminatoria: Eliminatoria[];
+  '16avos': Eliminatoria[];
   octavos: Eliminatoria[];
   cuartos: Eliminatoria[];
   semifinal: Eliminatoria[];
@@ -117,5 +119,121 @@ export interface LlavesListApiResponse {
 export interface CampeonesApiResponse {
   success: boolean;
   data: CampeonesResponse;
+  timestamp: string;
+}
+
+// ============================================
+// 🆕 NUEVOS TIPOS PARA KNOCKOUT MEJORADO
+// ============================================
+
+/**
+ * Equipo disponible para selección en knockout
+ */
+export interface EquipoDisponible {
+  id_equipo: number;
+  nombre: string;
+  nombre_corto: string | null;
+  logo: string | null;
+  origen: string;
+  tipo_origen: 'grupos' | 'eliminatoria';
+  ya_asignado: boolean;
+  es_sugerido?: boolean; // TRUE si el equipo es sugerido para esta copa según configuración
+  // Opcionales según origen
+  grupo?: string;
+  posicion?: number;
+  puntos?: number;
+  llave_previa?: number;
+  id_eliminatoria_previa?: number;
+}
+
+/**
+ * Response del endpoint get-equipos-disponibles
+ */
+export interface GetEquiposDisponiblesResponse {
+  success: boolean;
+  data: {
+    ronda_solicitada: RondaEliminatoria;
+    copa: string;
+    fase_knockout_id: number | null;
+    tiene_ronda_previa: boolean;
+    ronda_previa: RondaEliminatoria | null;
+    equipos: EquipoDisponible[];
+    total_equipos: number;
+    equipos_disponibles: number;
+  };
+  timestamp: string;
+}
+
+/**
+ * Input para crear una llave
+ */
+export interface CrearLlaveInput {
+  id_equipo_a: number | null;
+  id_equipo_b: number | null;
+  origen_a?: string;
+  origen_b?: string;
+}
+
+/**
+ * Request para crear ronda completa
+ */
+export interface CrearRondaCompletaRequest {
+  id_fase: number;
+  ronda: RondaEliminatoria;
+  llaves?: CrearLlaveInput[];
+  crear_partidos?: boolean;
+  datos_partidos?: {
+    fecha?: string | null;
+    hora?: string | null;
+    id_cancha?: number | null;
+  };
+}
+
+/**
+ * Response de crear ronda completa
+ */
+export interface CrearRondaCompletaResponse {
+  success: boolean;
+  data: {
+    mensaje: string;
+    ronda: RondaEliminatoria;
+    id_ronda: number;
+    fase: {
+      id_fase: number;
+      nombre: string;
+      tipo: string;
+      copa: string;
+    };
+    llaves_creadas: number;
+    partidos_creados: number;
+    llaves: Eliminatoria[];
+    partidos: any[];
+  };
+  timestamp: string;
+}
+
+/**
+ * Cruce automático sugerido
+ */
+export interface CruceAutomatico {
+  id_equipo_a: number;
+  id_equipo_b: number;
+  equipo_a: EquipoDisponible;
+  equipo_b: EquipoDisponible;
+  origen_a: string;
+  origen_b: string;
+}
+
+/**
+ * Response de generar cruces automáticos
+ */
+export interface GenerarCrucesResponse {
+  success: boolean;
+  data: {
+    ronda: RondaEliminatoria;
+    copa: string;
+    cruces_sugeridos: CruceAutomatico[];
+    total_cruces: number;
+  };
   timestamp: string;
 }

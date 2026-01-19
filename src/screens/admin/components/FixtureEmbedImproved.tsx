@@ -497,7 +497,8 @@ const FixtureEmbedImprovedComponent: React.FC<FixtureEmbedImprovedProps> = ({
     const hasResult = partido.marcador_local !== null && partido.marcador_local !== undefined &&
       partido.marcador_visitante !== null && partido.marcador_visitante !== undefined;
 
-    const hayPenales = partido.penales_local !== null && partido.penales_local !== undefined &&
+    const hayPenales = partido.fue_a_penales === true &&
+      partido.penales_local !== null && partido.penales_local !== undefined &&
       partido.penales_visitante !== null && partido.penales_visitante !== undefined;
 
     let ganador: 'local' | 'visitante' | 'empate' | null = null;

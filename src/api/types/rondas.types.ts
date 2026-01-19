@@ -6,7 +6,8 @@ export interface Ronda {
   id_ronda: number;
   nombre: string;
   tipo: 'fase_grupos' | 'eliminatorias' | 'amistosa';
-  subtipo_eliminatoria?: 'oro' | 'plata' | 'bronce';
+  subtipo_eliminatoria?: 'oro' | 'plata' | 'bronce'; // Copa (oro/plata/bronce)
+  stage_eliminatoria?: 'eliminatoria' | '16avos' | 'octavos' | 'cuartos' | 'semifinal' | 'final'; // Tipo de ronda
   fecha_inicio: string;
   fecha_fin?: string;
   orden: number;
@@ -19,7 +20,8 @@ export interface CreateRondaRequest {
   nombre: string;
   id_fase: number;
   tipo: 'fase_grupos' | 'eliminatorias' | 'amistosa';
-  subtipo_eliminatoria?: 'oro' | 'plata' | 'bronce';
+  subtipo_eliminatoria?: 'oro' | 'plata' | 'bronce'; // Copa (oro/plata/bronce)
+  stage_eliminatoria?: 'eliminatoria' | '16avos' | 'octavos' | 'cuartos' | 'semifinal' | 'final'; // Tipo de ronda
   es_amistosa?: boolean;
   fecha_inicio?: string;
   count_enfrentamientos?: number;
@@ -78,7 +80,8 @@ export interface UpdateRondaRequest {
   activo?: boolean;
   id_fase?: number;
   tipo?: 'fase_grupos' | 'eliminatorias' | 'amistosa';
-  subtipo_eliminatoria?: 'oro' | 'plata' | 'bronce';
+  subtipo_eliminatoria?: 'oro' | 'plata' | 'bronce'; // Copa (oro/plata/bronce)
+  stage_eliminatoria?: 'eliminatoria' | '16avos' | 'octavos' | 'cuartos' | 'semifinal' | 'final'; // Tipo de ronda
   numero?: number;
 }
 

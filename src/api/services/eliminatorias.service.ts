@@ -7,6 +7,11 @@ import {
   LlavesListParams,
   LlavesListApiResponse,
   CampeonesApiResponse,
+  GetEquiposDisponiblesResponse,
+  CrearRondaCompletaRequest,
+  CrearRondaCompletaResponse,
+  GenerarCrucesResponse,
+  RondaEliminatoria,
 } from '../types/eliminatorias.types';
 
 /**
@@ -67,6 +72,57 @@ export const eliminatoriasService = {
       params: {
         action: 'campeones',
         id_edicion_categoria: idEdicionCategoria
+      }
+    });
+    return response.data;
+  },
+
+  /**
+   * Obtener equipos disponibles para una ronda
+   * Combina equipos de clasificación de grupos + ganadores de eliminatorias previas
+   */
+  getEquiposDisponibles: async (
+    idEdicionCategoria: number,
+    copa: string,
+    ronda: RondaEliminatoria
+  ): Promise<GetEquiposDisponiblesResponse> => {
+    const response = await apiClient.get('/eliminatorias', {
+      params: {
+        action: 'get-equipos-disponibles',
+        id_edicion_categoria: idEdicionCategoria,
+        copa,
+        ronda
+      }
+    });
+    return response.data;
+  },
+
+  /**
+   * Crear ronda completa con llaves y opcionalmente partidos
+   */
+  crearRondaCompleta: async (
+    data: CrearRondaCompletaRequest
+  ): Promise<CrearRondaCompletaResponse> => {
+    const response = await apiClient.post('/eliminatorias', data, {
+      params: { action: 'crear-ronda-completa' }
+    });
+    return response.data;
+  },
+
+  /**
+   * Generar cruces automáticos basados en clasificación de grupos (1A vs 2B)
+   */
+  generarCrucesAutomaticos: async (
+    idEdicionCategoria: number,
+    copa: string,
+    ronda: RondaEliminatoria
+  ): Promise<GenerarCrucesResponse> => {
+    const response = await apiClient.post('/eliminatorias', null, {
+      params: {
+        action: 'generar-cruces-automaticos',
+        id_edicion_categoria: idEdicionCategoria,
+        copa,
+        ronda
       }
     });
     return response.data;

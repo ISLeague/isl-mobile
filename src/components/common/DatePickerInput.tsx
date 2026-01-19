@@ -40,22 +40,22 @@ export const DatePickerInput: React.FC<DatePickerInputProps> = ({
     if (!dateString) {
       // If defaultToToday is true, use current date for fixtures/events
       // Otherwise use year 2000 for birth date selection
-      return defaultToToday ? new Date() : new Date(2000, 0, 1);
+      return defaultToToday ? new Date() : new Date(2000, 0, 1, 12);
     }
     try {
       const parts = dateString.split('-');
       if (parts.length === 3) {
-        // Usar constructor local seguro
+        // Usar constructor local seguro con hora a mediodía para evitar problemas de timezone
         const year = parseInt(parts[0], 10);
         const month = parseInt(parts[1], 10) - 1;
         const day = parseInt(parts[2], 10);
-        const date = new Date(year, month, day);
+        const date = new Date(year, month, day, 12, 0, 0, 0);
         if (!isNaN(date.getTime())) return date;
       }
     } catch (e) {
       // Fallback
     }
-    return defaultToToday ? new Date() : new Date(2000, 0, 1);
+    return defaultToToday ? new Date() : new Date(2000, 0, 1, 12);
   };
 
   // Initialize with parsed value

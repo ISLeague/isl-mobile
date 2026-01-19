@@ -271,6 +271,10 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
                   setSelectedCategoria(cat.categoria);
                   setIdEdicionCategoria(cat.id_edicion_categoria);
                   setShowCategoryPicker(false);
+                  // Refresh all tabs when category changes
+                  setRefreshGroups(prev => prev + 1);
+                  setRefreshTeams(prev => prev + 1);
+                  setRefreshLocalTab(prev => prev + 1);
                 }}
               >
                 <Text

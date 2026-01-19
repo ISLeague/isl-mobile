@@ -29,10 +29,33 @@ export const SelectMasterTeamsScreen = ({ navigation, route }: any) => {
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [loading, setLoading] = useState(false);
     const [isAdding, setIsAdding] = useState(false);
+    const [currentTeamCount, setCurrentTeamCount] = useState(0);
+    const [maxEquipos, setMaxEquipos] = useState<number | undefined>(undefined);
+
+    useEffect(() => {
+        loadCategoryInfo();
+    }, [idEdicionCategoria]);
 
     useEffect(() => {
         loadData();
     }, [selectionType]);
+
+    const loadCategoryInfo = async () => {
+        try {
+            // Get current teams count
+            const teamsResponse = await api.equipos.list(idEdicionCategoria);
+            const teamsArray = Array.isArray(teamsResponse.data) ? teamsResponse.data : [];
+            setCurrentTeamCount(teamsArray.length);
+
+            // Get category max_equipos from edicion_categorias
+            const edicionCategoriasResponse = await api.edicionCategorias.getById(idEdicionCategoria);
+            if (edicionCategoriasResponse.success && edicionCategoriasResponse.data) {
+                setMaxEquipos(edicionCategoriasResponse.data.max_equipos);
+            }
+        } catch (error) {
+            // Silent fail - maxEquipos will remain undefined
+        }
+    };
 
     const loadData = async (query = '') => {
         setLoading(true);
@@ -68,11 +91,23 @@ export const SelectMasterTeamsScreen = ({ navigation, route }: any) => {
         const id = item.id_mj_equipo || item.id_mj_pais || item.id;
         if (!id) return;
 
-        setSelectedIds((prev) =>
-            prev.includes(id)
-                ? prev.filter((i) => i !== id)
-                : [...prev, id]
-        );
+        setSelectedIds((prev) => {
+            // If already selected, allow deselection
+            if (prev.includes(id)) {
+                return prev.filter((i) => i !== id);
+            }
+
+            // Check capacity limit
+            if (maxEquipos !== undefined) {
+                const remainingSlots = maxEquipos - currentTeamCount;
+                if (prev.length >= remainingSlots) {
+                    showError(`Solo puedes seleccionar ${remainingSlots} equipo${remainingSlots !== 1 ? 's' : ''} más (capacidad máxima: ${maxEquipos})`);
+                    return prev;
+                }
+            }
+
+            return [...prev, id];
+        });
     };
 
     const handleAddItems = async () => {
@@ -177,6 +212,16 @@ export const SelectMasterTeamsScreen = ({ navigation, route }: any) => {
                     </Text>
                 </TouchableOpacity>
             </View>
+
+            {/* Capacity Info */}
+            {maxEquipos !== undefined && (
+                <View style={styles.capacityInfoContainer}>
+                    <MaterialCommunityIcons name="information-outline" size={18} color={colors.primary} />
+                    <Text style={styles.capacityInfoText}>
+                        {currentTeamCount} de {maxEquipos} equipos utilizados - Puedes agregar {Math.max(0, maxEquipos - currentTeamCount)} más
+                    </Text>
+                </View>
+            )}
 
             {/* Search */}
             <View style={styles.searchBar}>
@@ -294,6 +339,23 @@ const styles = StyleSheet.create({
     },
     typeButtonTextActive: {
         color: colors.white,
+    },
+    capacityInfoContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#E3F2FD',
+        marginHorizontal: 16,
+        marginTop: 16,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        borderRadius: 8,
+        gap: 8,
+    },
+    capacityInfoText: {
+        fontSize: 13,
+        color: colors.primary,
+        fontWeight: '600',
+        flex: 1,
     },
     searchBar: {
         flexDirection: 'row',

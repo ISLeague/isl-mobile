@@ -84,14 +84,27 @@ export const EditPartidoScreen: React.FC<EditPartidoScreenProps> = ({ navigation
         if (result.partidoInfo) {
           const { partido: partidoData, equipo_local, equipo_visitante, cancha } = result.partidoInfo;
 
-          // Establecer fecha (formato YYYY-MM-DD)
+          // Establecer fecha (formato YYYY-MM-DD) o usar hoy por defecto
           if (partidoData.fecha) {
             setFecha(partidoData.fecha);
+          } else {
+            // Usar fecha de hoy como valor por defecto
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            setFecha(`${year}-${month}-${day}`);
           }
 
-          // Establecer hora
+          // Establecer hora o usar hora actual por defecto
           if (partidoData.hora) {
             setHora(partidoData.hora);
+          } else {
+            // Usar hora actual como valor por defecto
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            setHora(`${hours}:${minutes}`);
           }
 
           // Establecer equipos (solo lectura - para mostrar)
@@ -357,6 +370,7 @@ export const EditPartidoScreen: React.FC<EditPartidoScreenProps> = ({ navigation
             value={fecha}
             onChangeDate={setFecha}
             placeholder="Seleccionar fecha"
+            defaultToToday={true}
           />
 
           {/* Hora */}

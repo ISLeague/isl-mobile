@@ -26,8 +26,11 @@ import { Equipo, Local, Cancha } from '../../api/types';
 import { safeAsync } from '../../utils';
 
 export const CreatePartidoScreen = ({ navigation, route }: any) => {
-  const { ronda, idEdicionCategoria, idFase } = route.params;
+  const { ronda, idEdicionCategoria, idFase, onPartidoCreated } = route.params;
   const { showSuccess, showError, showInfo } = useToast();
+
+  // Detectar si es knockout (eliminatorias)
+  const isKnockout = ronda?.tipo === 'eliminatorias';
 
   // Estados para fixtures sin partido
   const [fixturesSinPartido, setFixturesSinPartido] = useState<JornadaConFixturesSinPartido[]>([]);
@@ -75,10 +78,30 @@ export const CreatePartidoScreen = ({ navigation, route }: any) => {
   // Estado de creación
   const [creating, setCreating] = useState(false);
 
+  // Estados para knockout
+  const [allEquipos, setAllEquipos] = useState<Equipo[]>([]);
+
   // Cargar datos iniciales
   useEffect(() => {
-    loadInitialData();
+    if (isKnockout) {
+      loadKnockoutData();
+    } else {
+      loadInitialData();
+    }
   }, []);
+
+  const loadKnockoutData = async () => {
+    // Para knockout solo cargar todos los equipos de la edición categoría
+    const result = await safeAsync(
+      async () => {
+        const response = await api.equipos.list(idEdicionCategoria);
+        return response.success && response.data ? response.data : [];
+      },
+      'loadEquiposKnockout',
+      { fallbackValue: [], onError: () => showError('Error al cargar equipos') }
+    );
+    setAllEquipos(result || []);
+  };
 
   const loadInitialData = async () => {
     await Promise.all([
@@ -426,12 +449,82 @@ export const CreatePartidoScreen = ({ navigation, route }: any) => {
     );
   };
 
-  // Filtrar equipos según búsqueda
+  // Crear partido directo para knockout (sin fixture)
+  const handleCreateKnockoutPartido = async () => {
+    if (!equipoLocalId || !equipoVisitanteId) {
+      showError('Debes seleccionar ambos equipos');
+      return;
+    }
+
+    if (equipoLocalId === equipoVisitanteId) {
+      showError('Los equipos deben ser diferentes');
+      return;
+    }
+
+    Alert.alert(
+      'Crear Partido',
+      '¿Deseas crear este partido de eliminatoria?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Crear',
+          onPress: async () => {
+            setCreating(true);
+
+            const partidoData = {
+              id_equipo_local: equipoLocalId,
+              id_equipo_visitante: equipoVisitanteId,
+              id_ronda: ronda.id_ronda,
+              id_fase: idFase,
+              tipo_partido: 'eliminatoria' as const,
+              afecta_clasificacion: false,
+            };
+
+            const result = await safeAsync(
+              async () => {
+                const response = await api.partidos.create(partidoData);
+                return response;
+              },
+              'createKnockoutPartido',
+              { fallbackValue: null, onError: () => showError('Error al crear partido') }
+            );
+
+            setCreating(false);
+
+            if (result && result.success) {
+              showSuccess('Partido creado exitosamente');
+
+              // Llamar callback si existe
+              if (onPartidoCreated) {
+                onPartidoCreated();
+              }
+
+              // Volver atrás
+              setTimeout(() => {
+                navigation.goBack();
+              }, 500);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // Filtrar equipos según búsqueda (para fase de grupos)
   const equiposLocalesFiltrados = equipos
     .filter(equipo => equipo.nombre.toLowerCase().includes(searchEquipoLocal.toLowerCase()))
     .sort((a, b) => a.nombre.localeCompare(b.nombre));
 
   const equiposVisitantesFiltrados = equipos
+    .filter(equipo => equipo.nombre.toLowerCase().includes(searchEquipoVisitante.toLowerCase()))
+    .sort((a, b) => a.nombre.localeCompare(b.nombre));
+
+  // Filtrar equipos para knockout
+  const equiposKnockoutLocalFiltrados = allEquipos
+    .filter(equipo => equipo.nombre.toLowerCase().includes(searchEquipoLocal.toLowerCase()))
+    .sort((a, b) => a.nombre.localeCompare(b.nombre));
+
+  const equiposKnockoutVisitanteFiltrados = allEquipos
     .filter(equipo => equipo.nombre.toLowerCase().includes(searchEquipoVisitante.toLowerCase()))
     .sort((a, b) => a.nombre.localeCompare(b.nombre));
 
@@ -447,6 +540,9 @@ export const CreatePartidoScreen = ({ navigation, route }: any) => {
 
   const getEquipoNombre = (id: number | null) => {
     if (!id) return 'Seleccionar equipo';
+    if (isKnockout) {
+      return allEquipos.find(e => e.id_equipo === id)?.nombre || 'Equipo no encontrado';
+    }
     if (!grupoId) return 'Primero selecciona un grupo';
     return equipos.find(e => e.id_equipo === id)?.nombre || 'Equipo no encontrado';
   };
@@ -481,6 +577,53 @@ export const CreatePartidoScreen = ({ navigation, route }: any) => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
+        {/* UI Simplificada para Knockout */}
+        {isKnockout ? (
+          <Card style={styles.card}>
+            <Text style={styles.sectionTitle}>Crear Partido de Eliminatoria</Text>
+            <Text style={styles.helpText}>
+              Selecciona los dos equipos que se enfrentarán en esta ronda de eliminatoria.
+            </Text>
+
+            {/* Equipo Local */}
+            <View style={styles.fieldContainer}>
+              <Text style={styles.label}>Equipo Local *</Text>
+              <TouchableOpacity
+                style={styles.selectButton}
+                onPress={() => setShowEquipoLocalModal(true)}
+              >
+                <Text style={[styles.selectButtonText, equipoLocalId ? styles.selectButtonTextSelected : null]}>
+                  {getEquipoNombre(equipoLocalId)}
+                </Text>
+                <MaterialCommunityIcons name="chevron-down" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Equipo Visitante */}
+            <View style={styles.fieldContainer}>
+              <Text style={styles.label}>Equipo Visitante *</Text>
+              <TouchableOpacity
+                style={styles.selectButton}
+                onPress={() => setShowEquipoVisitanteModal(true)}
+              >
+                <Text style={[styles.selectButtonText, equipoVisitanteId ? styles.selectButtonTextSelected : null]}>
+                  {getEquipoNombre(equipoVisitanteId)}
+                </Text>
+                <MaterialCommunityIcons name="chevron-down" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Botón Crear */}
+            <Button
+              title={creating ? "Creando..." : "Crear Partido"}
+              onPress={handleCreateKnockoutPartido}
+              disabled={creating || !equipoLocalId || !equipoVisitanteId}
+              loading={creating}
+              style={{ marginTop: 8 }}
+            />
+          </Card>
+        ) : (
+          <>
         {/* Fixtures Sin Partido */}
         {loadingFixtures ? (
           <Card style={styles.card}>
@@ -791,6 +934,8 @@ export const CreatePartidoScreen = ({ navigation, route }: any) => {
             loading={creating}
           />
         </View>
+          </>
+        )}
 
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -866,14 +1011,16 @@ export const CreatePartidoScreen = ({ navigation, route }: any) => {
             </View>
 
             <ScrollView style={styles.modalList}>
-              {equiposLocalesFiltrados.length === 0 ? (
+              {(isKnockout ? equiposKnockoutLocalFiltrados : equiposLocalesFiltrados).length === 0 ? (
                 <View style={[styles.modalItem, { alignItems: 'center' }]}>
                   <Text style={styles.helpText}>
-                    {equipos.length === 0 ? 'Este grupo no tiene equipos asignados' : 'No se encontraron equipos'}
+                    {isKnockout
+                      ? 'No hay equipos disponibles'
+                      : (equipos.length === 0 ? 'Este grupo no tiene equipos asignados' : 'No se encontraron equipos')}
                   </Text>
                 </View>
               ) : (
-                equiposLocalesFiltrados.map(equipo => (
+                (isKnockout ? equiposKnockoutLocalFiltrados : equiposLocalesFiltrados).map(equipo => (
                   <TouchableOpacity
                     key={equipo.id_equipo}
                     style={[
@@ -926,14 +1073,16 @@ export const CreatePartidoScreen = ({ navigation, route }: any) => {
             </View>
 
             <ScrollView style={styles.modalList}>
-              {equiposVisitantesFiltrados.length === 0 ? (
+              {(isKnockout ? equiposKnockoutVisitanteFiltrados : equiposVisitantesFiltrados).length === 0 ? (
                 <View style={[styles.modalItem, { alignItems: 'center' }]}>
                   <Text style={styles.helpText}>
-                    {equipos.length === 0 ? 'Este grupo no tiene equipos asignados' : 'No se encontraron equipos'}
+                    {isKnockout
+                      ? 'No hay equipos disponibles'
+                      : (equipos.length === 0 ? 'Este grupo no tiene equipos asignados' : 'No se encontraron equipos')}
                   </Text>
                 </View>
               ) : (
-                equiposVisitantesFiltrados.map(equipo => (
+                (isKnockout ? equiposKnockoutVisitanteFiltrados : equiposVisitantesFiltrados).map(equipo => (
                   <TouchableOpacity
                     key={equipo.id_equipo}
                     style={[
