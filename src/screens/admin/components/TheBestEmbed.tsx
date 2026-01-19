@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  Image,
+  RefreshControl,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Card } from '../../../components/common';
@@ -14,6 +16,7 @@ import { colors } from '../../../theme/colors';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useToast } from '../../../contexts/ToastContext';
 import api from '../../../api';
+import { getLogoUri } from '../../../utils/imageUtils';
 
 interface TheBestEmbedProps {
   navigation: any;
@@ -24,56 +27,39 @@ export const TheBestEmbed: React.FC<TheBestEmbedProps> = ({ navigation, idEdicio
   const { isGuest } = useAuth();
   const { showError } = useToast();
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [goleadores, setGoleadores] = useState<any[]>([]);
   const [asistencias, setAsistencias] = useState<any[]>([]);
-  const [estadisticasEquipos, setEstadisticasEquipos] = useState<any[]>([]);
+  const [mvps, setMvps] = useState<any[]>([]);
+  const [tarjetasRojas, setTarjetasRojas] = useState<any[]>([]);
+  const [tarjetasAmarillas, setTarjetasAmarillas] = useState<any[]>([]);
 
-  const loadEstadisticas = useCallback(async () => {
-    if (!idEdicionCategoria) {
-      showError('No se ha especificado la edición/categoría');
-      setLoading(false);
-      return;
-    }
+  const loadEstadisticas = useCallback(async (isRefreshing = false) => {
+    const targetId = idEdicionCategoria || 8;
 
     try {
-      setLoading(true);
+      if (!isRefreshing) setLoading(true);
+      const response = await api.estadisticas.global(targetId, 5);
 
-      // Fetch top scorers
-      const goleadoresResponse = await api.estadisticas.goleadores(idEdicionCategoria, 10);
-      if (goleadoresResponse.success && goleadoresResponse.data) {
-        // Filtrar jugadores con datos válidos
-        const goleadoresValidos = (goleadoresResponse.data.goleadores || []).filter(
-          (g: any) => g && g.id_jugador && g.nombre && g.equipo_nombre
-        );
-        setGoleadores(goleadoresValidos);
-      }
-
-      // Fetch top assists
-      const asistenciasResponse = await api.estadisticas.asistencias(idEdicionCategoria, 10);
-      if (asistenciasResponse.success && asistenciasResponse.data) {
-        // Filtrar jugadores con datos válidos
-        const asistenciasValidas = (asistenciasResponse.data.asistencias || []).filter(
-          (a: any) => a && a.id_jugador && a.nombre && a.equipo_nombre
-        );
-        setAsistencias(asistenciasValidas);
-      }
-
-      // Fetch team statistics
-      const equiposResponse = await api.estadisticas.equiposGlobal(idEdicionCategoria);
-      if (equiposResponse.success && equiposResponse.data) {
-        // Filtrar equipos con datos válidos
-        const equiposValidos = (equiposResponse.data.estadisticas || []).filter(
-          (e: any) => e && e.id_equipo && e.nombre
-        );
-        setEstadisticasEquipos(equiposValidos);
+      if (response.success && response.data) {
+        setGoleadores(response.data.goleadores || []);
+        setAsistencias(response.data.asistidores || []);
+        setMvps(response.data.mvps || []);
+        setTarjetasRojas(response.data.tarjetas_rojas || []);
+        setTarjetasAmarillas(response.data.tarjetas_amarillas || []);
       }
     } catch (error) {
-      // console.error('Error loading statistics:', error);
       showError('Error al cargar las estadísticas');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, [idEdicionCategoria, showError]);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadEstadisticas(true);
+  };
 
   useEffect(() => {
     loadEstadisticas();
@@ -85,7 +71,7 @@ export const TheBestEmbed: React.FC<TheBestEmbedProps> = ({ navigation, idEdicio
     if (partes.length === 1) {
       return partes[0]; // Si solo hay una palabra, mostrarla completa
     }
-    
+
     const nombre = partes[0];
     const apellidoInicial = partes[partes.length - 1].charAt(0).toUpperCase();
     return `${nombre} ${apellidoInicial}.`;
@@ -120,7 +106,7 @@ export const TheBestEmbed: React.FC<TheBestEmbedProps> = ({ navigation, idEdicio
       </View>
     );
   }
-  
+
   // Show loading state
   if (loading) {
     return (
@@ -131,110 +117,56 @@ export const TheBestEmbed: React.FC<TheBestEmbedProps> = ({ navigation, idEdicio
     );
   }
 
-  // Prepare team data for least conceded (sort by least goals conceded)
-  const leastConcededData = [...estadisticasEquipos]
-    .sort((a, b) => a.goles_en_contra - b.goles_en_contra)
-    .slice(0, 5);
-
   const rankings = [
     {
       id: 'scorers',
-      title: 'Goleadores',
+      title: 'Máximos Goleadores',
       icon: 'soccer' as const,
-      color: '#FF6B6B',
-      data: goleadores.slice(0, 5),
+      color: '#E31E24',
+      badgeColor: '#FFEBEE',
+      data: goleadores,
       statKey: 'goles',
-      isTeam: false,
     },
     {
       id: 'assists',
-      title: 'Asistencias',
-      icon: 'account-arrow-right' as const,
-      color: '#4ECDC4',
-      data: asistencias.slice(0, 5),
+      title: 'Máximos Asistidores',
+      icon: 'handball' as const,
+      color: '#4CAF50',
+      badgeColor: '#E8F5E9',
+      data: asistencias,
       statKey: 'asistencias',
-      isTeam: false,
     },
     {
-      id: 'goalkeepers',
-      title: 'Menos Goleados',
-      icon: 'shield-check' as const,
-      color: '#95E1D3',
-      data: leastConcededData,
-      statKey: 'goles_en_contra',
-      isTeam: true,
+      id: 'mvps',
+      title: 'Líderes MVP',
+      icon: 'star' as const,
+      color: '#FFC107',
+      badgeColor: '#FFF8E1',
+      data: mvps,
+      statKey: 'mvps',
     },
     {
-      id: 'win_percentage',
-      title: '% Partidos Ganados',
-      icon: 'trophy' as const,
-      color: '#F9CA24',
-      data: [...estadisticasEquipos]
-        .sort((a, b) => {
-          const pctA = a.partidos_jugados > 0 ? (a.partidos_ganados / a.partidos_jugados) * 100 : 0;
-          const pctB = b.partidos_jugados > 0 ? (b.partidos_ganados / b.partidos_jugados) * 100 : 0;
-          return pctB - pctA;
-        })
-        .slice(0, 5)
-        .map(e => ({
-          ...e,
-          porcentaje_victorias: e.partidos_jugados > 0
-            ? ((e.partidos_ganados / e.partidos_jugados) * 100).toFixed(1)
-            : '0.0'
-        })),
-      statKey: 'porcentaje_victorias',
-      isTeam: true,
+      id: 'red_cards',
+      title: 'Tarjetas Rojas',
+      icon: 'card-bulleted' as const,
+      color: '#F44336',
+      badgeColor: '#FFEBEE',
+      data: tarjetasRojas,
+      statKey: 'tarjetas_rojas',
     },
     {
-      id: 'avg_goals_scored',
-      title: 'Promedio Goles por Partido',
-      icon: 'soccer' as const,
-      color: '#6C5CE7',
-      data: [...estadisticasEquipos]
-        .sort((a, b) => {
-          const avgA = a.partidos_jugados > 0 ? a.goles_a_favor / a.partidos_jugados : 0;
-          const avgB = b.partidos_jugados > 0 ? b.goles_a_favor / b.partidos_jugados : 0;
-          return avgB - avgA;
-        })
-        .slice(0, 5)
-        .map(e => ({
-          ...e,
-          promedio_goles: e.partidos_jugados > 0
-            ? (e.goles_a_favor / e.partidos_jugados).toFixed(2)
-            : '0.00'
-        })),
-      statKey: 'promedio_goles',
-      isTeam: true,
-    },
-    {
-      id: 'avg_goals_conceded',
-      title: 'Promedio Goles Concedidos',
-      icon: 'shield-alert' as const,
-      color: '#FD79A8',
-      data: [...estadisticasEquipos]
-        .sort((a, b) => {
-          const avgA = a.partidos_jugados > 0 ? a.goles_en_contra / a.partidos_jugados : 0;
-          const avgB = b.partidos_jugados > 0 ? b.goles_en_contra / b.partidos_jugados : 0;
-          return avgA - avgB; // Lower is better
-        })
-        .slice(0, 5)
-        .map(e => ({
-          ...e,
-          promedio_concedidos: e.partidos_jugados > 0
-            ? (e.goles_en_contra / e.partidos_jugados).toFixed(2)
-            : '0.00'
-        })),
-      statKey: 'promedio_concedidos',
-      isTeam: true,
+      id: 'yellow_cards',
+      title: 'Tarjetas Amarillas',
+      icon: 'card-bulleted-outline' as const,
+      color: '#FFEB3B',
+      badgeColor: '#FFFDE7',
+      data: tarjetasAmarillas,
+      statKey: 'tarjetas_amarillas',
     },
   ];
 
   const handlePlayerPress = (playerId: number) => {
     navigation.navigate('PlayerDetail', { playerId });
-  };
-
-  const handleTeamPress = (teamId: number) => {
-    navigation.navigate('TeamDetail', { equipoId: teamId });
   };
 
   const handleViewAll = (rankingId: string, rankingTitle: string) => {
@@ -244,64 +176,89 @@ export const TheBestEmbed: React.FC<TheBestEmbedProps> = ({ navigation, idEdicio
   const renderRankingCard = (ranking: any) => {
     return (
       <Card key={ranking.id} style={styles.rankingCard}>
-        <View style={[styles.rankingHeader, { backgroundColor: ranking.color }]}>
-          <View style={styles.rankingHeaderLeft}>
-            <MaterialCommunityIcons name={ranking.icon} size={28} color={colors.white} />
-            <Text style={styles.rankingTitle}>{ranking.title}</Text>
+        <View style={styles.rankingHeader}>
+          <View style={[styles.headerAccent, { backgroundColor: ranking.color }]} />
+          <View style={styles.headerTitleContainer}>
+            <MaterialCommunityIcons name={ranking.icon} size={28} color={ranking.color} />
+            <Text style={styles.rankingTitleText}>{ranking.title}</Text>
           </View>
-          <TouchableOpacity 
-            style={styles.viewAllButton}
-            onPress={() => handleViewAll(ranking.id, ranking.title)}
-          >
-            <Text style={styles.viewAllText}>Ver todos</Text>
-            <MaterialCommunityIcons name="chevron-right" size={18} color={colors.white} />
-          </TouchableOpacity>
         </View>
 
         <View style={styles.rankingList}>
           {ranking.data
-            .filter((item: any) => item && (ranking.isTeam ? item.id_equipo : item.id_jugador))
-            .map((item: any, index: number) => (
-              <TouchableOpacity
-                key={ranking.isTeam ? item.id_equipo : item.id_jugador}
-                style={styles.rankingItem}
-                onPress={() => ranking.isTeam ? handleTeamPress(item.id_equipo) : handlePlayerPress(item.id_jugador)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.rankingPosition}>
-                  <Text style={[
-                    styles.positionText,
-                    index === 0 && styles.firstPosition,
-                    index === 1 && styles.secondPosition,
-                    index === 2 && styles.thirdPosition,
-                  ]}>
-                    {index + 1}
-                  </Text>
-                </View>
-                <View style={styles.playerInfo}>
-                  <Text style={styles.playerName}>
-                    {ranking.isTeam ? (item.nombre || 'Equipo') : formatPlayerName(item.nombre || 'Jugador')}
-                  </Text>
-                  <Text style={styles.teamName}>{ranking.isTeam ? (item.logo || '') : (item.equipo_nombre || '')}</Text>
-                </View>
-                <Text style={[styles.statValue, { color: ranking.color }]}>
-                  {item[ranking.statKey] !== undefined && item[ranking.statKey] !== null ? item[ranking.statKey] : '0'}
-                </Text>
-              </TouchableOpacity>
-            ))}
+            .filter((item: any) => item && item.id_plantilla)
+            .map((item: any, index: number) => {
+              const posColor = index === 0 ? '#FFD700' : index === 1 ? '#ADADAD' : index === 2 ? '#CD7F32' : colors.textLight;
+
+              return (
+                <TouchableOpacity
+                  key={item.id_plantilla}
+                  style={[
+                    styles.rankingItem,
+                    index === ranking.data.length - 1 && styles.lastItem
+                  ]}
+                  onPress={() => handlePlayerPress(item.id_plantilla)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.leftSection}>
+                    <View style={styles.positionContainer}>
+                      <Text style={[styles.positionText, { color: posColor }]}>{index + 1}</Text>
+                    </View>
+
+                    <View style={styles.teamLogoContainer}>
+                      <Image
+                        source={getLogoUri(item.equipo?.logo) || require('../../../assets/InterLOGO.png')}
+                        style={styles.teamLogo}
+                      />
+                    </View>
+
+                    <View style={styles.playerInfo}>
+                      <Text style={styles.playerName} numberOfLines={1}>
+                        {item.nombre || 'Jugador'}
+                      </Text>
+                      <Text style={styles.teamName} numberOfLines={1}>
+                        {item.equipo?.nombre || 'Equipo'}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={[styles.statValueContainer, { backgroundColor: ranking.badgeColor }]}>
+                    <Text style={[styles.statValueText, { color: ranking.color }]}>
+                      {item.estadisticas?.[ranking.statKey] ?? '0'}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
         </View>
       </Card>
     );
   };
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={styles.container}
+      showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />
+      }
+    >
       <View style={styles.content}>
-        {rankings.map((ranking) => renderRankingCard(ranking))}
+        {loading && !refreshing ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.loadingText}>Cargando tabla de honor...</Text>
+          </View>
+        ) : (
+          rankings.map((ranking) => renderRankingCard(ranking))
+        )}
       </View>
     </ScrollView>
   );
 };
+
+// Necesario importar LinearGradient para el banner
+import { LinearGradient } from 'expo-linear-gradient';
 
 const styles = StyleSheet.create({
   container: {
@@ -309,102 +266,120 @@ const styles = StyleSheet.create({
     backgroundColor: colors.backgroundGray,
   },
   loadingContainer: {
-    flex: 1,
+    padding: 60,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.backgroundGray,
   },
   loadingText: {
     marginTop: 12,
     fontSize: 14,
     color: colors.textSecondary,
+    fontWeight: '500',
   },
   content: {
     padding: 16,
+    paddingBottom: 32,
   },
   rankingCard: {
-    marginBottom: 16,
+    marginBottom: 24,
     padding: 0,
+    borderRadius: 16,
     overflow: 'hidden',
+    backgroundColor: colors.white,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   rankingHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
   },
-  rankingHeaderLeft: {
+  headerAccent: {
+    width: 6,
+    height: 32,
+    borderTopRightRadius: 4,
+    borderBottomRightRadius: 4,
+  },
+  headerTitleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 12,
     gap: 12,
   },
-  rankingTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: colors.white,
-  },
-  viewAllButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-  },
-  viewAllText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.white,
+  rankingTitleText: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#1A1A1A',
+    letterSpacing: -0.5,
   },
   rankingList: {
-    paddingVertical: 8,
+    paddingBottom: 4,
   },
   rankingItem: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: '#F0F0F0',
   },
-  rankingPosition: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.backgroundGray,
-    justifyContent: 'center',
+  lastItem: {
+    borderBottomWidth: 0,
+  },
+  leftSection: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 12,
+    flex: 1,
+  },
+  positionContainer: {
+    width: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
   },
   positionText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: colors.textPrimary,
+    fontSize: 18,
+    fontWeight: '700',
   },
-  firstPosition: {
-    color: '#FFD700',
+  teamLogoContainer: {
+    marginRight: 12,
   },
-  secondPosition: {
-    color: '#C0C0C0',
-  },
-  thirdPosition: {
-    color: '#CD7F32',
+  teamLogo: {
+    width: 42,
+    height: 42,
+    resizeMode: 'contain',
   },
   playerInfo: {
     flex: 1,
   },
   playerName: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: colors.textPrimary,
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#000',
     marginBottom: 2,
   },
   teamName: {
-    fontSize: 12,
-    color: colors.textSecondary,
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
   },
-  statValue: {
-    fontSize: 20,
-    fontWeight: 'bold',
+  statValueContainer: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 14,
+    minWidth: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statValueText: {
+    fontSize: 22,
+    fontWeight: '900',
   },
   guestContainer: {
     flex: 1,
