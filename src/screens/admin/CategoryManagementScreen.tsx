@@ -64,7 +64,7 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
       { id: 'grupos', label: 'Grupos' },
       { id: 'fixture', label: 'Fixture' },
       { id: 'knockout', label: 'Knockout' },
-      { id: 'stats', label: 'The Best' },
+      { id: 'stats', label: 'Stats Liga' },
       { id: 'local', label: 'Local' },
       { id: 'sponsors', label: 'Sponsors' },
     ]
@@ -72,6 +72,7 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
       { id: 'miequipo', label: 'Mi Equipo' },
       { id: 'grupos', label: 'Grupos' },
       { id: 'fixture', label: 'Fixture' },
+      { id: 'stats', label: 'Stats Liga' },
       { id: 'knockout', label: 'Knockout' },
       { id: 'local', label: 'Local' },
     ];
@@ -502,7 +503,7 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
             } else if (tab.id === 'stats') {
               return (
                 <View key={tab.id} style={styles.pageWrapper}>
-                  <LeagueStatsEmbed navigation={navigation} idEdicionCategoria={idEdicionCategoria} />
+                  <TheBestEmbed navigation={navigation} idEdicionCategoria={idEdicionCategoria} />
                 </View>
               );
             } else if (tab.id === 'local') {
