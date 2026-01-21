@@ -268,3 +268,31 @@ export interface ListKnockoutResponse {
   };
   timestamp: string;
 }
+
+// ============================================
+// 📸 PARTIDOS FOTOS
+// ============================================
+
+export interface PartidoFoto {
+  id_partido_foto: number;
+  id_partido: number;
+  url_foto: string;
+  descripcion?: string;
+  id_usuario_camarografo?: number | null;
+  activo: boolean;
+  created_at: string;
+  updated_at: string;
+  fotos_preview: string[]; // Array de URLs
+  partido?: Partial<Partido>;
+  camarografo?: {
+    nombre: string;
+    apellido: string;
+    id_usuario: number;
+  } | null;
+}
+
+export interface GetPartidoFotosResponse {
+  success: boolean;
+  data: PartidoFoto[];
+  timestamp: string;
+}

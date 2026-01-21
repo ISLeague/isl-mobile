@@ -194,13 +194,73 @@ export const partidosService = {
 
   /**
    * Actualizar link de fotos de un partido (para camarógrafos)
+   * NOTA: Requiere el ID del registro de foto (id_partido_foto), no el del partido.
+   * Usar uploadPhotos para crear/subir por primera vez con id_partido.
    */
-  updateLinkFotos: async (id_partido: number, link_fotos: string) => {
-    const response = await apiClient.patch('/partidos', {
-      id: id_partido,
-      link_fotos
+  updateLinkFotos: async (id_partido_foto: number, link_fotos: string) => {
+    const response = await apiClient.post('/partido-fotos', {
+      id_partido_foto,
+      url_foto: link_fotos
     }, {
       params: { action: 'update-link-fotos' }
+    });
+    return response.data;
+  },
+
+  /**
+   * Subir fotos de preview y/o link de fotos (para camarógrafos)
+   * Usa la nueva función partidos-fotos con action=upload
+   */
+  uploadPhotos: async (
+    id_partido: number,
+    fotos: string[],
+    descripcion: string = '',
+    url_foto?: string
+  ) => {
+    const formData = new FormData();
+    formData.append('id_partido', id_partido.toString());
+    formData.append('descripcion', descripcion);
+
+    if (url_foto) {
+      formData.append('url_foto', url_foto);
+    }
+
+    fotos.forEach((uri, index) => {
+      // Obtener el nombre del archivo y la extensión
+      const filename = uri.split('/').pop() || `photo_${index}.jpg`;
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `image/${match[1]}` : `image/jpeg`;
+
+      // En React Native, FormData espera un objeto con uri, name y type para archivos
+      // @ts-ignore
+      formData.append('fotos', {
+        uri,
+        name: filename,
+        type,
+      });
+    });
+
+    const headers = {
+      'Content-Type': 'multipart/form-data',
+    };
+
+    const response = await apiClient.post('/partido-fotos', formData, {
+      params: { action: 'upload' },
+      headers,
+    });
+    console.log("Respuesta upload:", JSON.stringify(response.data, null, 2));
+    return response.data;
+  },
+
+  /**
+   * Obtener las fotos cargadas de un partido
+   */
+  getFotosPorPartido: async (id_partido: number) => {
+    const response = await apiClient.get('/partido-fotos', {
+      params: {
+        action: 'list',
+        id_partido
+      }
     });
     return response.data;
   },
