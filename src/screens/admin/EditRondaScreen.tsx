@@ -18,11 +18,8 @@ import api from '../../api';
 import { safeAsync } from '../../utils/errorHandling';
 
 export const EditRondaScreen = ({ navigation, route }: any) => {
-  const { ronda, onRondaUpdated } = route.params;
+  const { ronda } = route.params;
   const { showSuccess, showError } = useToast();
-
-  // Detectar si es knockout (para mostrar UI simplificada)
-  const isKnockout = ronda.tipo === 'eliminatorias';
 
   const [nombre, setNombre] = useState(ronda.nombre);
   const [fecha, setFecha] = useState(ronda.fecha_inicio || '');
@@ -70,7 +67,6 @@ export const EditRondaScreen = ({ navigation, route }: any) => {
                   orden: parseInt(orden),
                   tipo,
                   subtipo_eliminatoria: tipo === 'eliminatorias' ? subtipoEliminatoria : undefined,
-                  aplicar_fecha_automatica: aplicarFechaAutomatica,
                 });
                 return response;
               },
@@ -87,10 +83,6 @@ export const EditRondaScreen = ({ navigation, route }: any) => {
 
             if (result && result.success) {
               showSuccess('Ronda actualizada exitosamente');
-              // Llamar callback si existe
-              if (onRondaUpdated) {
-                onRondaUpdated();
-              }
               navigation.goBack();
             }
           },
@@ -274,42 +266,40 @@ export const EditRondaScreen = ({ navigation, route }: any) => {
             />
           </View>
 
-          {/* Tipo de Ronda - NO mostrar en knockout */}
-          {!isKnockout && (
-            <View style={styles.fieldContainer}>
-              <Text style={styles.label}>Tipo de Ronda *</Text>
-              <View style={styles.tipoContainer}>
-                {(['fase_grupos', 'amistosa'] as const).map((tipoOption) => (
-                  <TouchableOpacity
-                    key={tipoOption}
+          {/* Tipo de Ronda */}
+          <View style={styles.fieldContainer}>
+            <Text style={styles.label}>Tipo de Ronda *</Text>
+            <View style={styles.tipoContainer}>
+              {(['fase_grupos', 'eliminatorias', 'amistosa'] as const).map((tipoOption) => (
+                <TouchableOpacity
+                  key={tipoOption}
+                  style={[
+                    styles.tipoButton,
+                    tipo === tipoOption && styles.tipoButtonSelected,
+                  ]}
+                  onPress={() => setTipo(tipoOption)}
+                  activeOpacity={0.7}
+                >
+                  <MaterialCommunityIcons
+                    name={getTipoIcon(tipoOption)}
+                    size={24}
+                    color={tipo === tipoOption ? colors.white : colors.primary}
+                  />
+                  <Text
                     style={[
-                      styles.tipoButton,
-                      tipo === tipoOption && styles.tipoButtonSelected,
+                      styles.tipoButtonText,
+                      tipo === tipoOption && styles.tipoButtonTextSelected,
                     ]}
-                    onPress={() => setTipo(tipoOption)}
-                    activeOpacity={0.7}
                   >
-                    <MaterialCommunityIcons
-                      name={getTipoIcon(tipoOption)}
-                      size={24}
-                      color={tipo === tipoOption ? colors.white : colors.primary}
-                    />
-                    <Text
-                      style={[
-                        styles.tipoButtonText,
-                        tipo === tipoOption && styles.tipoButtonTextSelected,
-                      ]}
-                    >
-                      {getTipoLabel(tipoOption)}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+                    {getTipoLabel(tipoOption)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
-          )}
+          </View>
 
-          {/* Subtipo de Eliminatoria - NO mostrar en knockout (ya está definido) */}
-          {!isKnockout && tipo === 'eliminatorias' && (
+          {/* Subtipo de Eliminatoria (solo si tipo === 'eliminatorias') */}
+          {tipo === 'eliminatorias' && (
             <View style={styles.fieldContainer}>
               <Text style={styles.label}>Categoría de Eliminatoria *</Text>
               <View style={styles.tipoContainer}>

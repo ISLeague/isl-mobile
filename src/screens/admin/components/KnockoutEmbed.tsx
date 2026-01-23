@@ -125,15 +125,15 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
 
         let allKnockoutPartidos: any[] = [];
 
-        if (knockoutResponse && knockoutResponse.success && knockoutResponse.data.partidos_por_etapa) {
+        if (knockoutResponse && knockoutResponse.success && knockoutResponse.data?.partidos_por_etapa) {
           const porEtapa = knockoutResponse.data.partidos_por_etapa;
           console.log('⚽ [KnockoutEmbed] Partidos por etapa:', {
-            eliminatoria: porEtapa.eliminatoria?.length || 0,
-            '16avos': porEtapa['16avos']?.length || 0,
-            octavos: porEtapa.octavos?.length || 0,
-            cuartos: porEtapa.cuartos?.length || 0,
-            semifinal: porEtapa.semifinal?.length || 0,
-            final: porEtapa.final?.length || 0,
+            eliminatoria: (porEtapa.eliminatoria || []).length,
+            '16avos': (porEtapa['16avos'] || []).length,
+            octavos: (porEtapa.octavos || []).length,
+            cuartos: (porEtapa.cuartos || []).length,
+            semifinal: (porEtapa.semifinal || []).length,
+            final: (porEtapa.final || []).length,
           });
 
           allKnockoutPartidos = [
@@ -194,27 +194,27 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
       console.log(`   - Partidos: ${result.partidos.length}`);
       console.log(`   - Equipos: ${result.equipos.length}`);
       console.log(`   - Fases KO: ${result.fases.length}`);
-      console.log(`   - Rondas KO: ${result.rondas.length}`);
+      console.log(`   - Rondas KO: ${(result.rondas ?? []).length}`);
 
-      setLlaves(result.llaves);
-      setPartidos(result.partidos);
-      setEquipos(result.equipos);
-      setFasesKnockout(result.fases);
-      setRondasKnockout(result.rondas);
+      setLlaves(result.llaves ?? []);
+      setPartidos(result.partidos ?? []);
+      setEquipos(result.equipos ?? []);
+      setFasesKnockout(result.fases ?? []);
+      setRondasKnockout(result.rondas ?? []);
     } else {
       console.error('❌ [KnockoutEmbed] No se recibió resultado válido');
     }
     setLoading(false);
   };
 
-  const toggleRonda = (ronda: RondaEliminatoria) => {
+  const toggleRonda = (rondaKey: string | number) => {
     setExpandedRondas(prev => ({
       ...prev,
-      [ronda]: !prev[ronda],
+      [rondaKey]: !prev[rondaKey],
     }));
   };
 
-  const getLlavesByRonda = (ronda: RondaEliminatoria): Eliminatoria[] => {
+  const getLlavesByRonda = (ronda: string): Eliminatoria[] => {
     return llaves.filter(l => l.ronda === ronda);
   };
 
@@ -228,7 +228,7 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
     return partidos.filter(p => p.id_ronda === idRonda);
   };
 
-  const handleCreateLlave = (ronda: RondaEliminatoria) => {
+  const handleCreateLlave = (ronda: string) => {
     // Navegar a pantalla de crear llave
     const faseActual = fasesKnockout.find(f => f.copa === selectedCopa);
     if (!faseActual) {
@@ -390,8 +390,10 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
     const partido = getPartidoByLlave(llave);
 
     // Priorizar datos del partido (incluye logos y nombres actualizados)
-    const displayEquipoA = partido?.equipo_local || equipos.find(e => e.id_equipo === llave.id_equipo_a);
-    const displayEquipoB = partido?.equipo_visitante || equipos.find(e => e.id_equipo === llave.id_equipo_b);
+    // Type helper: both structures have id_equipo, nombre, and logo
+    type EquipoDisplay = { id_equipo: number; nombre: string; logo?: string };
+    const displayEquipoA: EquipoDisplay | undefined = partido?.equipo_local || equipos.find(e => e.id_equipo === llave.id_equipo_a);
+    const displayEquipoB: EquipoDisplay | undefined = partido?.equipo_visitante || equipos.find(e => e.id_equipo === llave.id_equipo_b);
 
     const equipoGanador = equipos.find(e => e.id_equipo === llave.id_equipo_ganador);
 
@@ -425,14 +427,14 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
                 />
                 <Text style={[
                   styles.equipoNombre,
-                  llave.id_equipo_ganador === (displayEquipoA as any).id_equipo && styles.equipoNombreGanador
+                  llave.id_equipo_ganador === displayEquipoA?.id_equipo && styles.equipoNombreGanador
                 ]} numberOfLines={1}>
                   {displayEquipoA.nombre}
                 </Text>
                 {partido && (partido.marcador_local !== null || partido.marcador_visitante !== null) && (
                   <Text style={[
                     styles.equipoResultado,
-                    llave.id_equipo_ganador === (displayEquipoA as any).id_equipo && styles.equipoResultadoGanador
+                    llave.id_equipo_ganador === displayEquipoA?.id_equipo && styles.equipoResultadoGanador
                   ]}>
                     {partido.marcador_local ?? 0}
                     {partido.fue_a_penales && partido.penales_local !== null && (
@@ -451,7 +453,7 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
                 </Text>
               </>
             )}
-            {llave.id_equipo_ganador && displayEquipoA && (displayEquipoA as any).id_equipo === llave.id_equipo_ganador && (
+            {llave.id_equipo_ganador && displayEquipoA && displayEquipoA.id_equipo === llave.id_equipo_ganador && (
               <MaterialCommunityIcons name="trophy" size={16} color={colors.warning} />
             )}
           </View>
@@ -468,14 +470,14 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
                 />
                 <Text style={[
                   styles.equipoNombre,
-                  llave.id_equipo_ganador === (displayEquipoB as any).id_equipo && styles.equipoNombreGanador
+                  llave.id_equipo_ganador === displayEquipoB?.id_equipo && styles.equipoNombreGanador
                 ]} numberOfLines={1}>
                   {displayEquipoB.nombre}
                 </Text>
                 {partido && (partido.marcador_local !== null || partido.marcador_visitante !== null) && (
                   <Text style={[
                     styles.equipoResultado,
-                    llave.id_equipo_ganador === (displayEquipoB as any).id_equipo && styles.equipoResultadoGanador
+                    llave.id_equipo_ganador === displayEquipoB?.id_equipo && styles.equipoResultadoGanador
                   ]}>
                     {partido.marcador_visitante ?? 0}
                     {partido.fue_a_penales && partido.penales_visitante !== null && (
@@ -494,7 +496,7 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
                 </Text>
               </>
             )}
-            {llave.id_equipo_ganador && displayEquipoB && (displayEquipoB as any).id_equipo === llave.id_equipo_ganador && (
+            {llave.id_equipo_ganador && displayEquipoB && displayEquipoB.id_equipo === llave.id_equipo_ganador && (
               <MaterialCommunityIcons name="trophy" size={16} color={colors.warning} />
             )}
           </View>
@@ -603,7 +605,7 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
       // Si hay penales, determinar ganador por penales
       if (hayPenales) {
         ganador = partido.penales_local! > partido.penales_visitante! ? 'local' :
-                  partido.penales_local! < partido.penales_visitante! ? 'visitante' : 'empate';
+          partido.penales_local! < partido.penales_visitante! ? 'visitante' : 'empate';
       } else {
         // Determinar ganador por resultado normal
         ganador = golesLocal > golesVisitante ? 'local' : golesLocal < golesVisitante ? 'visitante' : 'empate';
@@ -618,7 +620,7 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
         activeOpacity={0.7}
       >
         <View style={styles.partidoHeader}>
-          <View style={styles.partidoInfo}>
+          <View style={styles.partidoInfoRow}>
             <MaterialCommunityIcons name="calendar" size={14} color={colors.textSecondary} />
             <Text style={styles.fechaText}>{formatDate(partido.fecha || partido.fecha_hora || '')}</Text>
             {partido.hora && (
@@ -1403,7 +1405,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
-  partidoInfo: {
+  partidoInfoRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
@@ -1457,10 +1459,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textSecondary,
   },
-  equipoNombreGanador: {
-    fontWeight: 'bold',
-    color: colors.textPrimary,
-  },
+
   adminActionsRow: {
     flexDirection: 'row',
     alignItems: 'center',

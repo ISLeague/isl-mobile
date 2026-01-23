@@ -91,7 +91,8 @@ export const CreatePartidoScreen = ({ navigation, route }: any) => {
   }, []);
 
   const loadKnockoutData = async () => {
-    // Para knockout solo cargar todos los equipos de la edición categoría
+    // KNOCKOUT: Cargar TODOS los equipos de la edición categoría sin restricciones
+    // Esto permite crear partidos con cualquier equipo, sin importar grupo o clasificación
     const result = await safeAsync(
       async () => {
         const response = await api.equipos.list(idEdicionCategoria);

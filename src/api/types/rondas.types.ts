@@ -6,8 +6,9 @@ export interface Ronda {
   id_ronda: number;
   nombre: string;
   tipo: 'fase_grupos' | 'eliminatorias' | 'amistosa';
-  subtipo_eliminatoria?: 'oro' | 'plata' | 'bronce'; // Copa (oro/plata/bronce)
-  stage_eliminatoria?: 'eliminatoria' | '16avos' | 'octavos' | 'cuartos' | 'semifinal' | 'final'; // Tipo de ronda
+  subtipo_eliminatoria?: 'oro' | 'plata' | 'bronce';
+  stage_eliminatoria?: 'eliminatoria' | '16avos' | 'octavos' | 'cuartos' | 'semifinal' | 'final';
+  metodo_asignacion?: 'manual' | 'automatico_llaves';
   fecha_inicio: string;
   fecha_fin?: string;
   orden: number;
@@ -19,9 +20,11 @@ export interface Ronda {
 export interface CreateRondaRequest {
   nombre: string;
   id_fase: number;
+  id_edicion_categoria?: number;
   tipo: 'fase_grupos' | 'eliminatorias' | 'amistosa';
-  subtipo_eliminatoria?: 'oro' | 'plata' | 'bronce'; // Copa (oro/plata/bronce)
-  stage_eliminatoria?: 'eliminatoria' | '16avos' | 'octavos' | 'cuartos' | 'semifinal' | 'final'; // Tipo de ronda
+  subtipo_eliminatoria?: 'oro' | 'plata' | 'bronce';
+  stage_eliminatoria?: 'eliminatoria' | '16avos' | 'octavos' | 'cuartos' | 'semifinal' | 'final';
+  metodo_asignacion?: 'manual' | 'automatico_llaves';
   es_amistosa?: boolean;
   fecha_inicio?: string;
   count_enfrentamientos?: number;
@@ -80,8 +83,9 @@ export interface UpdateRondaRequest {
   activo?: boolean;
   id_fase?: number;
   tipo?: 'fase_grupos' | 'eliminatorias' | 'amistosa';
-  subtipo_eliminatoria?: 'oro' | 'plata' | 'bronce'; // Copa (oro/plata/bronce)
-  stage_eliminatoria?: 'eliminatoria' | '16avos' | 'octavos' | 'cuartos' | 'semifinal' | 'final'; // Tipo de ronda
+  subtipo_eliminatoria?: 'oro' | 'plata' | 'bronce';
+  stage_eliminatoria?: 'eliminatoria' | '16avos' | 'octavos' | 'cuartos' | 'semifinal' | 'final';
+  metodo_asignacion?: 'manual' | 'automatico_llaves';
   numero?: number;
 }
 

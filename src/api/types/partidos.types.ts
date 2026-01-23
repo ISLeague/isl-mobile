@@ -60,7 +60,13 @@ export interface CreatePartidoFromFixtureRequest {
 }
 
 export interface CreatePartidoEliminatoriaRequest {
-  id_eliminatoria: number;
+  id_eliminatoria?: number;
+  id_equipo_local: number;
+  id_equipo_visitante: number;
+  id_ronda: number;
+  id_fase: number;
+  tipo_partido: 'eliminatoria';
+  afecta_clasificacion: boolean;
   fecha?: string;
   hora?: string;
   id_cancha?: number;
@@ -260,10 +266,12 @@ export interface ListKnockoutResponse {
   data: {
     total: number;
     partidos_por_etapa: {
-      octavos: Partido[];
-      cuartos: Partido[];
-      semifinal: Partido[];
-      final: Partido[];
+      eliminatoria?: Partido[];
+      '16avos'?: Partido[];
+      octavos?: Partido[];
+      cuartos?: Partido[];
+      semifinal?: Partido[];
+      final?: Partido[];
     };
   };
   timestamp: string;

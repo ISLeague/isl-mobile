@@ -35,6 +35,7 @@ export const CreateKnockoutFlowScreen: React.FC<CreateKnockoutFlowScreenProps> =
   const [selectedCopa, setSelectedCopa] = useState<TipoCopa>('oro');
   const [selectedRonda, setSelectedRonda] = useState<RondaEliminatoria>('octavos');
   const [nombre, setNombre] = useState('');
+  const [creationMode, setCreationMode] = useState<'manual' | 'automatic'>('manual');
 
   // Opciones de copa
   const copas: TipoCopa[] = ['oro', 'plata', 'bronce'];
@@ -48,6 +49,28 @@ export const CreateKnockoutFlowScreen: React.FC<CreateKnockoutFlowScreenProps> =
     { value: 'semifinal', label: 'Semifinales' },
     { value: 'final', label: 'Final' },
   ];
+
+  /* Helper para orden */
+  const getRondaOrden = (ronda: RondaEliminatoria): number => {
+    const ordenMap: Record<RondaEliminatoria, number> = {
+      'eliminatoria': 0,
+      '16avos': 1,
+      'octavos': 2,
+      'cuartos': 3,
+      'semifinal': 4,
+      'final': 5,
+    };
+    return ordenMap[ronda] || 0;
+  };
+
+  const getPreviousRondaLabel = (currentRonda: RondaEliminatoria): string => {
+    const currentOrder = getRondaOrden(currentRonda);
+    if (currentOrder === 0) return 'Clasificación / Grupos';
+
+    const prevOrder = currentOrder - 1;
+    const prevRonda = rondas.find(r => getRondaOrden(r.value) === prevOrder);
+    return prevRonda ? prevRonda.label : 'Ronda Anterior';
+  };
 
   // Actualizar nombre cuando cambie la ronda
   useEffect(() => {
@@ -64,6 +87,7 @@ export const CreateKnockoutFlowScreen: React.FC<CreateKnockoutFlowScreenProps> =
 
     console.log('🎯 [CreateKnockout] ========================================');
     console.log('🎯 [CreateKnockout] Iniciando creación de ronda knockout');
+    console.log('Modo:', creationMode);
     console.log('📋 [CreateKnockout] Copa seleccionada:', selectedCopa);
     console.log('📋 [CreateKnockout] Ronda seleccionada:', selectedRonda);
     console.log('📋 [CreateKnockout] Nombre:', nombre);
@@ -90,7 +114,7 @@ export const CreateKnockoutFlowScreen: React.FC<CreateKnockoutFlowScreenProps> =
         console.log('✅ [CreateKnockout] Fase encontrada:', fase.nombre, '| ID:', fase.id_fase);
 
         // 2. Crear la ronda
-        const rondaData = {
+        const rondaData: any = {
           nombre,
           tipo: 'eliminatorias' as const,
           subtipo_eliminatoria: selectedCopa, // Copa a la que pertenece (oro/plata/bronce)
@@ -98,6 +122,8 @@ export const CreateKnockoutFlowScreen: React.FC<CreateKnockoutFlowScreenProps> =
           id_fase: fase.id_fase,
           id_edicion_categoria: idEdicionCategoria,
           orden: getRondaOrden(selectedRonda),
+          // Enviamos el modo de creación para que el backend sepa si debe generar llaves auto
+          metodo_asignacion: creationMode === 'automatic' ? ('automatico_llaves' as const) : ('manual' as const)
         };
 
         console.log('📤 [CreateKnockout] Datos de ronda a crear:');
@@ -108,6 +134,8 @@ export const CreateKnockoutFlowScreen: React.FC<CreateKnockoutFlowScreenProps> =
         console.log('   - id_fase:', rondaData.id_fase);
         console.log('   - id_edicion_categoria:', rondaData.id_edicion_categoria);
         console.log('   - orden:', rondaData.orden);
+        console.log('   - metodo_asignacion:', rondaData.metodo_asignacion);
+
 
         const createResponse = await api.rondas.create(rondaData);
         console.log('✅ [CreateKnockout] Respuesta de creación:', createResponse);
@@ -118,7 +146,7 @@ export const CreateKnockoutFlowScreen: React.FC<CreateKnockoutFlowScreenProps> =
       {
         fallbackValue: null,
         onError: (error: any) => {
-          showError(error.message || 'No se pudo crear la ronda knockout');
+          showError(error.message || 'No se pudo crear la ronda');
         }
       }
     );
@@ -129,18 +157,6 @@ export const CreateKnockoutFlowScreen: React.FC<CreateKnockoutFlowScreenProps> =
     }
 
     setLoading(false);
-  };
-
-  const getRondaOrden = (ronda: RondaEliminatoria): number => {
-    const ordenMap: Record<RondaEliminatoria, number> = {
-      'eliminatoria': 0,
-      '16avos': 1,
-      'octavos': 2,
-      'cuartos': 3,
-      'semifinal': 4,
-      'final': 5,
-    };
-    return ordenMap[ronda] || 0;
   };
 
   const getCopaGradient = (copa: TipoCopa) => {
@@ -250,11 +266,89 @@ export const CreateKnockoutFlowScreen: React.FC<CreateKnockoutFlowScreenProps> =
           />
         </View>
 
+        {/* Método de Creación */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Método de Creación</Text>
+          <View style={styles.modeContainer}>
+            {/* Opción Manual */}
+            <TouchableOpacity
+              style={[
+                styles.modeCard,
+                creationMode === 'manual' && styles.modeCardActive
+              ]}
+              onPress={() => setCreationMode('manual')}
+            >
+              <View style={styles.modeIconContainer}>
+                <MaterialCommunityIcons
+                  name="playlist-plus"
+                  size={24}
+                  color={creationMode === 'manual' ? colors.primary : colors.textSecondary}
+                />
+              </View>
+              <View style={styles.modeTextContainer}>
+                <Text style={[
+                  styles.modeTitle,
+                  creationMode === 'manual' && styles.modeTitleActive
+                ]}>
+                  Ronda Vacía
+                </Text>
+                <Text style={styles.modeDescription}>
+                  Crear una ronda sin partidos. Agregarás los cruces manualmente.
+                </Text>
+              </View>
+              {creationMode === 'manual' && (
+                <MaterialCommunityIcons name="check-circle" size={20} color={colors.primary} />
+              )}
+            </TouchableOpacity>
+
+            {/* Opción Automática */}
+            <TouchableOpacity
+              style={[
+                styles.modeCard,
+                creationMode === 'automatic' && styles.modeCardActive
+              ]}
+              onPress={() => setCreationMode('automatic')}
+            >
+              <View style={styles.modeIconContainer}>
+                <MaterialCommunityIcons
+                  name="file-tree"
+                  size={24}
+                  color={creationMode === 'automatic' ? colors.primary : colors.textSecondary}
+                />
+              </View>
+              <View style={styles.modeTextContainer}>
+                <Text style={[
+                  styles.modeTitle,
+                  creationMode === 'automatic' && styles.modeTitleActive
+                ]}>
+                  Basado en Lógica Previa
+                </Text>
+                <Text style={styles.modeDescription}>
+                  {getRondaOrden(selectedRonda) === 0
+                    ? 'Generar cruces según las reglas de clasificación / grupos.'
+                    : `Generar cruces basados en los ganadores de: ${getPreviousRondaLabel(selectedRonda)}.`}
+                </Text>
+              </View>
+              {creationMode === 'automatic' && (
+                <MaterialCommunityIcons name="check-circle" size={20} color={colors.primary} />
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* Info */}
-        <View style={styles.infoBox}>
-          <MaterialCommunityIcons name="information-outline" size={20} color={colors.info} />
-          <Text style={styles.infoText}>
-            Se creará una ronda vacía. Después podrás agregar los partidos correspondientes.
+        <View style={[styles.infoBox, creationMode === 'automatic' && styles.infoBoxWarning]}>
+          <MaterialCommunityIcons
+            name={creationMode === 'automatic' ? "alert-circle-outline" : "information-outline"}
+            size={20}
+            color={creationMode === 'automatic' ? colors.warning : colors.info}
+          />
+          <Text style={[styles.infoText, creationMode === 'automatic' && styles.infoTextWarning]}>
+            {creationMode === 'manual'
+              ? 'Se creará una ronda vacía. Podrás agregar partidos manualmente con CUALQUIER equipo de la edición, sin restricciones de grupo o clasificación.'
+              : getRondaOrden(selectedRonda) === 0
+                ? 'Se generarán automáticamente los cruces basados en las REGLAS DE CLASIFICACIÓN de la fase de grupos o torneo anterior.'
+                : `Se generarán automáticamente los cruces basados en los GANADORES de: ${getPreviousRondaLabel(selectedRonda)}.`}
           </Text>
         </View>
       </ScrollView>
@@ -398,5 +492,53 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     borderTopWidth: 1,
     borderTopColor: colors.border,
+  },
+  modeContainer: {
+    gap: 12,
+  },
+  modeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: colors.border,
+    gap: 12,
+  },
+  modeCardActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
+  },
+  modeIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modeTextContainer: {
+    flex: 1,
+    gap: 4,
+  },
+  modeTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  modeTitleActive: {
+    color: colors.primary,
+  },
+  modeDescription: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    lineHeight: 16,
+  },
+  infoBoxWarning: {
+    backgroundColor: '#FFF3E0',
+  },
+  infoTextWarning: {
+    color: colors.warning,
   },
 });
