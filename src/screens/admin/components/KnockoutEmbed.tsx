@@ -228,10 +228,15 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
     setCreatingFase(copaInfo.tipo);
 
     const result = await safeAsync(
+     
       async () => {
+        if (idEdicionCategoria === undefined) {
+          throw new Error('idEdicionCategoria no definido');
+        }
         // Usar el endpoint get-or-create-knockout
+        console.log('🌐 [KnockoutEmbed] Llamando a getOrCreateKnockout con idEdicionCategoria:', idEdicionCategoria, 'y copa:', copaInfo.tipo);
         const response = await api.fases.getOrCreateKnockout(
-          idEdicionCategoria || 1,
+          idEdicionCategoria,
           copaInfo.tipo
         );
 

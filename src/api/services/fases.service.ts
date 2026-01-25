@@ -83,13 +83,15 @@ export const fasesService = {
   },
 
   /**
-   * Obtener equipos clasificados de una fase según reglas
+   * Obtener equipos clasificados según reglas
+   * @param idEdicionCategoria - ID de la edición categoría
+   * @param copa - Copa (oro, plata, bronce)
    */
   obtenerClasificados: async (
-    idFase: number,
+    idEdicionCategoria: number,
     copa?: TipoCopa
   ): Promise<ObtenerClasificadosApiResponse> => {
-    const params: any = { id_fase: idFase, action: 'obtener-clasificados' };
+    const params: any = { id_edicion_categoria: idEdicionCategoria, action: 'obtener-clasificados' };
     if (copa) {
       params.copa = copa;
     }

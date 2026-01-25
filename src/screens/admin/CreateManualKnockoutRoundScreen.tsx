@@ -89,7 +89,7 @@ export const CreateManualKnockoutRoundScreen: React.FC<CreateManualKnockoutRound
     const result = await safeAsync(
       async () => {
         // PASO 1: Listar rondas existentes
-        console.log('📋 [CreateManualKnockout] Obteniendo rondas existentes...');
+        console.log('📋 [CreateManualKnockout] Obteniendo rondas existentes... para el idFase:', idFase);
         const rondasResponse = await api.rondas.list({
           id_fase: idFase,
           tipo_ronda: 'eliminatorias',
@@ -113,9 +113,10 @@ export const CreateManualKnockoutRoundScreen: React.FC<CreateManualKnockoutRound
 
         if (rondas.length === 0) {
           // PRIMERA RONDA - Obtener equipos clasificados
-          console.log('🔍 [CreateManualKnockout] Primera ronda, obteniendo clasificados...');
+          console.log('🔍 [CreateManualKnockout] Primera ronda, obteniendo clasificados para idEdicionCategoria:', idEdicionCategoria);
 
-          const clasificadosResponse = await api.fases.obtenerClasificados(idFase, copa);
+          // Obtener clasificados (backend usa idEdicionCategoria para buscar la fase de grupos)
+          const clasificadosResponse = await api.fases.obtenerClasificados(idEdicionCategoria, copa);
 
           if (clasificadosResponse.success && clasificadosResponse.data) {
             const data = clasificadosResponse.data;
