@@ -15,7 +15,6 @@ export const rondasService = {
     id_fase?: number;
     tipo_ronda?: 'fase_grupos' | 'eliminatorias' | 'amistosa';
   }) => {
-    console.log("entrandooooo---")
 
     const response = await apiClient.get('/rondas', {
       params: {
@@ -23,7 +22,7 @@ export const rondasService = {
         action: 'list'
       }
     });
-     console.log("resonse ", response.data)
+     console.log("resonse ", response.data.rondas)
     return response.data;
   },
 

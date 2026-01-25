@@ -161,11 +161,11 @@ export const KnockoutRondasScreen: React.FC<KnockoutRondasScreenProps> = ({
   // ============================================
 
   const handleCreateRondaManual = () => {
-    navigation.navigate('CreateFase', {
+    console.log("Info de la fase:", fase);
+    navigation.navigate('CreateManualKnockoutRound', {
       idEdicionCategoria,
       idFase: fase.id_fase,
       copa,
-      modo: 'manual',
     });
   };
 

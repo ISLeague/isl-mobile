@@ -42,6 +42,11 @@ export type RootStackParamList = {
         copa?: 'oro' | 'plata' | 'bronce';
         modo?: 'manual' | 'automatico';
     };
+    CreateManualKnockoutRound: {
+        idEdicionCategoria: number;
+        idFase: number;
+        copa: 'oro' | 'plata' | 'bronce';
+    };
 
     // Add other routes as needed
     [key: string]: any;

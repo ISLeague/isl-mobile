@@ -224,64 +224,73 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
   };
 
   const handleCopaSelect = async (copaInfo: CopaInfo) => {
-    const faseExistente = fasesKnockout.find((f) => f.copa === copaInfo.tipo);
+    console.log(`🔍 [KnockoutEmbed] Buscando fase knockout para copa: ${copaInfo.tipo}`);
+    setCreatingFase(copaInfo.tipo);
 
-    if (faseExistente) {
-      // Ya existe la fase, navegar a la pantalla de rondas
-      console.log(`✅ [KnockoutEmbed] Fase ${copaInfo.tipo} existe, navegando...`);
+    const result = await safeAsync(
+      async () => {
+        // 1. Buscar directamente en la API si existe la fase knockout para esta copa
+        const fasesResponse = await api.fases.list(idEdicionCategoria || 1);
+        console.log('📂 [KnockoutEmbed] Fases obtenidas:', fasesResponse);
+
+        let faseExistente = null;
+        if (fasesResponse.success && fasesResponse.data) {
+          faseExistente = fasesResponse.data.find(
+            (f: any) => f.tipo === 'knockout' && f.copa === copaInfo.tipo
+          );
+        }
+
+        if (faseExistente) {
+          console.log(`✅ [KnockoutEmbed] Fase ${copaInfo.tipo} encontrada:`, faseExistente);
+          return { action: 'navigate', fase: faseExistente };
+        }
+
+        // 2. No existe, crear la fase automáticamente
+        console.log(`🆕 [KnockoutEmbed] Creando fase para ${copaInfo.tipo}...`);
+        const requestData = {
+          nombre: `Fase Eliminatoria - ${copaInfo.nombre}`,
+          tipo: 'knockout' as TipoFase,
+          copa: copaInfo.tipo,
+          orden: copaInfo.tipo === 'oro' ? 1 : copaInfo.tipo === 'plata' ? 2 : 3,
+          id_edicion_categoria: idEdicionCategoria || 1,
+          partidos_ida_vuelta: false,
+          permite_empate: false,
+          permite_penales: true,
+        };
+
+        console.log('📤 [KnockoutEmbed] Enviando request:', requestData);
+        const createResponse = await api.fases.create(requestData);
+        console.log('📥 [KnockoutEmbed] Respuesta:', createResponse);
+
+        if (createResponse && createResponse.success && createResponse.data) {
+          return { action: 'created', fase: createResponse.data };
+        }
+
+        throw new Error('No se pudo crear la fase');
+      },
+      'handleCopaSelect',
+      {
+        severity: 'high',
+        fallbackValue: null,
+        onError: (error) => {
+          console.error('❌ [KnockoutEmbed] Error:', error);
+          showError(getUserFriendlyMessage(error), 'Error');
+        },
+      }
+    );
+
+    setCreatingFase(null);
+
+    if (result && result.fase) {
+      if (result.action === 'created') {
+        showSuccess(`Fase ${copaInfo.nombre} creada exitosamente`);
+      }
       setShowCopaModal(false);
       navigation.navigate('KnockoutRondas', {
-        fase: faseExistente,
+        fase: result.fase,
         copa: copaInfo.tipo,
         idEdicionCategoria,
       });
-    } else {
-      // No existe, crear la fase automáticamente
-      console.log(`🆕 [KnockoutEmbed] Creando fase para ${copaInfo.tipo}...`);
-      setCreatingFase(copaInfo.tipo);
-
-      const result = await safeAsync(
-        async () => {
-          const requestData = {
-            nombre: `Fase Eliminatoria - ${copaInfo.nombre}`,
-            tipo: 'knockout' as TipoFase,
-            copa: copaInfo.tipo,
-            orden: copaInfo.tipo === 'oro' ? 1 : copaInfo.tipo === 'plata' ? 2 : 3,
-            id_edicion_categoria: idEdicionCategoria || 1,
-            partidos_ida_vuelta: false,
-            permite_empate: false,
-            permite_penales: true,
-          };
-
-          console.log('📤 [KnockoutEmbed] Enviando request:', requestData);
-          const response = await api.fases.create(requestData);
-          console.log('📥 [KnockoutEmbed] Respuesta:', response);
-
-          return response;
-        },
-        'createFaseKnockout',
-        {
-          severity: 'high',
-          fallbackValue: null,
-          onError: (error) => {
-            console.error('❌ [KnockoutEmbed] Error al crear fase:', error);
-            showError(getUserFriendlyMessage(error), 'Error al crear fase');
-          },
-        }
-      );
-
-      setCreatingFase(null);
-
-      if (result && result.success && result.data) {
-        showSuccess(`Fase ${copaInfo.nombre} creada exitosamente`);
-        setShowCopaModal(false);
-        await loadData();
-        navigation.navigate('KnockoutRondas', {
-          fase: result.data,
-          copa: copaInfo.tipo,
-          idEdicionCategoria,
-        });
-      }
     }
   };
 
