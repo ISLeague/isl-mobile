@@ -28,14 +28,22 @@ export const CreateKnockoutFlowScreen: React.FC<CreateKnockoutFlowScreenProps> =
   navigation,
   route,
 }) => {
-  const { idEdicionCategoria } = route.params || {};
+  const {
+    idEdicionCategoria,
+    idFase: idFaseFromParams,
+    copa: copaFromParams,
+    modo: modoFromParams
+  } = route.params || {};
   const { showSuccess, showError } = useToast();
 
   const [loading, setLoading] = useState(false);
-  const [selectedCopa, setSelectedCopa] = useState<TipoCopa>('oro');
+  const [selectedCopa, setSelectedCopa] = useState<TipoCopa>(copaFromParams || 'oro');
   const [selectedRonda, setSelectedRonda] = useState<RondaEliminatoria>('octavos');
   const [nombre, setNombre] = useState('');
-  const [creationMode, setCreationMode] = useState<'manual' | 'automatic'>('manual');
+  const [creationMode, setCreationMode] = useState<'manual' | 'automatic'>(modoFromParams === 'automatico' ? 'automatic' : 'manual');
+
+  // Si viene copa desde params, no mostrar selector de copa
+  const copaLocked = !!copaFromParams;
 
   // Opciones de copa
   const copas: TipoCopa[] = ['oro', 'plata', 'bronce'];

@@ -30,6 +30,19 @@ export type RootStackParamList = {
         equipoNombre: string;
     };
 
+    // Knockout Management
+    KnockoutRondas: {
+        fase: any;
+        copa: 'oro' | 'plata' | 'bronce';
+        idEdicionCategoria: number;
+    };
+    CreateFase: {
+        idEdicionCategoria: number;
+        idFase?: number;
+        copa?: 'oro' | 'plata' | 'bronce';
+        modo?: 'manual' | 'automatico';
+    };
+
     // Add other routes as needed
     [key: string]: any;
 };

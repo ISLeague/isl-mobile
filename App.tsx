@@ -67,6 +67,7 @@ import { BulkImportPlayersScreen } from './src/screens/admin/BulkImportPlayersSc
 import { GrupoDetailScreen } from './src/screens/admin/GrupoDetailScreen';
 import { MoveTeamToGroupScreen } from './src/screens/admin/MoveTeamToGroupScreen';
 import { CreateKnockoutFlowScreen } from './src/screens/admin/CreateKnockoutFlowScreen';
+import { KnockoutRondasScreen } from './src/screens/admin/KnockoutRondasScreen';
 import {
   MinijuegosScreen,
   ImpostorMenuScreen,
@@ -147,6 +148,7 @@ function AppNavigator() {
 
         {/* Knockout Management */}
         <Stack.Screen name="CreateFase" component={CreateKnockoutFlowScreen} />
+        <Stack.Screen name="KnockoutRondas" component={KnockoutRondasScreen} />
 
         {/* Fixture Management */}
         <Stack.Screen name="FixtureManagement" component={FixtureManagementScreen} />
