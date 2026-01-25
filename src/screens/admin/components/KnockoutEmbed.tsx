@@ -207,6 +207,8 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
     setLoading(false);
   };
 
+  
+
   const toggleRonda = (rondaKey: string | number) => {
     setExpandedRondas(prev => ({
       ...prev,
