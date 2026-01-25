@@ -224,49 +224,27 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
   };
 
   const handleCopaSelect = async (copaInfo: CopaInfo) => {
-    console.log(`🔍 [KnockoutEmbed] Buscando fase knockout para copa: ${copaInfo.tipo}`);
+    console.log(`🔍 [KnockoutEmbed] Obteniendo/Creando fase knockout para copa: ${copaInfo.tipo}`);
     setCreatingFase(copaInfo.tipo);
 
     const result = await safeAsync(
       async () => {
-        // 1. Buscar directamente en la API si existe la fase knockout para esta copa
-        const fasesResponse = await api.fases.list(idEdicionCategoria || 1);
-        console.log('📂 [KnockoutEmbed] Fases obtenidas:', fasesResponse);
+        // Usar el endpoint get-or-create-knockout
+        const response = await api.fases.getOrCreateKnockout(
+          idEdicionCategoria || 1,
+          copaInfo.tipo
+        );
 
-        let faseExistente = null;
-        if (fasesResponse.success && fasesResponse.data) {
-          faseExistente = fasesResponse.data.find(
-            (f: any) => f.tipo === 'knockout' && f.copa === copaInfo.tipo
-          );
+        console.log('📥 [KnockoutEmbed] Respuesta getOrCreateKnockout:', response);
+
+        if (response && response.success && response.data) {
+          return {
+            fase: response.data.fase,
+            created: response.data.created
+          };
         }
 
-        if (faseExistente) {
-          console.log(`✅ [KnockoutEmbed] Fase ${copaInfo.tipo} encontrada:`, faseExistente);
-          return { action: 'navigate', fase: faseExistente };
-        }
-
-        // 2. No existe, crear la fase automáticamente
-        console.log(`🆕 [KnockoutEmbed] Creando fase para ${copaInfo.tipo}...`);
-        const requestData = {
-          nombre: `Fase Eliminatoria - ${copaInfo.nombre}`,
-          tipo: 'knockout' as TipoFase,
-          copa: copaInfo.tipo,
-          orden: copaInfo.tipo === 'oro' ? 1 : copaInfo.tipo === 'plata' ? 2 : 3,
-          id_edicion_categoria: idEdicionCategoria || 1,
-          partidos_ida_vuelta: false,
-          permite_empate: false,
-          permite_penales: true,
-        };
-
-        console.log('📤 [KnockoutEmbed] Enviando request:', requestData);
-        const createResponse = await api.fases.create(requestData);
-        console.log('📥 [KnockoutEmbed] Respuesta:', createResponse);
-
-        if (createResponse && createResponse.success && createResponse.data) {
-          return { action: 'created', fase: createResponse.data };
-        }
-
-        throw new Error('No se pudo crear la fase');
+        throw new Error('No se pudo obtener/crear la fase');
       },
       'handleCopaSelect',
       {
@@ -274,7 +252,7 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
         fallbackValue: null,
         onError: (error) => {
           console.error('❌ [KnockoutEmbed] Error:', error);
-          showError(getUserFriendlyMessage(error), 'Error');
+          showError(getUserFriendlyMessage(error), 'Error al obtener fase');
         },
       }
     );
@@ -282,7 +260,7 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
     setCreatingFase(null);
 
     if (result && result.fase) {
-      if (result.action === 'created') {
+      if (result.created) {
         showSuccess(`Fase ${copaInfo.nombre} creada exitosamente`);
       }
       setShowCopaModal(false);

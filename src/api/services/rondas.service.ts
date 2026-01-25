@@ -99,4 +99,14 @@ export const rondasService = {
     });
     return response.data;
   },
+
+  /**
+   * Obtener ganadores de una ronda de eliminatorias
+   */
+  getGanadores: async (id_ronda: number) => {
+    const response = await apiClient.get('/rondas', {
+      params: { action: 'get-ganadores', id_ronda }
+    });
+    return response.data;
+  },
 };

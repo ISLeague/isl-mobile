@@ -96,4 +96,28 @@ export const fasesService = {
     const response = await apiClient.get('/fases', { params });
     return response.data;
   },
+
+  /**
+   * Obtener o crear fase knockout para una copa específica
+   */
+  getOrCreateKnockout: async (
+    idEdicionCategoria: number,
+    copa: TipoCopa
+  ): Promise<{
+    success: boolean;
+    data: {
+      fase: any;
+      created: boolean;
+    };
+    timestamp: string;
+  }> => {
+    const response = await apiClient.get('/fases', {
+      params: {
+        action: 'get-or-create-knockout',
+        id_edicion_categoria: idEdicionCategoria,
+        copa,
+      },
+    });
+    return response.data;
+  },
 };

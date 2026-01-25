@@ -30,15 +30,6 @@ interface CreateManualKnockoutRoundScreenProps {
 
 type RondaEliminatoria = 'eliminatoria' | '16avos' | 'octavos' | 'cuartos' | 'semifinal' | 'final';
 
-const RONDA_CAPACITIES: Record<RondaEliminatoria, number> = {
-  'eliminatoria': 64,
-  '16avos': 32,
-  'octavos': 16,
-  'cuartos': 8,
-  'semifinal': 4,
-  'final': 2,
-};
-
 const RONDA_LABELS: Record<RondaEliminatoria, string> = {
   'eliminatoria': 'Eliminatoria',
   '16avos': '16avos de Final',
@@ -56,7 +47,21 @@ const getCopaGradient = (copa: TipoCopa): [string, string, string] => {
       return ['#C0C0C0', '#A8A8A8', '#909090'];
     case 'bronce':
       return ['#CD7F32', '#B8733C', '#A86832'];
+    default:
+      return ['#FFD700', '#FFA500', '#FF8C00'];
   }
+};
+
+const getOrdenRonda = (ronda: RondaEliminatoria): number => {
+  const ordenMap: Record<RondaEliminatoria, number> = {
+    'eliminatoria': 0,
+    '16avos': 1,
+    'octavos': 2,
+    'cuartos': 3,
+    'semifinal': 4,
+    'final': 5,
+  };
+  return ordenMap[ronda] || 0;
 };
 
 export const CreateManualKnockoutRoundScreen: React.FC<CreateManualKnockoutRoundScreenProps> = ({
@@ -83,7 +88,7 @@ export const CreateManualKnockoutRoundScreen: React.FC<CreateManualKnockoutRound
 
     const result = await safeAsync(
       async () => {
-        // 1. Obtener rondas existentes para esta fase
+        // PASO 1: Listar rondas existentes
         console.log('📋 [CreateManualKnockout] Obteniendo rondas existentes...');
         const rondasResponse = await api.rondas.list({
           id_fase: idFase,
@@ -95,47 +100,61 @@ export const CreateManualKnockoutRoundScreen: React.FC<CreateManualKnockoutRound
           const todasLasRondas = Array.isArray(rondasResponse.data)
             ? rondasResponse.data
             : rondasResponse.data.rondas || [];
+
+          // Filtrar por copa (subtipo_eliminatoria)
           rondas = todasLasRondas.filter((r: any) => r.subtipo_eliminatoria === copa);
         }
 
         console.log(`📋 [CreateManualKnockout] Rondas existentes: ${rondas.length}`);
 
-        // 2. Determinar qué ronda sugerir
+        // PASO 2: Determinar qué ronda crear y obtener equipos
         let rondaASugerir: RondaEliminatoria | null = null;
         let equipos: any[] = [];
 
         if (rondas.length === 0) {
-          // No hay rondas, buscar equipos clasificados desde grupos
-          console.log('🔍 [CreateManualKnockout] No hay rondas, buscando equipos clasificados...');
+          // PRIMERA RONDA - Obtener equipos clasificados
+          console.log('🔍 [CreateManualKnockout] Primera ronda, obteniendo clasificados...');
 
-          // Obtener equipos clasificados de la fase de grupos
           const clasificadosResponse = await api.fases.obtenerClasificados(idFase, copa);
 
           if (clasificadosResponse.success && clasificadosResponse.data) {
-            equipos = clasificadosResponse.data.equipos_clasificados || [];
+            const data = clasificadosResponse.data;
+            equipos = copa === 'oro' ? data.oro : copa === 'plata' ? data.plata : data.bronce;
             console.log(`👥 [CreateManualKnockout] Equipos clasificados: ${equipos.length}`);
           }
 
           // Determinar ronda según cantidad de equipos
           rondaASugerir = determinarRondaSegunEquipos(equipos.length);
         } else {
-          // Ya hay rondas, sugerir la siguiente
-          const ultimaRonda = rondas.sort((a, b) => (b.orden || 0) - (a.orden || 0))[0];
-          const siguienteRonda = obtenerSiguienteRonda(ultimaRonda.stage_eliminatoria);
+          // RONDA SUBSECUENTE - Obtener ganadores de la ronda anterior
+          console.log('🔍 [CreateManualKnockout] Ronda subsecuente, obteniendo ganadores...');
 
-          if (siguienteRonda) {
-            rondaASugerir = siguienteRonda;
+          // Ordenar por orden y tomar la última
+          const rondasOrdenadas = rondas.sort((a, b) => (b.orden || 0) - (a.orden || 0));
+          const ultimaRonda = rondasOrdenadas[0];
 
-            // Obtener equipos disponibles para esta ronda
-            const equiposResponse = await api.eliminatorias.getEquiposDisponibles(
-              idEdicionCategoria,
-              copa,
-              rondaASugerir
-            );
+          console.log('📌 [CreateManualKnockout] Última ronda:', ultimaRonda.nombre);
 
-            if (equiposResponse.success && equiposResponse.data) {
-              equipos = equiposResponse.data.equipos || [];
+          // Obtener ganadores de la última ronda
+          const ganadoresResponse = await api.rondas.getGanadores(ultimaRonda.id_ronda);
+
+          if (ganadoresResponse.success && ganadoresResponse.data) {
+            if (!ganadoresResponse.data.todos_finalizados) {
+              throw new Error(
+                `No todos los partidos de "${ultimaRonda.nombre}" han finalizado. ` +
+                `Pendientes: ${ganadoresResponse.data.partidos_pendientes}`
+              );
             }
+
+            equipos = ganadoresResponse.data.ganadores || [];
+            console.log(`👥 [CreateManualKnockout] Ganadores disponibles: ${equipos.length}`);
+          }
+
+          // Determinar siguiente ronda
+          rondaASugerir = obtenerSiguienteRonda(ultimaRonda.stage_eliminatoria);
+
+          if (!rondaASugerir) {
+            throw new Error('Ya no hay más rondas por crear. El torneo está completo.');
           }
         }
 
@@ -151,7 +170,7 @@ export const CreateManualKnockoutRoundScreen: React.FC<CreateManualKnockoutRound
         fallbackValue: null,
         onError: (error) => {
           console.error('❌ [CreateManualKnockout] Error:', error);
-          showError('No se pudo cargar los datos necesarios');
+          showError(error.message || 'No se pudo cargar los datos necesarios');
         },
       }
     );
@@ -170,7 +189,8 @@ export const CreateManualKnockoutRoundScreen: React.FC<CreateManualKnockoutRound
     if (cantidadEquipos >= 16) return 'octavos';
     if (cantidadEquipos >= 8) return 'cuartos';
     if (cantidadEquipos >= 4) return 'semifinal';
-    return 'final';
+    if (cantidadEquipos >= 2) return 'final';
+    return 'final'; // fallback
   };
 
   const obtenerSiguienteRonda = (rondaActual: RondaEliminatoria): RondaEliminatoria | null => {
@@ -206,7 +226,7 @@ export const CreateManualKnockoutRoundScreen: React.FC<CreateManualKnockoutRound
     );
   }
 
-  if (!rondaSugerida) {
+  if (!rondaSugerida || equiposDisponibles.length === 0) {
     return (
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <View style={styles.header}>
@@ -221,7 +241,9 @@ export const CreateManualKnockoutRoundScreen: React.FC<CreateManualKnockoutRound
           <MaterialCommunityIcons name="alert-circle-outline" size={64} color={colors.textLight} />
           <Text style={styles.emptyTitle}>No se puede crear ronda</Text>
           <Text style={styles.emptyText}>
-            No hay equipos disponibles o ya se completó el torneo.
+            {!rondaSugerida
+              ? 'Ya se completó el torneo o no hay más rondas por crear.'
+              : 'No hay equipos disponibles para esta ronda.'}
           </Text>
           <TouchableOpacity style={styles.backButtonFull} onPress={() => navigation.goBack()}>
             <Text style={styles.backButtonText}>Volver</Text>
@@ -231,7 +253,7 @@ export const CreateManualKnockoutRoundScreen: React.FC<CreateManualKnockoutRound
     );
   }
 
-  const cantidadPartidos = equiposDisponibles.length / 2;
+  const cantidadPartidos = Math.floor(equiposDisponibles.length / 2);
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -291,8 +313,10 @@ export const CreateManualKnockoutRoundScreen: React.FC<CreateManualKnockoutRound
                   <Text style={styles.equipoNumberText}>{index + 1}</Text>
                 </View>
                 <Text style={styles.equipoNombre}>{equipo.nombre}</Text>
-                {equipo.origen && (
-                  <Text style={styles.equipoOrigen}>{equipo.origen}</Text>
+                {(equipo.grupo || equipo.origen) && (
+                  <Text style={styles.equipoOrigen}>
+                    {equipo.grupo || equipo.origen || ''}
+                  </Text>
                 )}
               </View>
             ))}

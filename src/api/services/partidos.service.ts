@@ -73,6 +73,18 @@ export const partidosService = {
   },
 
   /**
+   * Crear múltiples partidos en batch
+   */
+  createBatch: async (partidos: any[]) => {
+    const response = await apiClient.post('/partidos', {
+      partidos
+    }, {
+      params: { action: 'create-batch' }
+    });
+    return response.data;
+  },
+
+  /**
    * Actualizar un partido
    */
   update: async (data: UpdatePartidoRequest) => {
