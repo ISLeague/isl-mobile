@@ -105,21 +105,28 @@ export const CreateKnockoutFlowScreen: React.FC<CreateKnockoutFlowScreenProps> =
 
     const result = await safeAsync(
       async () => {
-        // 1. Obtener la fase knockout para esta copa
-        console.log('🔍 [CreateKnockout] Buscando fase knockout para copa:', selectedCopa);
-        const fasesResponse = await api.fases.list(idEdicionCategoria);
-        console.log('🔍 [CreateKnockout] Fases encontradas:', fasesResponse.data?.length || 0);
+        let idFase = idFaseFromParams;
 
-        const fase = fasesResponse.success && fasesResponse.data && fasesResponse.data.length > 0
-          ? fasesResponse.data.find((f: any) => f.tipo === 'knockout' && f.copa === selectedCopa)
-          : null;
+        // 1. Si no viene idFase, buscar la fase knockout para esta copa
+        if (!idFase) {
+          console.log('🔍 [CreateKnockout] Buscando fase knockout para copa:', selectedCopa);
+          const fasesResponse = await api.fases.list(idEdicionCategoria);
+          console.log('🔍 [CreateKnockout] Fases encontradas:', fasesResponse.data?.length || 0);
 
-        if (!fase || !fase.id_fase) {
-          console.log('❌ [CreateKnockout] No se encontró fase knockout para copa:', selectedCopa);
-          throw new Error(`No se encontró la fase knockout para Copa ${selectedCopa.toUpperCase()}`);
+          const fase = fasesResponse.success && fasesResponse.data && fasesResponse.data.length > 0
+            ? fasesResponse.data.find((f: any) => f.tipo === 'knockout' && f.copa === selectedCopa)
+            : null;
+
+          if (!fase || !fase.id_fase) {
+            console.log('❌ [CreateKnockout] No se encontró fase knockout para copa:', selectedCopa);
+            throw new Error(`No se encontró la fase knockout para Copa ${selectedCopa.toUpperCase()}`);
+          }
+
+          idFase = fase.id_fase;
+          console.log('✅ [CreateKnockout] Fase encontrada:', fase.nombre, '| ID:', idFase);
+        } else {
+          console.log('✅ [CreateKnockout] Usando idFase desde params:', idFase);
         }
-
-        console.log('✅ [CreateKnockout] Fase encontrada:', fase.nombre, '| ID:', fase.id_fase);
 
         // 2. Crear la ronda
         const rondaData: any = {
@@ -127,7 +134,7 @@ export const CreateKnockoutFlowScreen: React.FC<CreateKnockoutFlowScreenProps> =
           tipo: 'eliminatorias' as const,
           subtipo_eliminatoria: selectedCopa, // Copa a la que pertenece (oro/plata/bronce)
           stage_eliminatoria: selectedRonda, // Tipo de ronda (eliminatoria/16avos/octavos/etc)
-          id_fase: fase.id_fase,
+          id_fase: idFase,
           id_edicion_categoria: idEdicionCategoria,
           orden: getRondaOrden(selectedRonda),
           // Enviamos el modo de creación para que el backend sepa si debe generar llaves auto
@@ -196,32 +203,43 @@ export const CreateKnockoutFlowScreen: React.FC<CreateKnockoutFlowScreenProps> =
         {/* Selector de Copa */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Copa</Text>
-          <View style={styles.copaButtons}>
-            {copas.map((copa) => (
-              <TouchableOpacity
-                key={copa}
-                style={[
-                  styles.copaButton,
-                  selectedCopa === copa && styles.copaButtonActive,
-                ]}
-                onPress={() => setSelectedCopa(copa)}
-              >
-                <MaterialCommunityIcons
-                  name="trophy"
-                  size={24}
-                  color={selectedCopa === copa ? colors.white : colors.textSecondary}
-                />
-                <Text
+          {copaLocked ? (
+            // Copa viene preseleccionada, mostrar solo la seleccionada
+            <View style={[styles.copaButton, styles.copaButtonActive, styles.copaButtonLocked]}>
+              <MaterialCommunityIcons name="trophy" size={24} color={colors.white} />
+              <Text style={[styles.copaButtonText, styles.copaButtonTextActive]}>
+                {getCopaLabel(selectedCopa)}
+              </Text>
+              <MaterialCommunityIcons name="lock" size={16} color={colors.white} style={{ marginLeft: 8 }} />
+            </View>
+          ) : (
+            <View style={styles.copaButtons}>
+              {copas.map((copa) => (
+                <TouchableOpacity
+                  key={copa}
                   style={[
-                    styles.copaButtonText,
-                    selectedCopa === copa && styles.copaButtonTextActive,
+                    styles.copaButton,
+                    selectedCopa === copa && styles.copaButtonActive,
                   ]}
+                  onPress={() => setSelectedCopa(copa)}
                 >
-                  {getCopaLabel(copa)}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+                  <MaterialCommunityIcons
+                    name="trophy"
+                    size={24}
+                    color={selectedCopa === copa ? colors.white : colors.textSecondary}
+                  />
+                  <Text
+                    style={[
+                      styles.copaButtonText,
+                      selectedCopa === copa && styles.copaButtonTextActive,
+                    ]}
+                  >
+                    {getCopaLabel(copa)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
         </View>
 
         {/* Selector de Ronda */}
@@ -439,6 +457,10 @@ const styles = StyleSheet.create({
   },
   copaButtonTextActive: {
     color: colors.white,
+  },
+  copaButtonLocked: {
+    flexDirection: 'row',
+    justifyContent: 'center',
   },
   rondasList: {
     gap: 8,
