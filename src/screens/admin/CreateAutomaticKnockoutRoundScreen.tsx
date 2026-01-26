@@ -253,22 +253,28 @@ export const CreateAutomaticKnockoutRoundScreen: React.FC<CreateAutomaticKnockou
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <GradientHeader
-        title="Ronda Automática"
+        title={rondaCreada.nombre}
         onBackPress={() => navigation.goBack()}
       />
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <Card style={styles.infoCard}>
           <View style={styles.infoRow}>
-            <MaterialCommunityIcons name="trophy" size={20} color={colors.primary} />
+            <MaterialCommunityIcons name="information" size={20} color={colors.primary} />
             <Text style={styles.infoText}>
-              Copa {copa.charAt(0).toUpperCase() + copa.slice(1)}
+              Configura los partidos de esta ronda
             </Text>
           </View>
           <View style={styles.infoRow}>
             <MaterialCommunityIcons name="soccer" size={20} color={colors.primary} />
             <Text style={styles.infoText}>
-              {encuentros.length} {encuentros.length === 1 ? 'partido' : 'partidos'}
+              {emparejamientos.length} {emparejamientos.length === 1 ? 'partido' : 'partidos'}
+            </Text>
+          </View>
+          <View style={styles.infoRow}>
+            <MaterialCommunityIcons name="swap-horizontal" size={20} color={colors.textSecondary} />
+            <Text style={[styles.infoText, { color: colors.textSecondary, fontSize: 13 }]}>
+              Puedes intercambiar los equipos locales y visitantes
             </Text>
           </View>
         </Card>
