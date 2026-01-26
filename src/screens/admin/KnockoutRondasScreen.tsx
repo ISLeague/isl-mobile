@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Modal,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -67,6 +68,7 @@ export const KnockoutRondasScreen: React.FC<KnockoutRondasScreenProps> = ({
   const [partidos, setPartidos] = useState<Partido[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedRondas, setExpandedRondas] = useState<{ [key: number]: boolean }>({});
+  const [deletingRonda, setDeletingRonda] = useState<number | null>(null);
 
   const gradientColors = getSubtipoGradient(copa);
 
@@ -105,25 +107,24 @@ export const KnockoutRondasScreen: React.FC<KnockoutRondasScreenProps> = ({
           console.log(`📅 [KnockoutRondas] Rondas encontradas: ${rondasData.length}`);
         }
 
-        // Cargar partidos knockout
-        const partidosResponse = await api.partidos.listKnockout(
-          idEdicionCategoria,
-          copa
-        );
-
+        // Cargar partidos de cada ronda
+        console.log('⚽ [KnockoutRondas] Cargando partidos de cada ronda...');
         let partidosData: Partido[] = [];
-        if (partidosResponse?.success && partidosResponse.data?.partidos_por_etapa) {
-          const porEtapa = partidosResponse.data.partidos_por_etapa;
-          partidosData = [
-            ...(porEtapa.eliminatoria || []),
-            ...(porEtapa['16avos'] || []),
-            ...(porEtapa.octavos || []),
-            ...(porEtapa.cuartos || []),
-            ...(porEtapa.semifinal || []),
-            ...(porEtapa.final || []),
-          ];
-          console.log(`⚽ [KnockoutRondas] Partidos encontrados: ${partidosData.length}`);
+
+        for (const ronda of rondasData) {
+          console.log(`📋 [KnockoutRondas] Cargando partidos de ronda ${ronda.id_ronda}: ${ronda.nombre}`);
+          const partidosResponse = await api.partidos.list({ id_ronda: ronda.id_ronda });
+
+          if (partidosResponse.success && partidosResponse.data) {
+            const partidosRonda = Array.isArray(partidosResponse.data)
+              ? partidosResponse.data
+              : [];
+            console.log(`   ✓ ${partidosRonda.length} partidos encontrados`);
+            partidosData.push(...partidosRonda);
+          }
         }
+
+        console.log(`⚽ [KnockoutRondas] Total partidos cargados: ${partidosData.length}`);
 
         return { rondas: rondasData, partidos: partidosData };
       },
@@ -169,13 +170,35 @@ export const KnockoutRondasScreen: React.FC<KnockoutRondasScreenProps> = ({
     });
   };
 
-  const handleCreateRondaAutomatica = () => {
-    navigation.navigate('CreateFase', {
-      idEdicionCategoria,
-      idFase: fase.id_fase,
-      copa,
-      modo: 'automatico',
-    });
+  const handleCreateRondaAutomatica = async () => {
+    console.log('🤖 [KnockoutRondas] Generando fixture automático...');
+    setLoading(true);
+
+    const result = await safeAsync(
+      async () => await api.rondas.generarKnockoutFixture(fase.id_fase),
+      'generarKnockoutFixture',
+      {
+        fallbackValue: null,
+        onError: (error) => {
+          console.error('❌ [KnockoutRondas] Error al generar fixture:', error);
+          showError(getUserFriendlyMessage(error), 'Error al generar fixture');
+        },
+      }
+    );
+
+    setLoading(false);
+
+    if (result && result.success && result.data) {
+      console.log('✅ [KnockoutRondas] Fixture generado:', result.data);
+
+      // Navegar a pantalla de configuración con los encuentros sugeridos
+      navigation.navigate('CreateAutomaticKnockoutRound', {
+        idEdicionCategoria,
+        idFase: fase.id_fase,
+        copa,
+        encuentros: result.data.encuentros || result.data,
+      });
+    }
   };
 
   // ============================================
@@ -218,25 +241,36 @@ export const KnockoutRondasScreen: React.FC<KnockoutRondasScreenProps> = ({
   const handleDeleteRonda = (rondaObj: Ronda) => {
     Alert.alert(
       'Eliminar Ronda',
-      `¿Estás seguro de eliminar la ronda "${rondaObj.nombre}"?`,
+      `¿Estás seguro de eliminar la ronda "${rondaObj.nombre}"? Esta acción no se puede deshacer.`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
-          text: 'Eliminar',
+          text: 'Sí, eliminar',
           style: 'destructive',
           onPress: async () => {
+            console.log('🗑️ [KnockoutRondas] Eliminando ronda:', rondaObj.id_ronda);
+            setDeletingRonda(rondaObj.id_ronda);
+
             const result = await safeAsync(
               async () => await api.rondas.delete(rondaObj.id_ronda),
               'handleDeleteRonda',
               {
                 fallbackValue: null,
-                onError: () => showError('Error al eliminar la ronda'),
+                onError: (error) => {
+                  console.error('❌ [KnockoutRondas] Error al eliminar:', error);
+                  showError('Error al eliminar la ronda');
+                },
               }
             );
-            if (result) {
+
+            setDeletingRonda(null);
+
+            if (result && result.success) {
               showSuccess('Ronda eliminada exitosamente');
-              loadData();
             }
+
+            // Siempre recargar datos después de intentar eliminar
+            await loadData();
           },
         },
       ]
@@ -539,8 +573,13 @@ export const KnockoutRondasScreen: React.FC<KnockoutRondasScreenProps> = ({
                   handleDeleteRonda(rondaObj);
                 }}
                 activeOpacity={0.7}
+                disabled={deletingRonda === rondaObj.id_ronda}
               >
-                <MaterialCommunityIcons name="delete" size={20} color={colors.white} />
+                {deletingRonda === rondaObj.id_ronda ? (
+                  <ActivityIndicator size="small" color={colors.white} />
+                ) : (
+                  <MaterialCommunityIcons name="delete" size={20} color={colors.white} />
+                )}
               </TouchableOpacity>
               <MaterialCommunityIcons
                 name={isExpanded ? 'chevron-up' : 'chevron-down'}
@@ -634,6 +673,24 @@ export const KnockoutRondasScreen: React.FC<KnockoutRondasScreenProps> = ({
         </View>
         <MaterialCommunityIcons name="trophy" size={32} color={colors.white} />
       </LinearGradient>
+
+      {/* Modal de eliminación */}
+      <Modal
+        visible={deletingRonda !== null}
+        transparent={true}
+        animationType="fade"
+        statusBarTranslucent={true}
+      >
+        <View style={styles.deletingOverlay}>
+          <View style={styles.deletingCard}>
+            <View style={styles.deletingIconContainer}>
+              <ActivityIndicator size="large" color={colors.primary} />
+            </View>
+            <Text style={styles.deletingText}>Eliminando ronda...</Text>
+            <Text style={styles.deletingSubtext}>Por favor espera un momento</Text>
+          </View>
+        </View>
+      </Modal>
 
       <ScrollView
         style={styles.scrollView}
@@ -1051,6 +1108,41 @@ const styles = StyleSheet.create({
   emptyRondasHint: {
     fontSize: 14,
     color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  deletingOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  deletingCard: {
+    backgroundColor: colors.white,
+    borderRadius: 20,
+    padding: 40,
+    alignItems: 'center',
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+    minWidth: 280,
+    maxWidth: '80%',
+  },
+  deletingIconContainer: {
+    marginBottom: 20,
+  },
+  deletingText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  deletingSubtext: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginTop: 8,
     textAlign: 'center',
   },
 });

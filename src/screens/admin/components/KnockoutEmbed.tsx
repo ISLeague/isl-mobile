@@ -16,12 +16,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../../theme/colors';
 import {
-  Eliminatoria,
   Partido,
-  Equipo,
   TipoCopa,
-  TipoFase,
-  Fase,
 } from '../../../api/types';
 import { FAB } from '../../../components/common';
 import { useToast } from '../../../contexts/ToastContext';
@@ -84,9 +80,7 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
   idEdicionCategoria,
 }) => {
   const { showError, showSuccess, showInfo } = useToast();
-  const [llaves, setLlaves] = useState<Eliminatoria[]>([]);
   const [partidos, setPartidos] = useState<Partido[]>([]);
-  const [equipos, setEquipos] = useState<Equipo[]>([]);
   const [expandedRondas, setExpandedRondas] = useState<{ [key: string]: boolean }>({});
   const [selectedCopa, setSelectedCopa] = useState<TipoCopa>('oro');
   const [knockoutActivo, setKnockoutActivo] = useState(true);
@@ -97,6 +91,7 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
   // Modal para seleccionar copa
   const [showCopaModal, setShowCopaModal] = useState(false);
   const [creatingFase, setCreatingFase] = useState<TipoCopa | null>(null);
+  const [deletingRonda, setDeletingRonda] = useState<number | null>(null);
 
   useEffect(() => {
     loadData();
@@ -116,77 +111,63 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
     setLoading(true);
     const result = await safeAsync(
       async () => {
-        console.log('📂 [KnockoutEmbed] Cargando fases...');
+        // PASO 1: Obtener todas las fases knockout para tener referencia
+        console.log('📂 [KnockoutEmbed] Cargando fases knockout...');
         const fasesResponse = await api.fases.list(idEdicionCategoria || 1);
-        console.log('📂 [KnockoutEmbed] Respuesta fases:', fasesResponse);
-
         const fases = fasesResponse.success && fasesResponse.data ? fasesResponse.data : [];
-        console.log(`📂 [KnockoutEmbed] Total fases encontradas: ${fases.length}`);
-
         const fasesKO = fases.filter((f: any) => f.tipo === 'knockout');
         console.log(`📂 [KnockoutEmbed] Fases knockout encontradas: ${fasesKO.length}`);
-        fasesKO.forEach((f: any) => {
-          console.log(`   - Fase: ${f.nombre} | Copa: ${f.copa} | ID: ${f.id_fase}`);
-        });
 
+        // PASO 2: Buscar la fase para la copa seleccionada
         const faseActual = fasesKO.find((f: any) => f.copa === selectedCopa);
-        console.log('🎯 [KnockoutEmbed] Fase actual para copa', selectedCopa, ':', faseActual);
+        console.log('🎯 [KnockoutEmbed] Fase para copa', selectedCopa, ':', faseActual);
 
         if (!faseActual) {
-          console.warn('⚠️ [KnockoutEmbed] No se encontró fase knockout para copa:', selectedCopa);
-          return { llaves: [], partidos: [], equipos: [], fases: fasesKO };
+          console.warn('⚠️ [KnockoutEmbed] No existe fase knockout para copa:', selectedCopa);
+          return { partidos: [], fases: fasesKO, rondas: [] };
         }
 
-        console.log('🔑 [KnockoutEmbed] Cargando llaves para id_fase:', faseActual.id_fase);
-        const llavesResponse = await api.eliminatorias.list({ id_fase: faseActual.id_fase });
-        console.log('🔑 [KnockoutEmbed] Respuesta llaves:', llavesResponse);
+        // PASO 3: Traer las rondas de esta fase
+        console.log('📅 [KnockoutEmbed] Cargando rondas de la fase:', faseActual.id_fase);
+        const rondasResponse = await api.rondas.list({
+          id_fase: faseActual.id_fase,
+          tipo_ronda: 'eliminatorias'
+        });
 
-        const llavesData = llavesResponse.success && llavesResponse.data?.todas_las_llaves
-          ? llavesResponse.data.todas_las_llaves
-          : [];
-        console.log(`🔑 [KnockoutEmbed] Total llaves cargadas: ${llavesData.length}`);
-
-        console.log('⚽ [KnockoutEmbed] Cargando partidos knockout...');
-        const knockoutResponse = await api.partidos.listKnockout(idEdicionCategoria || 1, selectedCopa);
-        console.log('⚽ [KnockoutEmbed] Respuesta partidos knockout:', knockoutResponse);
-
-        let allKnockoutPartidos: any[] = [];
-
-        if (knockoutResponse && knockoutResponse.success && knockoutResponse.data?.partidos_por_etapa) {
-          const porEtapa = knockoutResponse.data.partidos_por_etapa;
-          allKnockoutPartidos = [
-            ...(porEtapa.eliminatoria || []),
-            ...(porEtapa['16avos'] || []),
-            ...(porEtapa.octavos || []),
-            ...(porEtapa.cuartos || []),
-            ...(porEtapa.semifinal || []),
-            ...(porEtapa.final || []),
-          ];
-          console.log(`⚽ [KnockoutEmbed] Total partidos knockout: ${allKnockoutPartidos.length}`);
-        }
-
-        console.log('👥 [KnockoutEmbed] Cargando equipos...');
-        const equiposResponse = await api.equipos.list(idEdicionCategoria || 1);
-        const allEquipos = equiposResponse.success && equiposResponse.data ? equiposResponse.data : [];
-        console.log(`👥 [KnockoutEmbed] Total equipos: ${allEquipos.length}`);
-
-        console.log('📅 [KnockoutEmbed] Cargando rondas de knockout...');
         let rondasKO: any[] = [];
-        if (faseActual) {
-          const rondasResponse = await api.rondas.list({ id_fase: faseActual.id_fase, tipo_ronda: 'eliminatorias' });
-          if (rondasResponse.success && rondasResponse.data) {
-            const todasLasRondas = Array.isArray(rondasResponse.data) ? rondasResponse.data : rondasResponse.data.rondas || [];
-            rondasKO = todasLasRondas.filter((r: any) => r.subtipo_eliminatoria === selectedCopa);
-            console.log(`📅 [KnockoutEmbed] Rondas filtradas por copa "${selectedCopa}": ${rondasKO.length}`);
+        if (rondasResponse.success && rondasResponse.data) {
+          const todasLasRondas = Array.isArray(rondasResponse.data)
+            ? rondasResponse.data
+            : rondasResponse.data.rondas || [];
+          rondasKO = todasLasRondas.filter((r: any) => r.subtipo_eliminatoria === selectedCopa);
+          console.log(`📅 [KnockoutEmbed] Rondas encontradas: ${rondasKO.length}`);
+        }
+
+        // PASO 4: Traer los partidos de cada ronda
+        console.log('⚽ [KnockoutEmbed] Cargando partidos de cada ronda...');
+        let allPartidos: any[] = [];
+
+        for (const ronda of rondasKO) {
+          console.log(`📋 [KnockoutEmbed] Cargando partidos de ronda ${ronda.id_ronda}: ${ronda.nombre}`);
+          const partidosResponse = await api.partidos.list({ id_ronda: ronda.id_ronda });
+
+          if (partidosResponse.success && partidosResponse.data) {
+            const partidosRonda = Array.isArray(partidosResponse.data)
+              ? partidosResponse.data
+              : [];
+            console.log(`   ✓ ${partidosRonda.length} partidos encontrados`);
+            allPartidos.push(...partidosRonda);
           }
         }
 
-        return { llaves: llavesData, partidos: allKnockoutPartidos, equipos: allEquipos, fases: fasesKO, rondas: rondasKO };
+        console.log(`⚽ [KnockoutEmbed] Total partidos cargados: ${allPartidos.length}`);
+
+        return { partidos: allPartidos, fases: fasesKO, rondas: rondasKO };
       },
       'loadKnockoutData',
       {
         severity: 'high',
-        fallbackValue: { llaves: [], partidos: [], equipos: [], fases: [], rondas: [] },
+        fallbackValue: { partidos: [], fases: [], rondas: [] },
         onError: (error) => {
           console.error('❌ [KnockoutEmbed] Error al cargar datos:', error);
           showError(getUserFriendlyMessage(error), 'Error al cargar eliminatorias');
@@ -195,9 +176,7 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
     );
 
     if (result) {
-      setLlaves(result.llaves ?? []);
       setPartidos(result.partidos ?? []);
-      setEquipos(result.equipos ?? []);
       setFasesKnockout(result.fases ?? []);
       setRondasKnockout(result.rondas ?? []);
     }
@@ -321,25 +300,36 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
   const handleDeleteRonda = (rondaObj: any) => {
     Alert.alert(
       'Eliminar Ronda',
-      `¿Estás seguro de eliminar la ronda "${rondaObj.nombre}"?`,
+      `¿Estás seguro de eliminar la ronda "${rondaObj.nombre}"? Esta acción no se puede deshacer.`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
-          text: 'Eliminar',
+          text: 'Sí, eliminar',
           style: 'destructive',
           onPress: async () => {
+            console.log('🗑️ [KnockoutEmbed] Eliminando ronda:', rondaObj.id_ronda);
+            setDeletingRonda(rondaObj.id_ronda);
+
             const result = await safeAsync(
               async () => await api.rondas.delete(rondaObj.id_ronda),
               'handleDeleteRonda',
               {
                 fallbackValue: null,
-                onError: (error) => showError('Error al eliminar la ronda')
+                onError: (error) => {
+                  console.error('❌ [KnockoutEmbed] Error al eliminar:', error);
+                  showError('Error al eliminar la ronda');
+                },
               }
             );
-            if (result) {
+
+            setDeletingRonda(null);
+
+            if (result && result.success) {
               showSuccess('Ronda eliminada exitosamente');
-              loadData();
             }
+
+            // Siempre recargar datos después de intentar eliminar
+            await loadData();
           },
         },
       ]
@@ -368,8 +358,8 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
     navigation.navigate('MatchLineup', {
       partido,
       ronda: rondasKnockout.find(r => r.id_ronda === partido.id_ronda),
-      equipoLocal: equipos.find(e => e.id_equipo === partido.id_equipo_local),
-      equipoVisitante: equipos.find(e => e.id_equipo === partido.id_equipo_visitante),
+      equipoLocal: partido.equipo_local,
+      equipoVisitante: partido.equipo_visitante,
     });
   };
 
@@ -377,21 +367,23 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
     navigation.navigate('MatchSubstitutions', {
       partido,
       ronda: rondasKnockout.find(r => r.id_ronda === partido.id_ronda),
-      equipoLocal: equipos.find(e => e.id_equipo === partido.id_equipo_local),
-      equipoVisitante: equipos.find(e => e.id_equipo === partido.id_equipo_visitante),
+      equipoLocal: partido.equipo_local,
+      equipoVisitante: partido.equipo_visitante,
     });
   };
 
-  const hasLlavesInCopa = (copa: TipoCopa) => {
+  const hasRondasInCopa = (copa: TipoCopa) => {
     const fase = fasesKnockout.find(f => f.copa === copa);
     if (!fase) return false;
-    return llaves.length > 0;
+    // Verificar si hay rondas para esta copa
+    const rondasDeCopa = rondasKnockout.filter(r => r.subtipo_eliminatoria === copa);
+    return rondasDeCopa.length > 0;
   };
 
   const availableCopas: TipoCopa[] = isAdmin
     ? ['oro', 'plata', 'bronce']
     : (['oro', 'plata', 'bronce'].filter(c =>
-      hasLlavesInCopa(c as TipoCopa)
+      hasRondasInCopa(c as TipoCopa)
     ) as TipoCopa[]);
 
   if (availableCopas.length === 0 && !isAdmin) {
@@ -400,7 +392,7 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
         <MaterialCommunityIcons name="trophy-outline" size={64} color={colors.textLight} />
         <Text style={styles.emptyTitle}>No hay eliminatorias disponibles</Text>
         <Text style={styles.emptyText}>
-          Las fases eliminatorias aparecerán cuando se creen las llaves correspondientes.
+          Las fases eliminatorias aparecerán cuando se creen las rondas correspondientes.
         </Text>
       </View>
     );
@@ -612,8 +604,13 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
                     handleDeleteRonda(rondaObj);
                   }}
                   activeOpacity={0.7}
+                  disabled={deletingRonda === rondaObj.id_ronda}
                 >
-                  <MaterialCommunityIcons name="delete" size={20} color={colors.white} />
+                  {deletingRonda === rondaObj.id_ronda ? (
+                    <ActivityIndicator size="small" color={colors.white} />
+                  ) : (
+                    <MaterialCommunityIcons name="delete" size={20} color={colors.white} />
+                  )}
                 </TouchableOpacity>
               )}
               <MaterialCommunityIcons
@@ -856,6 +853,24 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
 
           {/* Modal para seleccionar copa */}
           {renderCopaModal()}
+
+          {/* Modal de eliminación */}
+          <Modal
+            visible={deletingRonda !== null}
+            transparent={true}
+            animationType="fade"
+            statusBarTranslucent={true}
+          >
+            <View style={styles.deletingOverlay}>
+              <View style={styles.deletingCard}>
+                <View style={styles.deletingIconContainer}>
+                  <ActivityIndicator size="large" color={colors.primary} />
+                </View>
+                <Text style={styles.deletingText}>Eliminando ronda...</Text>
+                <Text style={styles.deletingSubtext}>Por favor espera un momento</Text>
+              </View>
+            </View>
+          </Modal>
         </>
       ) : (
         <View style={styles.inactiveContainer}>
@@ -1289,6 +1304,41 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: colors.textSecondary,
+  },
+  deletingOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  deletingCard: {
+    backgroundColor: colors.white,
+    borderRadius: 20,
+    padding: 40,
+    alignItems: 'center',
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+    minWidth: 280,
+    maxWidth: '80%',
+  },
+  deletingIconContainer: {
+    marginBottom: 20,
+  },
+  deletingText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  deletingSubtext: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginTop: 8,
+    textAlign: 'center',
   },
 });
 

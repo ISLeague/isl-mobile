@@ -109,4 +109,18 @@ export const rondasService = {
     });
     return response.data;
   },
+
+  /**
+   * Generar fixture automático de knockout
+   */
+  generarKnockoutFixture: async (id_fase: number) => {
+    console.log('🌐 [generarKnockoutFixture] POST /rondas?action=generar-knockout-fixture&id_fase=', id_fase);
+
+    const response = await apiClient.post('/rondas',
+      {},
+      { params: { action: 'generar-knockout-fixture', id_fase } }
+    );
+    console.log('✅ [generarKnockoutFixture] Respuesta:', response.data);
+    return response.data;
+  },
 };

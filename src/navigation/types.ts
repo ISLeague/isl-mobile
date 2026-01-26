@@ -47,6 +47,20 @@ export type RootStackParamList = {
         idFase: number;
         copa: 'oro' | 'plata' | 'bronce';
     };
+    CreateAutomaticKnockoutRound: {
+        idEdicionCategoria: number;
+        idFase: number;
+        copa: 'oro' | 'plata' | 'bronce';
+        encuentros: any[];
+    };
+    CreateManualMatches: {
+        idEdicionCategoria: number;
+        idFase: number;
+        idRonda: number;
+        copa: 'oro' | 'plata' | 'bronce';
+        ronda: string;
+        equipos: any[];
+    };
 
     // Add other routes as needed
     [key: string]: any;

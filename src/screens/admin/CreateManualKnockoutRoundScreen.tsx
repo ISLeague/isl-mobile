@@ -73,8 +73,10 @@ export const CreateManualKnockoutRoundScreen: React.FC<CreateManualKnockoutRound
 
   const [loading, setLoading] = useState(true);
   const [equiposDisponibles, setEquiposDisponibles] = useState<any[]>([]);
-  const [rondaSugerida, setRondaSugerida] = useState<RondaEliminatoria | null>(null);
+  const [equiposSeleccionados, setEquiposSeleccionados] = useState<Set<number>>(new Set());
+  const [rondaDeterminada, setRondaDeterminada] = useState<RondaEliminatoria | null>(null);
   const [rondasExistentes, setRondasExistentes] = useState<any[]>([]);
+  const [creating, setCreating] = useState(false);
 
   const gradientColors = getCopaGradient(copa);
 
@@ -89,7 +91,7 @@ export const CreateManualKnockoutRoundScreen: React.FC<CreateManualKnockoutRound
     const result = await safeAsync(
       async () => {
         // PASO 1: Listar rondas existentes
-        console.log('📋 [CreateManualKnockout] Obteniendo rondas existentes... para el idFase:', idFase);
+        console.log('📋 [CreateManualKnockout] Obteniendo rondas existentes...');
         const rondasResponse = await api.rondas.list({
           id_fase: idFase,
           tipo_ronda: 'eliminatorias',
@@ -100,43 +102,32 @@ export const CreateManualKnockoutRoundScreen: React.FC<CreateManualKnockoutRound
           const todasLasRondas = Array.isArray(rondasResponse.data)
             ? rondasResponse.data
             : rondasResponse.data.rondas || [];
-
-          // Filtrar por copa (subtipo_eliminatoria)
           rondas = todasLasRondas.filter((r: any) => r.subtipo_eliminatoria === copa);
         }
 
         console.log(`📋 [CreateManualKnockout] Rondas existentes: ${rondas.length}`);
 
-        // PASO 2: Determinar qué ronda crear y obtener equipos
-        let rondaASugerir: RondaEliminatoria | null = null;
+        // PASO 2: Obtener equipos disponibles
         let equipos: any[] = [];
 
         if (rondas.length === 0) {
-          // PRIMERA RONDA - Obtener equipos clasificados
-          console.log('🔍 [CreateManualKnockout] Primera ronda, obteniendo clasificados para idEdicionCategoria:', idEdicionCategoria);
+          // PRIMERA RONDA - Traer TODOS los equipos
+          console.log('🔍 [CreateManualKnockout] Primera ronda, obteniendo todos los equipos...');
+          const equiposResponse = await api.equipos.list(idEdicionCategoria);
 
-          // Obtener clasificados (backend usa idEdicionCategoria para buscar la fase de grupos)
-          const clasificadosResponse = await api.fases.obtenerClasificados(idEdicionCategoria, copa);
-
-          if (clasificadosResponse.success && clasificadosResponse.data) {
-            const data = clasificadosResponse.data;
-            equipos = copa === 'oro' ? data.oro : copa === 'plata' ? data.plata : data.bronce;
-            console.log(`👥 [CreateManualKnockout] Equipos clasificados: ${equipos.length}`);
+          if (equiposResponse.success && equiposResponse.data) {
+            equipos = equiposResponse.data;
+            console.log(`👥 [CreateManualKnockout] Equipos totales: ${equipos.length}`);
           }
-
-          // Determinar ronda según cantidad de equipos
-          rondaASugerir = determinarRondaSegunEquipos(equipos.length);
         } else {
           // RONDA SUBSECUENTE - Obtener ganadores de la ronda anterior
           console.log('🔍 [CreateManualKnockout] Ronda subsecuente, obteniendo ganadores...');
 
-          // Ordenar por orden y tomar la última
           const rondasOrdenadas = rondas.sort((a, b) => (b.orden || 0) - (a.orden || 0));
           const ultimaRonda = rondasOrdenadas[0];
 
           console.log('📌 [CreateManualKnockout] Última ronda:', ultimaRonda.nombre);
 
-          // Obtener ganadores de la última ronda
           const ganadoresResponse = await api.rondas.getGanadores(ultimaRonda.id_ronda);
 
           if (ganadoresResponse.success && ganadoresResponse.data) {
@@ -150,18 +141,10 @@ export const CreateManualKnockoutRoundScreen: React.FC<CreateManualKnockoutRound
             equipos = ganadoresResponse.data.ganadores || [];
             console.log(`👥 [CreateManualKnockout] Ganadores disponibles: ${equipos.length}`);
           }
-
-          // Determinar siguiente ronda
-          rondaASugerir = obtenerSiguienteRonda(ultimaRonda.stage_eliminatoria);
-
-          if (!rondaASugerir) {
-            throw new Error('Ya no hay más rondas por crear. El torneo está completo.');
-          }
         }
 
         return {
           rondas,
-          rondaSugerida: rondaASugerir,
           equipos,
         };
       },
@@ -178,73 +161,160 @@ export const CreateManualKnockoutRoundScreen: React.FC<CreateManualKnockoutRound
 
     if (result) {
       setRondasExistentes(result.rondas);
-      setRondaSugerida(result.rondaSugerida);
       setEquiposDisponibles(result.equipos);
     }
 
     setLoading(false);
   };
 
-  const determinarRondaSegunEquipos = (cantidadEquipos: number): RondaEliminatoria => {
-    if (cantidadEquipos >= 32) return '16avos';
-    if (cantidadEquipos >= 16) return 'octavos';
-    if (cantidadEquipos >= 8) return 'cuartos';
-    if (cantidadEquipos >= 4) return 'semifinal';
-    if (cantidadEquipos >= 2) return 'final';
-    return 'final'; // fallback
-  };
-
-  const obtenerSiguienteRonda = (rondaActual: RondaEliminatoria): RondaEliminatoria | null => {
-    const orden: RondaEliminatoria[] = ['eliminatoria', '16avos', 'octavos', 'cuartos', 'semifinal', 'final'];
-    const index = orden.indexOf(rondaActual);
-    if (index >= 0 && index < orden.length - 1) {
-      return orden[index + 1];
+  const toggleEquipo = (idEquipo: number) => {
+    const newSet = new Set(equiposSeleccionados);
+    if (newSet.has(idEquipo)) {
+      newSet.delete(idEquipo);
+    } else {
+      newSet.add(idEquipo);
     }
-    return null;
+    setEquiposSeleccionados(newSet);
+
+    // Determinar ronda según cantidad seleccionada
+    const cantidadSeleccionados = newSet.size;
+    const ronda = determinarRondaSegunEquipos(cantidadSeleccionados);
+    setRondaDeterminada(ronda);
   };
 
-  const handleCreateRonda = () => {
-    if (!rondaSugerida) {
-      Alert.alert('Error', 'No se pudo determinar qué ronda crear');
+  const determinarRondaSegunEquipos = (cantidad: number): RondaEliminatoria | null => {
+    // Debe ser potencia de 2
+    if (cantidad === 64) return '16avos'; // 64 equipos -> 32 partidos
+    if (cantidad === 32) return '16avos';
+    if (cantidad === 16) return 'octavos';
+    if (cantidad === 8) return 'cuartos';
+    if (cantidad === 4) return 'semifinal';
+    if (cantidad === 2) return 'final';
+    return null; // No es potencia de 2 válida
+  };
+
+  const esPotenciaDeDos = (n: number): boolean => {
+    return n > 0 && (n & (n - 1)) === 0 && [2, 4, 8, 16, 32, 64].includes(n);
+  };
+
+  const handleConfirmarCrearRonda = () => {
+    const cantidadSeleccionados = equiposSeleccionados.size;
+
+    if (cantidadSeleccionados === 0) {
+      Alert.alert('Error', 'Debes seleccionar al menos 2 equipos');
       return;
     }
 
-    navigation.navigate('CreateManualMatches', {
-      idEdicionCategoria,
-      idFase,
-      copa,
-      ronda: rondaSugerida,
-      equiposDisponibles,
-    });
+    if (!esPotenciaDeDos(cantidadSeleccionados)) {
+      Alert.alert(
+        'Cantidad inválida',
+        `Has seleccionado ${cantidadSeleccionados} equipos. Debes seleccionar una cantidad que sea potencia de 2: 2, 4, 8, 16, 32 o 64 equipos.`
+      );
+      return;
+    }
+
+    if (!rondaDeterminada) {
+      Alert.alert('Error', 'No se pudo determinar la ronda');
+      return;
+    }
+
+    Alert.alert(
+      'Confirmar creación',
+      `¿Estás seguro de crear la ronda "${RONDA_LABELS[rondaDeterminada]}" con ${cantidadSeleccionados} equipos?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Confirmar', onPress: crearRonda },
+      ]
+    );
+  };
+
+  const crearRonda = async () => {
+    if (!rondaDeterminada) return;
+
+    setCreating(true);
+
+    const result = await safeAsync(
+      async () => {
+        const nombreRonda = `${RONDA_LABELS[rondaDeterminada]} - Copa ${copa.charAt(0).toUpperCase() + copa.slice(1)}`;
+
+        const rondaData = {
+          nombre: nombreRonda,
+          tipo: 'eliminatorias' as const,
+          subtipo_eliminatoria: copa as 'oro' | 'plata' | 'bronce',
+          stage_eliminatoria: rondaDeterminada,
+          id_fase: idFase,
+          id_edicion_categoria: idEdicionCategoria,
+          orden: getOrdenRonda(rondaDeterminada),
+          metodo_asignacion: 'manual' as const,
+        };
+
+        console.log('📤 [CreateManualKnockout] Creando ronda:', rondaData);
+        const createResponse = await api.rondas.create(rondaData);
+
+        if (!createResponse.success || !createResponse.data) {
+          throw new Error('No se pudo crear la ronda');
+        }
+
+        return createResponse.data;
+      },
+      'crearRonda',
+      {
+        severity: 'high',
+        fallbackValue: null,
+        onError: (error) => {
+          console.error('❌ [CreateManualKnockout] Error al crear ronda:', error);
+          showError(error.message || 'No se pudo crear la ronda');
+        },
+      }
+    );
+
+    setCreating(false);
+
+    if (result) {
+      showSuccess('Ronda creada exitosamente');
+
+      // Obtener equipos seleccionados con sus datos completos
+      const equiposParaPartidos = equiposDisponibles.filter(eq =>
+        equiposSeleccionados.has(eq.id_equipo)
+      );
+
+      // Navegar a la pantalla de emparejamiento
+      navigation.navigate('CreateManualMatches', {
+        idEdicionCategoria,
+        idFase,
+        idRonda: result.id_ronda,
+        copa,
+        ronda: rondaDeterminada,
+        equipos: equiposParaPartidos,
+      });
+    }
   };
 
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>Analizando equipos disponibles...</Text>
+        <Text style={styles.loadingText}>Cargando equipos disponibles...</Text>
       </View>
     );
   }
 
-  if (!rondaSugerida || equiposDisponibles.length === 0) {
+  if (equiposDisponibles.length === 0) {
     return (
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <MaterialCommunityIcons name="arrow-left" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Crear Ronda Manual</Text>
+          <Text style={styles.headerTitle}>Seleccionar Equipos</Text>
           <View style={styles.placeholder} />
         </View>
 
         <View style={styles.emptyContainer}>
           <MaterialCommunityIcons name="alert-circle-outline" size={64} color={colors.textLight} />
-          <Text style={styles.emptyTitle}>No se puede crear ronda</Text>
+          <Text style={styles.emptyTitle}>No hay equipos disponibles</Text>
           <Text style={styles.emptyText}>
-            {!rondaSugerida
-              ? 'Ya se completó el torneo o no hay más rondas por crear.'
-              : 'No hay equipos disponibles para esta ronda.'}
+            No hay equipos para crear la ronda eliminatoria.
           </Text>
           <TouchableOpacity style={styles.backButtonFull} onPress={() => navigation.goBack()}>
             <Text style={styles.backButtonText}>Volver</Text>
@@ -254,7 +324,8 @@ export const CreateManualKnockoutRoundScreen: React.FC<CreateManualKnockoutRound
     );
   }
 
-  const cantidadPartidos = Math.floor(equiposDisponibles.length / 2);
+  const cantidadSeleccionados = equiposSeleccionados.size;
+  const esValido = esPotenciaDeDos(cantidadSeleccionados);
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -262,7 +333,7 @@ export const CreateManualKnockoutRoundScreen: React.FC<CreateManualKnockoutRound
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <MaterialCommunityIcons name="arrow-left" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Crear Ronda Manual</Text>
+        <Text style={styles.headerTitle}>Seleccionar Equipos</Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -275,76 +346,90 @@ export const CreateManualKnockoutRoundScreen: React.FC<CreateManualKnockoutRound
           style={styles.copaHeader}
         >
           <MaterialCommunityIcons name="trophy" size={32} color={colors.white} />
-          <Text style={styles.copaTitle}>Copa {copa.charAt(0).toUpperCase() + copa.slice(1)}</Text>
+          <View style={styles.copaHeaderText}>
+            <Text style={styles.copaTitle}>Copa {copa.charAt(0).toUpperCase() + copa.slice(1)}</Text>
+            <Text style={styles.copaSubtitle}>
+              {cantidadSeleccionados} equipos seleccionados
+              {rondaDeterminada && ` - ${RONDA_LABELS[rondaDeterminada]}`}
+            </Text>
+          </View>
         </LinearGradient>
-
-        {/* Ronda sugerida */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <MaterialCommunityIcons name="information" size={24} color={colors.primary} />
-            <Text style={styles.sectionTitle}>Ronda a Crear</Text>
-          </View>
-          <View style={styles.rondaCard}>
-            <Text style={styles.rondaNombre}>{RONDA_LABELS[rondaSugerida]}</Text>
-            <View style={styles.rondaStats}>
-              <View style={styles.statItem}>
-                <MaterialCommunityIcons name="account-group" size={20} color={colors.primary} />
-                <Text style={styles.statValue}>{equiposDisponibles.length}</Text>
-                <Text style={styles.statLabel}>Equipos</Text>
-              </View>
-              <View style={styles.statItem}>
-                <MaterialCommunityIcons name="soccer" size={20} color={colors.primary} />
-                <Text style={styles.statValue}>{cantidadPartidos}</Text>
-                <Text style={styles.statLabel}>Partidos</Text>
-              </View>
-            </View>
-          </View>
-        </View>
-
-        {/* Equipos disponibles */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <MaterialCommunityIcons name="account-multiple" size={24} color={colors.success} />
-            <Text style={styles.sectionTitle}>Equipos Disponibles</Text>
-          </View>
-          <View style={styles.equiposList}>
-            {equiposDisponibles.map((equipo, index) => (
-              <View key={equipo.id_equipo || index} style={styles.equipoItem}>
-                <View style={styles.equipoNumber}>
-                  <Text style={styles.equipoNumberText}>{index + 1}</Text>
-                </View>
-                <Text style={styles.equipoNombre}>{equipo.nombre}</Text>
-                {(equipo.grupo || equipo.origen) && (
-                  <Text style={styles.equipoOrigen}>
-                    {equipo.grupo || equipo.origen || ''}
-                  </Text>
-                )}
-              </View>
-            ))}
-          </View>
-        </View>
 
         {/* Información */}
         <View style={styles.infoBox}>
-          <MaterialCommunityIcons name="lightbulb-outline" size={20} color={colors.info} />
+          <MaterialCommunityIcons name="information-outline" size={20} color={colors.info} />
           <Text style={styles.infoText}>
-            En el siguiente paso podrás crear los {cantidadPartidos} partidos de esta ronda,
-            seleccionando los enfrentamientos, cancha, fecha y hora para cada uno.
+            Selecciona los equipos que participarán en la ronda. La cantidad debe ser potencia de 2 (2, 4, 8, 16, 32, 64).
           </Text>
         </View>
+
+        {/* Lista de equipos */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Equipos Disponibles ({equiposDisponibles.length})</Text>
+          <View style={styles.equiposList}>
+            {equiposDisponibles.map((equipo) => {
+              const isSelected = equiposSeleccionados.has(equipo.id_equipo);
+
+              return (
+                <TouchableOpacity
+                  key={equipo.id_equipo}
+                  style={[styles.equipoItem, isSelected && styles.equipoItemSelected]}
+                  onPress={() => toggleEquipo(equipo.id_equipo)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
+                    {isSelected && (
+                      <MaterialCommunityIcons name="check" size={18} color={colors.white} />
+                    )}
+                  </View>
+                  <Text style={[styles.equipoNombre, isSelected && styles.equipoNombreSelected]}>
+                    {equipo.nombre}
+                  </Text>
+                  {equipo.grupo && (
+                    <Text style={styles.equipoGrupo}>{equipo.grupo}</Text>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* Mensaje de validación */}
+        {cantidadSeleccionados > 0 && !esValido && (
+          <View style={styles.warningBox}>
+            <MaterialCommunityIcons name="alert-outline" size={20} color={colors.warning} />
+            <Text style={styles.warningText}>
+              Has seleccionado {cantidadSeleccionados} equipos. Debes seleccionar una potencia de 2: 2, 4, 8, 16, 32 o 64.
+            </Text>
+          </View>
+        )}
       </ScrollView>
 
       {/* Footer con botón */}
       <View style={styles.footer}>
-        <TouchableOpacity style={styles.createButton} onPress={handleCreateRonda}>
+        <TouchableOpacity
+          style={[styles.createButton, (!esValido || cantidadSeleccionados === 0 || creating) && styles.createButtonDisabled]}
+          onPress={handleConfirmarCrearRonda}
+          disabled={!esValido || cantidadSeleccionados === 0 || creating}
+        >
           <LinearGradient
-            colors={gradientColors as [string, string, ...string[]]}
+            colors={(!esValido || cantidadSeleccionados === 0)
+              ? [colors.border, colors.border]
+              : gradientColors as [string, string, ...string[]]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.createButtonGradient}
           >
-            <MaterialCommunityIcons name="arrow-right-circle" size={24} color={colors.white} />
-            <Text style={styles.createButtonText}>Continuar a Crear Partidos</Text>
+            {creating ? (
+              <ActivityIndicator size="small" color={colors.white} />
+            ) : (
+              <>
+                <MaterialCommunityIcons name="check-circle" size={24} color={colors.white} />
+                <Text style={styles.createButtonText}>
+                  Confirmar crear ronda ({cantidadSeleccionados} equipos)
+                </Text>
+              </>
+            )}
           </LinearGradient>
         </TouchableOpacity>
       </View>
@@ -398,58 +483,28 @@ const styles = StyleSheet.create({
     padding: 20,
     gap: 12,
   },
+  copaHeaderText: {
+    flex: 1,
+  },
   copaTitle: {
     fontSize: 24,
     fontWeight: 'bold',
     color: colors.white,
   },
+  copaSubtitle: {
+    fontSize: 14,
+    color: colors.white,
+    opacity: 0.9,
+    marginTop: 4,
+  },
   section: {
     padding: 16,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: colors.textPrimary,
-  },
-  rondaCard: {
-    backgroundColor: colors.white,
-    borderRadius: 12,
-    padding: 20,
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  rondaNombre: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: colors.textPrimary,
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  rondaStats: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  statItem: {
-    alignItems: 'center',
-    gap: 4,
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: colors.primary,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: colors.textSecondary,
+    marginBottom: 12,
   },
   equiposList: {
     gap: 8,
@@ -458,22 +513,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.white,
-    padding: 12,
-    borderRadius: 8,
+    padding: 16,
+    borderRadius: 12,
     gap: 12,
+    borderWidth: 2,
+    borderColor: colors.border,
   },
-  equipoNumber: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.primary,
+  equipoItemSelected: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
+  },
+  checkbox: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: colors.border,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  equipoNumberText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: colors.white,
+  checkboxSelected: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   equipoNombre: {
     flex: 1,
@@ -481,7 +542,11 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: colors.textPrimary,
   },
-  equipoOrigen: {
+  equipoNombreSelected: {
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  equipoGrupo: {
     fontSize: 12,
     color: colors.textSecondary,
   },
@@ -490,6 +555,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#E3F2FD',
     padding: 16,
     margin: 16,
+    marginBottom: 0,
     borderRadius: 12,
     gap: 12,
     alignItems: 'flex-start',
@@ -498,6 +564,21 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     color: colors.info,
+    lineHeight: 20,
+  },
+  warningBox: {
+    flexDirection: 'row',
+    backgroundColor: '#FFF3E0',
+    padding: 16,
+    margin: 16,
+    borderRadius: 12,
+    gap: 12,
+    alignItems: 'flex-start',
+  },
+  warningText: {
+    flex: 1,
+    fontSize: 14,
+    color: colors.warning,
     lineHeight: 20,
   },
   footer: {
@@ -509,6 +590,9 @@ const styles = StyleSheet.create({
   createButton: {
     borderRadius: 12,
     overflow: 'hidden',
+  },
+  createButtonDisabled: {
+    opacity: 0.5,
   },
   createButtonGradient: {
     flexDirection: 'row',
