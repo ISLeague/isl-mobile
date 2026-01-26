@@ -196,7 +196,8 @@ export const KnockoutRondasScreen: React.FC<KnockoutRondasScreenProps> = ({
         idEdicionCategoria,
         idFase: fase.id_fase,
         copa,
-        encuentros: result.data.encuentros || result.data,
+        encuentros: result.data.emparejamientos_sugeridos || result.data.emparejamientos,
+        rondaCreada: result.data.ronda_creada,
       });
     }
   };
@@ -282,7 +283,7 @@ export const KnockoutRondasScreen: React.FC<KnockoutRondasScreenProps> = ({
   // ============================================
 
   const handleLoadResult = (partido: Partido) => {
-    navigation.navigate('LoadMatchResult', {
+    navigation.navigate('ResultPage', {
       partido,
       onResultLoaded: loadData,
     });

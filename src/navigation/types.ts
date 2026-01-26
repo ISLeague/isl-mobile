@@ -52,6 +52,7 @@ export type RootStackParamList = {
         idFase: number;
         copa: 'oro' | 'plata' | 'bronce';
         encuentros: any[];
+        rondaCreada: any;
     };
     CreateManualMatches: {
         idEdicionCategoria: number;

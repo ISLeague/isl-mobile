@@ -341,7 +341,7 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
   // ============================================
 
   const handleLoadResult = (partido: Partido) => {
-    navigation.navigate('LoadMatchResult', {
+    navigation.navigate('ResultPage', {
       partido,
       onResultLoaded: loadData,
     });

@@ -28,6 +28,7 @@ interface CreateAutomaticKnockoutRoundScreenProps {
       idFase: number;
       copa: TipoCopa;
       encuentros: any[];
+      rondaCreada: any;
     };
   };
 }
@@ -36,7 +37,7 @@ export const CreateAutomaticKnockoutRoundScreen: React.FC<CreateAutomaticKnockou
   navigation,
   route,
 }) => {
-  const { idEdicionCategoria, idFase, copa, encuentros } = route.params;
+  const { idEdicionCategoria, idFase, copa, encuentros, rondaCreada } = route.params;
   const { showSuccess, showError, showInfo } = useToast();
 
   // Estados
@@ -44,6 +45,7 @@ export const CreateAutomaticKnockoutRoundScreen: React.FC<CreateAutomaticKnockou
   const [locales, setLocales] = useState<Local[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [emparejamientos, setEmparejamientos] = useState(encuentros);
   const [partidosData, setPartidosData] = useState<{
     [key: string]: { id_cancha: number | null; fecha: string; hora: string };
   }>({});
@@ -90,22 +92,38 @@ export const CreateAutomaticKnockoutRoundScreen: React.FC<CreateAutomaticKnockou
   };
 
   const handlePartidoChange = (
-    encuentroKey: string,
+    numeroPartido: number,
     field: 'id_cancha' | 'fecha' | 'hora',
     value: any
   ) => {
     setPartidosData((prev) => ({
       ...prev,
-      [encuentroKey]: {
-        ...(prev[encuentroKey] || { id_cancha: null, fecha: '', hora: '' }),
+      [numeroPartido]: {
+        ...(prev[numeroPartido] || { id_cancha: null, fecha: '', hora: '' }),
         [field]: value,
       },
     }));
   };
 
+  const handleSwapEquipos = (index: number) => {
+    setEmparejamientos((prev: any[]) => {
+      const newEmparejamientos = [...prev];
+      const temp = newEmparejamientos[index].equipo_local;
+      newEmparejamientos[index].equipo_local = newEmparejamientos[index].equipo_visitante;
+      newEmparejamientos[index].equipo_visitante = temp;
+
+      // También intercambiar los IDs
+      const tempId = newEmparejamientos[index].id_equipo_local;
+      newEmparejamientos[index].id_equipo_local = newEmparejamientos[index].id_equipo_visitante;
+      newEmparejamientos[index].id_equipo_visitante = tempId;
+
+      return newEmparejamientos;
+    });
+  };
+
   const validarPartidos = (): boolean => {
-    for (const encuentro of encuentros) {
-      const key = `${encuentro.id_equipo_local}-${encuentro.id_equipo_visitante}`;
+    for (const encuentro of emparejamientos) {
+      const key = `${encuentro.numero_partido}`;
       const data = partidosData[key];
 
       if (!data || !data.id_cancha) {
@@ -143,7 +161,7 @@ export const CreateAutomaticKnockoutRoundScreen: React.FC<CreateAutomaticKnockou
 
     Alert.alert(
       'Confirmar Creación',
-      `¿Deseas crear la ronda automática con ${encuentros.length} partidos?`,
+      `¿Deseas crear ${emparejamientos.length} partidos para la ronda "${rondaCreada.nombre}"?`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -152,35 +170,35 @@ export const CreateAutomaticKnockoutRoundScreen: React.FC<CreateAutomaticKnockou
             setCreating(true);
 
             // Preparar los partidos con la información completa
-            const partidos = encuentros.map((encuentro) => {
-              const key = `${encuentro.id_equipo_local}-${encuentro.id_equipo_visitante}`;
-              const data = partidosData[key];
+            const partidos = emparejamientos.map((encuentro: any) => {
+              const numeroPartido = encuentro.numero_partido;
+              const data = partidosData[numeroPartido];
 
               return {
-                id_equipo_local: encuentro.id_equipo_local,
-                id_equipo_visitante: encuentro.id_equipo_visitante,
+                id_equipo_local: encuentro.equipo_local.id_equipo,
+                id_equipo_visitante: encuentro.equipo_visitante.id_equipo,
+                id_ronda: rondaCreada.id_ronda,
+                id_fase: idFase,
+                tipo_partido: 'eliminatoria' as const,
+                afecta_clasificacion: false,
                 id_cancha: data.id_cancha!,
                 fecha: data.fecha,
                 hora: data.hora,
               };
             });
 
-            // Enviar al backend para que cree la ronda y los partidos
+            // Crear los partidos usando createBatch
             const result = await safeAsync(
               async () => {
-                const response = await api.rondas.generarFixture({
-                  id_fase: idFase,
-                  id_edicion_categoria: idEdicionCategoria,
-                  partidos,
-                });
+                const response = await api.partidos.createBatch(partidos);
                 return response;
               },
-              'crearRondaAutomatica',
+              'crearPartidosAutomaticos',
               {
                 fallbackValue: null,
                 onError: (error) => {
-                  console.error('❌ Error creando ronda automática:', error);
-                  showError('Error al crear la ronda automática');
+                  console.error('❌ Error creando partidos:', error);
+                  showError('Error al crear los partidos');
                 },
               }
             );
@@ -188,7 +206,7 @@ export const CreateAutomaticKnockoutRoundScreen: React.FC<CreateAutomaticKnockou
             setCreating(false);
 
             if (result && result.success) {
-              showSuccess('Ronda automática creada exitosamente');
+              showSuccess('Partidos creados exitosamente');
 
               // Navegar de regreso a KnockoutRondas
               setTimeout(() => {
@@ -199,7 +217,7 @@ export const CreateAutomaticKnockoutRoundScreen: React.FC<CreateAutomaticKnockou
                 });
               }, 500);
             } else {
-              showError('No se pudo crear la ronda');
+              showError('No se pudieron crear los partidos');
             }
           },
         },
@@ -256,14 +274,21 @@ export const CreateAutomaticKnockoutRoundScreen: React.FC<CreateAutomaticKnockou
         </Card>
 
         {/* Lista de partidos */}
-        {encuentros.map((encuentro, index) => {
-          const key = `${encuentro.id_equipo_local}-${encuentro.id_equipo_visitante}`;
-          const data = partidosData[key] || { id_cancha: null, fecha: '', hora: '' };
+        {emparejamientos.map((encuentro: any, index: number) => {
+          const numeroPartido = encuentro.numero_partido;
+          const data = partidosData[numeroPartido] || { id_cancha: null, fecha: '', hora: '' };
 
           return (
-            <Card key={key} style={styles.partidoCard}>
+            <Card key={numeroPartido} style={styles.partidoCard}>
               <View style={styles.partidoHeader}>
-                <Text style={styles.partidoTitle}>Partido {index + 1}</Text>
+                <Text style={styles.partidoTitle}>Partido {numeroPartido}</Text>
+                <TouchableOpacity
+                  style={styles.swapButton}
+                  onPress={() => handleSwapEquipos(index)}
+                >
+                  <MaterialCommunityIcons name="swap-horizontal" size={20} color={colors.primary} />
+                  <Text style={styles.swapButtonText}>Intercambiar</Text>
+                </TouchableOpacity>
               </View>
 
               {/* Equipos */}
@@ -301,7 +326,7 @@ export const CreateAutomaticKnockoutRoundScreen: React.FC<CreateAutomaticKnockou
                           data.id_cancha === cancha.id_cancha && styles.canchaChipSelected,
                         ]}
                         onPress={() =>
-                          handlePartidoChange(key, 'id_cancha', cancha.id_cancha)
+                          handlePartidoChange(numeroPartido, 'id_cancha', cancha.id_cancha)
                         }
                       >
                         <MaterialCommunityIcons
@@ -343,7 +368,7 @@ export const CreateAutomaticKnockoutRoundScreen: React.FC<CreateAutomaticKnockou
                   <DatePickerInput
                     label="Fecha *"
                     value={data.fecha}
-                    onChangeDate={(date) => handlePartidoChange(key, 'fecha', date)}
+                    onChangeDate={(date) => handlePartidoChange(numeroPartido, 'fecha', date)}
                     placeholder="Seleccionar fecha"
                     defaultToToday={true}
                   />
@@ -353,7 +378,7 @@ export const CreateAutomaticKnockoutRoundScreen: React.FC<CreateAutomaticKnockou
                   <TimePickerInput
                     label="Hora *"
                     value={data.hora}
-                    onChangeTime={(time) => handlePartidoChange(key, 'hora', time)}
+                    onChangeTime={(time) => handlePartidoChange(numeroPartido, 'hora', time)}
                     placeholder="Seleccionar hora"
                   />
                 </View>
@@ -364,7 +389,7 @@ export const CreateAutomaticKnockoutRoundScreen: React.FC<CreateAutomaticKnockou
 
         <View style={styles.actionsContainer}>
           <Button
-            title={creating ? 'Creando ronda...' : 'Crear ronda automática'}
+            title={creating ? 'Creando partidos...' : 'Crear partidos'}
             onPress={handleCrearPartidos}
             disabled={creating}
             loading={creating}
@@ -414,12 +439,29 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   partidoHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 16,
   },
   partidoTitle: {
     fontSize: 16,
     fontWeight: '700',
     color: colors.textPrimary,
+  },
+  swapButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    backgroundColor: colors.backgroundGray,
+  },
+  swapButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.primary,
   },
   equiposContainer: {
     flexDirection: 'row',
