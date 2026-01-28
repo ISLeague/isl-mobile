@@ -522,7 +522,13 @@ const FixtureEmbedImprovedComponent: React.FC<FixtureEmbedImprovedProps> = ({
       <TouchableOpacity
         key={partido.id_partido}
         style={styles.partidoCard}
-        onPress={() => isAdmin ? handleEditPartido(partido) : navigation.navigate('ResultPage', { partidoId: partido.id_partido })}
+        onPress={() => {
+          if (isAdmin) {
+            handleEditPartido(partido);
+          } else {
+            navigation.navigate('MatchDetail', { partidoId: partido.id_partido });
+          }
+        }}
         activeOpacity={0.7}
       >
         <View style={styles.partidoHeader}>

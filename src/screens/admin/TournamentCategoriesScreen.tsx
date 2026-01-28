@@ -253,6 +253,32 @@ export const TournamentCategoriesScreen = ({ navigation, route }: any) => {
           </View>
         )}
 
+        {/* Players in Two Teams Button */}
+        <TouchableOpacity
+          style={styles.twoTeamsButton}
+          onPress={() => navigation.navigate('PlayersInTwoTeams', { torneo, edicion, pais })}
+          activeOpacity={0.7}
+        >
+          <View style={styles.twoTeamsButtonContent}>
+            <MaterialCommunityIcons
+              name="account-switch"
+              size={24}
+              color={colors.warning}
+            />
+            <View style={styles.twoTeamsButtonText}>
+              <Text style={styles.twoTeamsButtonTitle}>Jugadores en 2 Equipos</Text>
+              <Text style={styles.twoTeamsButtonSubtitle}>
+                Ver jugadores registrados en múltiples equipos
+              </Text>
+            </View>
+            <MaterialCommunityIcons
+              name="chevron-right"
+              size={24}
+              color={colors.textSecondary}
+            />
+          </View>
+        </TouchableOpacity>
+
         {/* Assigned Categories */}
         <View style={styles.categoriesSection}>
           <View style={styles.sectionHeader}>
@@ -968,6 +994,36 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: colors.white,
+  },
+  twoTeamsButton: {
+    marginHorizontal: 20,
+    marginTop: 16,
+    backgroundColor: colors.white,
+    borderRadius: 12,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  twoTeamsButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    gap: 12,
+  },
+  twoTeamsButtonText: {
+    flex: 1,
+  },
+  twoTeamsButtonTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  twoTeamsButtonSubtitle: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginTop: 2,
   },
 });
 

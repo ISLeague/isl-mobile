@@ -372,7 +372,7 @@ export const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({ navigation
             <MaterialCommunityIcons name="calendar-clock" size={48} color={colors.primary} />
             <Text style={styles.infoCardTitle}>Partido Próximo</Text>
             <Text style={styles.infoCardText}>
-              Este partido aún no se ha jugado. Vuelve el {matchInfo.fecha ? matchInfo.fecha.split('-').reverse().join('/') : ''} para ver los resultados.
+              Este partido aún no se ha jugado. Vuelve tras el término del para ver los resultados.
             </Text>
           </Card>
         )}
@@ -606,6 +606,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingVertical: 8,
     flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   statsCellText: {
     color: colors.textSecondary,

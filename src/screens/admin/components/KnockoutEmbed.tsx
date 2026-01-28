@@ -85,23 +85,94 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
   const [selectedCopa, setSelectedCopa] = useState<TipoCopa>('oro');
   const [knockoutActivo, setKnockoutActivo] = useState(true);
   const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [fasesKnockout, setFasesKnockout] = useState<any[]>([]);
   const [rondasKnockout, setRondasKnockout] = useState<any[]>([]);
+  // Store all rondas for all copas to determine which copas have data
+  const [allRondasByCopaMap, setAllRondasByCopaMap] = useState<{ [key: string]: any[] }>({});
 
   // Modal para seleccionar copa
   const [showCopaModal, setShowCopaModal] = useState(false);
   const [creatingFase, setCreatingFase] = useState<TipoCopa | null>(null);
   const [deletingRonda, setDeletingRonda] = useState<number | null>(null);
 
+  // Initial load to get all copas data
   useEffect(() => {
-    loadData();
-  }, [selectedCopa]);
+    loadAllCopasData();
+  }, [idEdicionCategoria]);
+
+  useEffect(() => {
+    if (!initialLoading) {
+      loadData();
+    }
+  }, [selectedCopa, initialLoading]);
 
   useFocusEffect(
     React.useCallback(() => {
-      loadData();
-    }, [selectedCopa])
+      if (!initialLoading) {
+        loadData();
+      }
+    }, [selectedCopa, initialLoading])
   );
+
+  // Load all copas to determine which ones have rondas (for fan view)
+  const loadAllCopasData = async () => {
+    console.log('🔄 [KnockoutEmbed] Cargando datos de todas las copas...');
+    setLoading(true);
+    setInitialLoading(true);
+
+    try {
+      const fasesResponse = await api.fases.list(idEdicionCategoria || 1);
+      const fases = fasesResponse.success && fasesResponse.data ? fasesResponse.data : [];
+      const fasesKO = fases.filter((f: any) => f.tipo === 'knockout');
+
+      setFasesKnockout(fasesKO);
+
+      // For each copa, load its rondas
+      const rondasMap: { [key: string]: any[] } = {};
+
+      for (const copa of ['oro', 'plata', 'bronce'] as TipoCopa[]) {
+        const faseActual = fasesKO.find((f: any) => f.copa === copa);
+        if (faseActual) {
+          const rondasResponse = await api.rondas.list({
+            id_fase: faseActual.id_fase,
+            tipo_ronda: 'eliminatorias'
+          });
+
+          if (rondasResponse.success && rondasResponse.data) {
+            const todasLasRondas = Array.isArray(rondasResponse.data)
+              ? rondasResponse.data
+              : rondasResponse.data.rondas || [];
+            rondasMap[copa] = todasLasRondas.filter((r: any) => r.subtipo_eliminatoria === copa);
+          } else {
+            rondasMap[copa] = [];
+          }
+        } else {
+          rondasMap[copa] = [];
+        }
+      }
+
+      setAllRondasByCopaMap(rondasMap);
+      console.log('📊 [KnockoutEmbed] Rondas por copa:', {
+        oro: rondasMap['oro']?.length || 0,
+        plata: rondasMap['plata']?.length || 0,
+        bronce: rondasMap['bronce']?.length || 0,
+      });
+
+      // Auto-select first copa with rondas for fans
+      if (!isAdmin) {
+        const copasConRondas = (['oro', 'plata', 'bronce'] as TipoCopa[]).filter(c => rondasMap[c]?.length > 0);
+        if (copasConRondas.length > 0 && !copasConRondas.includes(selectedCopa)) {
+          setSelectedCopa(copasConRondas[0]);
+        }
+      }
+    } catch (error) {
+      console.error('❌ [KnockoutEmbed] Error al cargar copas:', error);
+    } finally {
+      setInitialLoading(false);
+      // loadData will be called by the useEffect when initialLoading becomes false
+    }
+  };
 
   const loadData = async () => {
     console.log('🔄 [KnockoutEmbed] Iniciando carga de datos...');
@@ -372,12 +443,16 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
     });
   };
 
+  // Handler for fans to view match details
+  const handleViewMatchDetail = (partido: Partido) => {
+    navigation.navigate('MatchDetail', {
+      partidoId: partido.id_partido,
+    });
+  };
+
   const hasRondasInCopa = (copa: TipoCopa) => {
-    const fase = fasesKnockout.find(f => f.copa === copa);
-    if (!fase) return false;
-    // Verificar si hay rondas para esta copa
-    const rondasDeCopa = rondasKnockout.filter(r => r.subtipo_eliminatoria === copa);
-    return rondasDeCopa.length > 0;
+    // Use the preloaded map for all copas
+    return (allRondasByCopaMap[copa]?.length || 0) > 0;
   };
 
   const availableCopas: TipoCopa[] = isAdmin
@@ -385,6 +460,16 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
     : (['oro', 'plata', 'bronce'].filter(c =>
       hasRondasInCopa(c as TipoCopa)
     ) as TipoCopa[]);
+
+  // Show loading while initial load
+  if (initialLoading) {
+    return (
+      <View style={styles.initialLoadingContainer}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>Cargando eliminatorias...</Text>
+      </View>
+    );
+  }
 
   if (availableCopas.length === 0 && !isAdmin) {
     return (
@@ -428,7 +513,13 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
       <TouchableOpacity
         key={partido.id_partido}
         style={styles.partidoCard}
-        onPress={() => isSuperAdmin ? handleEditPartido(partido) : null}
+        onPress={() => {
+          if (isSuperAdmin) {
+            handleEditPartido(partido);
+          } else {
+            handleViewMatchDetail(partido);
+          }
+        }}
         activeOpacity={0.7}
       >
         <View style={styles.partidoHeader}>
@@ -798,6 +889,7 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
                       style={styles.copaButtonWrapper}
                       onPress={() => setSelectedCopa(copa)}
                       activeOpacity={0.8}
+                      disabled={loading}
                     >
                       {isSelected ? (
                         <LinearGradient
@@ -823,7 +915,12 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
               </View>
             )}
 
-            {rondasExistentes.length === 0 ? (
+            {loading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={getSubtipoGradient(selectedCopa)[0]} />
+                <Text style={styles.loadingText}>Cargando eliminatorias...</Text>
+              </View>
+            ) : rondasExistentes.length === 0 ? (
               <View style={styles.emptyRondasContainer}>
                 <MaterialCommunityIcons name="trophy-outline" size={48} color={colors.textLight} />
                 <Text style={styles.emptyRondasText}>
@@ -841,6 +938,11 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
               rondasExistentes.map((ronda) => renderRonda(ronda))
             )}
           </ScrollView>
+
+          {/* Loading overlay */}
+          {loading && (
+            <View style={styles.loadingOverlay} pointerEvents="none" />
+          )}
 
           {/* FAB que abre el modal de copas */}
           {isSuperAdmin && (
@@ -895,6 +997,29 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 80,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+    gap: 16,
+  },
+  initialLoadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+    gap: 16,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    fontWeight: '500',
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
   },
   emptyContainer: {
     flex: 1,

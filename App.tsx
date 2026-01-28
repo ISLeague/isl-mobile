@@ -20,6 +20,7 @@ import { EditEditionScreen } from './src/screens/admin/EditEditionScreen';
 import { ManageCategoriesScreen } from './src/screens/admin/ManageCategoriesScreen';
 import { CreateEditionScreen } from './src/screens/admin/CreateEditionScreen';
 import { TournamentCategoriesScreen } from './src/screens/admin/TournamentCategoriesScreen';
+import { PlayersInTwoTeamsScreen } from './src/screens/admin/PlayersInTwoTeamsScreen';
 import { CategoryManagementScreen } from './src/screens/admin/CategoryManagementScreen';
 import { ManageTeamsScreen } from './src/screens/admin/ManageTeamsScreen';
 import { ManageFixtureScreen } from './src/screens/admin/ManageFixtureScreen';
@@ -38,6 +39,7 @@ import { PlayerFormScreen } from './src/screens/home/PlayerFormScreen';
 import { PlayerDetailScreen } from './src/screens/home/PlayerDetailScreen';
 import { MyTeamScreen } from './src/screens/home/MyTeamScreen';
 import { FavoriteTeamsScreen } from './src/screens/home/FavoriteTeamsScreen';
+import { MatchDetailScreen } from './src/screens/home/MatchDetailScreen';
 import { CamarografoScreen } from './src/screens/camarografo/CamarografoScreen';
 import { PrivacySettingsScreen } from './src/screens/profile/PrivacySettingsScreen';
 import { CreateGroupScreen } from './src/screens/admin/CreateGroupScreen';
@@ -133,6 +135,7 @@ function AppNavigator() {
         <Stack.Screen name="ManageCategories" component={ManageCategoriesScreen} />
         <Stack.Screen name="CreateEdition" component={CreateEditionScreen} />
         <Stack.Screen name="TournamentCategories" component={TournamentCategoriesScreen} />
+        <Stack.Screen name="PlayersInTwoTeams" component={PlayersInTwoTeamsScreen} />
         <Stack.Screen name="CategoryManagement" component={CategoryManagementScreen} />
 
         {/* Category Management Options */}
@@ -194,6 +197,7 @@ function AppNavigator() {
         <Stack.Screen name="PlayerDetail" component={PlayerDetailScreen} />
         <Stack.Screen name="MyTeam" component={MyTeamScreen} />
         <Stack.Screen name="FavoriteTeams" component={FavoriteTeamsScreen} />
+        <Stack.Screen name="MatchDetail" component={MatchDetailScreen} />
 
         {/* Placeholders (Próximamente) */}
         <Stack.Screen name="ManageGroups" component={CategoryManagementScreen} />
