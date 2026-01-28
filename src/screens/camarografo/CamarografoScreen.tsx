@@ -529,17 +529,17 @@ export const CamarografoScreen = ({ navigation }: any) => {
         </View>
 
         <View style={styles.partidoFooter}>
-          <View style={styles.infoRow}>
-            <MaterialCommunityIcons name="calendar" size={16} color={colors.textSecondary} />
-            <Text style={styles.infoText}>{item.fecha || 'Fecha Pendiente'}</Text>
+          <View style={styles.infoItem}>
+            <MaterialCommunityIcons name="calendar" size={14} color={colors.textSecondary} />
+            <Text style={styles.infoText} numberOfLines={1}>{item.fecha || 'Pendiente'}</Text>
           </View>
-          <View style={styles.infoRow}>
-            <MaterialCommunityIcons name="clock-outline" size={16} color={colors.textSecondary} />
-            <Text style={styles.infoText}>{item.hora || 'Hora Pendiente'}</Text>
+          <View style={styles.infoItem}>
+            <MaterialCommunityIcons name="clock-outline" size={14} color={colors.textSecondary} />
+            <Text style={styles.infoText} numberOfLines={1}>{item.hora || 'Pendiente'}</Text>
           </View>
-          <View style={styles.infoRow}>
-            <MaterialCommunityIcons name="stadium" size={16} color={colors.textSecondary} />
-            <Text style={styles.infoText}>{item.cancha?.nombre || 'Cancha Pendiente'}</Text>
+          <View style={styles.infoItem}>
+            <MaterialCommunityIcons name="stadium" size={14} color={colors.textSecondary} />
+            <Text style={styles.infoText} numberOfLines={1}>{item.cancha?.nombre || 'Pendiente'}</Text>
           </View>
         </View>
 
@@ -1078,15 +1078,19 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: colors.border,
+    gap: 8,
   },
-  infoRow: {
+  infoItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    flex: 1,
+    minWidth: 0,
   },
   infoText: {
-    fontSize: 12,
+    fontSize: 11,
     color: colors.textSecondary,
+    flexShrink: 1,
   },
   linkIndicator: {
     flexDirection: 'row',
