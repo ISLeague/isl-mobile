@@ -50,7 +50,7 @@ export const SponsorTab: React.FC<SponsorTabProps> = ({
         setSponsors([]);
       }
     } catch (error) {
-      // console.error('Error cargando sponsors:', error);
+      // //console.error('Error cargando sponsors:', error);
       setSponsors([]);
     } finally {
       setLoading(false);
@@ -67,7 +67,7 @@ export const SponsorTab: React.FC<SponsorTabProps> = ({
         setSponsors([]);
       }
     } catch (error) {
-      // console.error('Error recargando sponsors:', error);
+      // //console.error('Error recargando sponsors:', error);
       setSponsors([]);
     } finally {
       setRefreshing(false);

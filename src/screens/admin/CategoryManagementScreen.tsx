@@ -174,7 +174,7 @@ export const CategoryManagementScreen = ({ navigation, route }: any) => {
         setCategorias(enrichedCategories);
       }
     } catch (error) {
-      // console.error('Error loading categorias:', error);
+      // //console.error('Error loading categorias:', error);
     }
   };
 

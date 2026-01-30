@@ -149,7 +149,7 @@ export const TournamentCategoriesScreen = ({ navigation, route }: any) => {
       Alert.alert('Éxito', `Categoría "${selectedCategoria.nombre}" asignada correctamente`);
       loadCategorias();
     } catch (error) {
-      // console.error('Error assigning category:', error);
+      // //console.error('Error assigning category:', error);
       Alert.alert('Error', 'No se pudo asignar la categoría');
     } finally {
       setIsSaving(false);

@@ -117,7 +117,7 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
 
   // Load all copas to determine which ones have rondas (for fan view)
   const loadAllCopasData = async () => {
-    console.log('🔄 [KnockoutEmbed] Cargando datos de todas las copas...');
+    //console.log('🔄 [KnockoutEmbed] Cargando datos de todas las copas...');
     setLoading(true);
     setInitialLoading(true);
 
@@ -153,7 +153,7 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
       }
 
       setAllRondasByCopaMap(rondasMap);
-      console.log('📊 [KnockoutEmbed] Rondas por copa:', {
+      //console.log('📊 [KnockoutEmbed] Rondas por copa:', {
         oro: rondasMap['oro']?.length || 0,
         plata: rondasMap['plata']?.length || 0,
         bronce: rondasMap['bronce']?.length || 0,
@@ -167,7 +167,7 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
         }
       }
     } catch (error) {
-      console.error('❌ [KnockoutEmbed] Error al cargar copas:', error);
+      //console.error('❌ [KnockoutEmbed] Error al cargar copas:', error);
     } finally {
       setInitialLoading(false);
       // loadData will be called by the useEffect when initialLoading becomes false
@@ -175,31 +175,31 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
   };
 
   const loadData = async () => {
-    console.log('🔄 [KnockoutEmbed] Iniciando carga de datos...');
-    console.log('📋 [KnockoutEmbed] idEdicionCategoria:', idEdicionCategoria);
-    console.log('🏆 [KnockoutEmbed] Copa seleccionada:', selectedCopa);
+    //console.log('🔄 [KnockoutEmbed] Iniciando carga de datos...');
+    //console.log('📋 [KnockoutEmbed] idEdicionCategoria:', idEdicionCategoria);
+    //console.log('🏆 [KnockoutEmbed] Copa seleccionada:', selectedCopa);
 
     setLoading(true);
     const result = await safeAsync(
       async () => {
         // PASO 1: Obtener todas las fases knockout para tener referencia
-        console.log('📂 [KnockoutEmbed] Cargando fases knockout...');
+        //console.log('📂 [KnockoutEmbed] Cargando fases knockout...');
         const fasesResponse = await api.fases.list(idEdicionCategoria || 1);
         const fases = fasesResponse.success && fasesResponse.data ? fasesResponse.data : [];
         const fasesKO = fases.filter((f: any) => f.tipo === 'knockout');
-        console.log(`📂 [KnockoutEmbed] Fases knockout encontradas: ${fasesKO.length}`);
+        //console.log(`📂 [KnockoutEmbed] Fases knockout encontradas: ${fasesKO.length}`);
 
         // PASO 2: Buscar la fase para la copa seleccionada
         const faseActual = fasesKO.find((f: any) => f.copa === selectedCopa);
-        console.log('🎯 [KnockoutEmbed] Fase para copa', selectedCopa, ':', faseActual);
+        //console.log('🎯 [KnockoutEmbed] Fase para copa', selectedCopa, ':', faseActual);
 
         if (!faseActual) {
-          console.warn('⚠️ [KnockoutEmbed] No existe fase knockout para copa:', selectedCopa);
+          //console.warn('⚠️ [KnockoutEmbed] No existe fase knockout para copa:', selectedCopa);
           return { partidos: [], fases: fasesKO, rondas: [] };
         }
 
         // PASO 3: Traer las rondas de esta fase
-        console.log('📅 [KnockoutEmbed] Cargando rondas de la fase:', faseActual.id_fase);
+        //console.log('📅 [KnockoutEmbed] Cargando rondas de la fase:', faseActual.id_fase);
         const rondasResponse = await api.rondas.list({
           id_fase: faseActual.id_fase,
           tipo_ronda: 'eliminatorias'
@@ -211,27 +211,27 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
             ? rondasResponse.data
             : rondasResponse.data.rondas || [];
           rondasKO = todasLasRondas.filter((r: any) => r.subtipo_eliminatoria === selectedCopa);
-          console.log(`📅 [KnockoutEmbed] Rondas encontradas: ${rondasKO.length}`);
+          //console.log(`📅 [KnockoutEmbed] Rondas encontradas: ${rondasKO.length}`);
         }
 
         // PASO 4: Traer los partidos de cada ronda
-        console.log('⚽ [KnockoutEmbed] Cargando partidos de cada ronda...');
+        //console.log('⚽ [KnockoutEmbed] Cargando partidos de cada ronda...');
         let allPartidos: any[] = [];
 
         for (const ronda of rondasKO) {
-          console.log(`📋 [KnockoutEmbed] Cargando partidos de ronda ${ronda.id_ronda}: ${ronda.nombre}`);
+          //console.log(`📋 [KnockoutEmbed] Cargando partidos de ronda ${ronda.id_ronda}: ${ronda.nombre}`);
           const partidosResponse = await api.partidos.list({ id_ronda: ronda.id_ronda });
 
           if (partidosResponse.success && partidosResponse.data) {
             const partidosRonda = Array.isArray(partidosResponse.data)
               ? partidosResponse.data
               : [];
-            console.log(`   ✓ ${partidosRonda.length} partidos encontrados`);
+            //console.log(`   ✓ ${partidosRonda.length} partidos encontrados`);
             allPartidos.push(...partidosRonda);
           }
         }
 
-        console.log(`⚽ [KnockoutEmbed] Total partidos cargados: ${allPartidos.length}`);
+        //console.log(`⚽ [KnockoutEmbed] Total partidos cargados: ${allPartidos.length}`);
 
         return { partidos: allPartidos, fases: fasesKO, rondas: rondasKO };
       },
@@ -240,7 +240,7 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
         severity: 'high',
         fallbackValue: { partidos: [], fases: [], rondas: [] },
         onError: (error) => {
-          console.error('❌ [KnockoutEmbed] Error al cargar datos:', error);
+          //console.error('❌ [KnockoutEmbed] Error al cargar datos:', error);
           showError(getUserFriendlyMessage(error), 'Error al cargar eliminatorias');
         }
       }
@@ -274,7 +274,7 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
   };
 
   const handleCopaSelect = async (copaInfo: CopaInfo) => {
-    console.log(`🔍 [KnockoutEmbed] Obteniendo/Creando fase knockout para copa: ${copaInfo.tipo}`);
+    //console.log(`🔍 [KnockoutEmbed] Obteniendo/Creando fase knockout para copa: ${copaInfo.tipo}`);
     setCreatingFase(copaInfo.tipo);
 
     const result = await safeAsync(
@@ -284,13 +284,13 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
           throw new Error('idEdicionCategoria no definido');
         }
         // Usar el endpoint get-or-create-knockout
-        console.log('🌐 [KnockoutEmbed] Llamando a getOrCreateKnockout con idEdicionCategoria:', idEdicionCategoria, 'y copa:', copaInfo.tipo);
+        //console.log('🌐 [KnockoutEmbed] Llamando a getOrCreateKnockout con idEdicionCategoria:', idEdicionCategoria, 'y copa:', copaInfo.tipo);
         const response = await api.fases.getOrCreateKnockout(
           idEdicionCategoria,
           copaInfo.tipo
         );
 
-        console.log('📥 [KnockoutEmbed] Respuesta getOrCreateKnockout:', response);
+        //console.log('📥 [KnockoutEmbed] Respuesta getOrCreateKnockout:', response);
 
         if (response && response.success && response.data) {
           return {
@@ -306,7 +306,7 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
         severity: 'high',
         fallbackValue: null,
         onError: (error) => {
-          console.error('❌ [KnockoutEmbed] Error:', error);
+          //console.error('❌ [KnockoutEmbed] Error:', error);
           showError(getUserFriendlyMessage(error), 'Error al obtener fase');
         },
       }
@@ -378,7 +378,7 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
           text: 'Sí, eliminar',
           style: 'destructive',
           onPress: async () => {
-            console.log('🗑️ [KnockoutEmbed] Eliminando ronda:', rondaObj.id_ronda);
+            //console.log('🗑️ [KnockoutEmbed] Eliminando ronda:', rondaObj.id_ronda);
             setDeletingRonda(rondaObj.id_ronda);
 
             const result = await safeAsync(
@@ -387,7 +387,7 @@ export const KnockoutEmbed: React.FC<KnockoutEmbedProps> = ({
               {
                 fallbackValue: null,
                 onError: (error) => {
-                  console.error('❌ [KnockoutEmbed] Error al eliminar:', error);
+                  //console.error('❌ [KnockoutEmbed] Error al eliminar:', error);
                   showError('Error al eliminar la ronda');
                 },
               }

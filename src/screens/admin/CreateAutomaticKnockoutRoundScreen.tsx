@@ -197,7 +197,7 @@ export const CreateAutomaticKnockoutRoundScreen: React.FC<CreateAutomaticKnockou
               {
                 fallbackValue: null,
                 onError: (error) => {
-                  console.error('❌ Error creando partidos:', error);
+                  //console.error('❌ Error creando partidos:', error);
                   showError('Error al crear los partidos');
                 },
               }

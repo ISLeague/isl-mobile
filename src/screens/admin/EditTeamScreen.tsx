@@ -66,7 +66,7 @@ export const EditTeamScreen: React.FC<EditTeamScreenProps> = ({ navigation, rout
               showSuccess('Equipo actualizado exitosamente');
               navigation.goBack();
             } catch (error) {
-              // console.error('Error updating team:', error);
+              // //console.error('Error updating team:', error);
               showError('Error al actualizar el equipo');
             } finally {
               setLoading(false);
@@ -95,7 +95,7 @@ export const EditTeamScreen: React.FC<EditTeamScreenProps> = ({ navigation, rout
               // Hacemos pop(2) para saltarnos TeamDetail del equipo borrado
               navigation.pop(2);
             } catch (error) {
-              // console.error('Error deleting team:', error);
+              // //console.error('Error deleting team:', error);
               showError('Error al eliminar el equipo');
             } finally {
               setLoading(false);

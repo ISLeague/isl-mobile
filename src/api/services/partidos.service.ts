@@ -44,11 +44,11 @@ export const partidosService = {
    * @param soloPresentes - Si true, solo devuelve jugadores que asistieron al partido
    */
   getResultado: async (id: number, soloPresentes: boolean = true) => {
-    console.log("id del partido ", id, "solo presentes: ", soloPresentes)
+    //console.log("id del partido ", id, "solo presentes: ", soloPresentes)
     const response = await apiClient.get('/partidos', {
       params: { id, action: 'resultado', solo_presentes: soloPresentes } // consolidated
     });
-    console.log("respuuetssa ", response.data)
+    //console.log("respuuetssa ", response.data)
     return response.data;
   },
 
@@ -110,7 +110,7 @@ export const partidosService = {
   registrarResultado: async (
     data: RegistrarResultadoRequest
   ): Promise<RegistrarResultadoResponse> => {
-    console.log("data esta entrando a registro ", data)
+    //console.log("data esta entrando a registro ", data)
     const response = await apiClient.post('/partidos', data, {
       params: { action: 'resultado' }
     });
@@ -260,7 +260,7 @@ export const partidosService = {
       params: { action: 'upload' },
       headers,
     });
-    console.log("Respuesta upload:", JSON.stringify(response.data, null, 2));
+    //console.log("Respuesta upload:", JSON.stringify(response.data, null, 2));
     return response.data;
   },
 

@@ -22,7 +22,7 @@ export const rondasService = {
         action: 'list'
       }
     });
-     console.log("resonse ", response.data.rondas)
+     //console.log("resonse ", response.data.rondas)
     return response.data;
   },
 
@@ -32,7 +32,7 @@ export const rondasService = {
   },
 
   create: async (data: CreateRondaRequest) => {
-    // console.log("intentando crear rondas " )
+    // //console.log("intentando crear rondas " )
     const response = await apiClient.post('/rondas', data, {
       params: { action: 'create' }
     });
@@ -40,17 +40,17 @@ export const rondasService = {
   },
 
   generarFixture: async (data: FixtureGenerateRequest): Promise<FixtureGenerateResponse> => {
-    console.log('🌐 [generarFixture] Enviando POST a /rondas con action=generar-fixtures');
-    console.log('📋 [generarFixture] Datos enviados:', JSON.stringify(data, null, 2));
+    //console.log('🌐 [generarFixture] Enviando POST a /rondas con action=generar-fixtures');
+    //console.log('📋 [generarFixture] Datos enviados:', JSON.stringify(data, null, 2));
     
     try {
       const response = await apiClient.post('/rondas', data, {
         params: { action: 'generar-fixtures' }
       });
-      console.log('✅ [generarFixture] Respuesta exitosa:', response.data);
+      //console.log('✅ [generarFixture] Respuesta exitosa:', response.data);
       return response.data;
     } catch (error) {
-      console.log('💥 [generarFixture] Error en la llamada:', error);
+      //console.log('💥 [generarFixture] Error en la llamada:', error);
       throw error;
     }
   },
@@ -70,12 +70,12 @@ export const rondasService = {
   },
 
   update: async (id: number, data: UpdateRondaRequest) => {
-    console.log('🔁 [rondasService.update] PATCH /rondas?id=', id, ' payload:', data);
+    //console.log('🔁 [rondasService.update] PATCH /rondas?id=', id, ' payload:', data);
     const response = await apiClient.patch('/rondas', data, {
       // Call the function directly with the id query param as requested
       params: { id }
     });
-    console.log('✅ [rondasService.update] response:', response.data);
+    //console.log('✅ [rondasService.update] response:', response.data);
     return response.data;
   },
 
@@ -114,13 +114,13 @@ export const rondasService = {
    * Generar fixture automático de knockout
    */
   generarKnockoutFixture: async (id_fase: number) => {
-    console.log('🌐 [generarKnockoutFixture] POST /rondas?action=generar-knockout-fixture&id_fase=', id_fase);
+    //console.log('🌐 [generarKnockoutFixture] POST /rondas?action=generar-knockout-fixture&id_fase=', id_fase);
 
     const response = await apiClient.post('/rondas',
       {},
       { params: { action: 'generar-knockout-fixture', id_fase } }
     );
-    console.log('✅ [generarKnockoutFixture] Respuesta:', response.data);
+    //console.log('✅ [generarKnockoutFixture] Respuesta:', response.data);
     return response.data;
   },
 };

@@ -394,7 +394,7 @@ const GroupStageEmbedComponent: React.FC<GroupStageEmbedProps & { refreshTrigger
 
   const handleTeamPress = (equipoId: number) => {
     if (!equipoId) {
-      console.warn('⚠️ handleTeamPress called with invalid equipoId:', equipoId);
+      //console.warn('⚠️ handleTeamPress called with invalid equipoId:', equipoId);
       return;
     }
     try {

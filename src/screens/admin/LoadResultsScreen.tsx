@@ -111,7 +111,7 @@ export const LoadResultsScreen = ({ navigation, route }: any) => {
         allPlayers = [...extract(localResp), ...extract(visitResp)];
         setJugadores(allPlayers);
       } catch (e) {
-        console.log("Error cargando jugadores", e);
+        //console.log("Error cargando jugadores", e);
       }
     };
     loadSquads();

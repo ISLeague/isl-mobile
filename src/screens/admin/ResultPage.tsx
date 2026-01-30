@@ -90,13 +90,13 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
         if (data.equipo_local) {
           setEquipoLocal(data.equipo_local);
         } else {
-          // console.warn('⚠️ [ResultPage] No equipo_local in response');
+          // //console.warn('⚠️ [ResultPage] No equipo_local in response');
         }
 
         if (data.equipo_visitante) {
           setEquipoVisitante(data.equipo_visitante);
         } else {
-          // console.warn('⚠️ [ResultPage] No equipo_visitante in response');
+          // //console.warn('⚠️ [ResultPage] No equipo_visitante in response');
         }
 
         // Set ronda data from API response
@@ -142,7 +142,7 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
             }))
           );
         } else {
-          // console.warn('⚠️ [ResultPage] No estadisticas_jugadores found in equipo_local');
+          // //console.warn('⚠️ [ResultPage] No estadisticas_jugadores found in equipo_local');
         }
 
         // Process visiting team players and statistics
@@ -161,13 +161,13 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
             }))
           );
         } else {
-          // console.warn('⚠️ [ResultPage] No estadisticas_jugadores found in equipo_visitante');
+          // //console.warn('⚠️ [ResultPage] No estadisticas_jugadores found in equipo_visitante');
         }
       } else {
-        // console.error('❌ [ResultPage] Invalid resultado response:', resultadoResponse);
+        // //console.error('❌ [ResultPage] Invalid resultado response:', resultadoResponse);
       }
     } catch (error) {
-      // console.error('❌ [ResultPage] Error loading data:', error);
+      // //console.error('❌ [ResultPage] Error loading data:', error);
       showError('Error al cargar los datos del partido');
     } finally {
       setLoading(false);
@@ -352,7 +352,7 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
               });
             }
           } catch (eliminatoriaError) {
-            // console.error('Error actualizando ganador de eliminatoria:', eliminatoriaError);
+            // //console.error('Error actualizando ganador de eliminatoria:', eliminatoriaError);
             // No mostramos error al usuario, solo registramos en consola
           }
         }
@@ -365,7 +365,7 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
         showError(response.message || 'Error al guardar el resultado');
       }
     } catch (error) {
-      // console.error('Error saving result:', error);
+      // //console.error('Error saving result:', error);
       showError('Error al guardar el resultado');
     } finally {
       setLoading(false);
@@ -394,7 +394,7 @@ export const ResultPage: React.FC<ResultPageProps> = ({ navigation, route }) => 
                 showError(response.error || 'Error al borrar el resultado');
               }
             } catch (error: any) {
-              console.error('Error resetting result:', error);
+              //console.error('Error resetting result:', error);
               showError(error.message || 'Error al borrar el resultado');
             } finally {
               setLoading(false);

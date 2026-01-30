@@ -19,7 +19,7 @@ try {
     }),
   });
 } catch (error) {
-  console.log('📱 Push notifications no disponibles (normal en Expo Go SDK 53+)');
+  //console.log('📱 Push notifications no disponibles (normal en Expo Go SDK 53+)');
 }
 
 // Detectar si estamos en Expo Go (sin usar appOwnership deprecated)
@@ -34,7 +34,7 @@ export function usePushNotifications() {
   useEffect(() => {
     // Si estamos en Expo Go o no hay soporte, no intentar registrar
     if (isExpoGo || !Notifications || !Device) {
-      console.log('⚠️ Push notifications deshabilitadas en Expo Go. Usa un Development Build para probar.');
+      //console.log('⚠️ Push notifications deshabilitadas en Expo Go. Usa un Development Build para probar.');
       return;
     }
 
@@ -51,7 +51,7 @@ export function usePushNotifications() {
 
     // Listener para cuando el usuario toca una notificación
     responseListener.current = Notifications.addNotificationResponseReceivedListener((response: any) => {
-      console.log('Notification tapped:', response);
+      //console.log('Notification tapped:', response);
     });
 
     return () => {
@@ -96,7 +96,7 @@ async function registerForPushNotificationsAsync(): Promise<string | undefined> 
       }
 
       if (finalStatus !== 'granted') {
-        console.log('⚠️ Permisos de notificación no otorgados');
+        //console.log('⚠️ Permisos de notificación no otorgados');
         return;
       }
 
@@ -107,14 +107,14 @@ async function registerForPushNotificationsAsync(): Promise<string | undefined> 
         projectId: projectId,
       })).data;
 
-      console.log('✅ Expo Push Token obtenido:', token);
+      //console.log('✅ Expo Push Token obtenido:', token);
     } else {
-      console.log('⚠️ Usa un dispositivo físico para Push Notifications');
+      //console.log('⚠️ Usa un dispositivo físico para Push Notifications');
     }
   } catch (error: any) {
     // Silenciar errores en Expo Go
     if (!error.message?.includes('expo-notifications')) {
-      console.log('⚠️ Error configurando push notifications:', error.message);
+      //console.log('⚠️ Error configurando push notifications:', error.message);
     }
   }
 
@@ -128,8 +128,8 @@ export async function registerDeviceToken(token: string): Promise<void> {
   try {
     // El token se enviará automáticamente en el login
     // Aquí solo guardamos en storage para usarlo en próximos requests si es necesario
-    console.log('Device token registered:', token);
+    //console.log('Device token registered:', token);
   } catch (error) {
-    console.error('Error registering device token:', error);
+    //console.error('Error registering device token:', error);
   }
 }

@@ -21,7 +21,7 @@ export const PlayerFormScreen: React.FC<PlayerFormScreenProps> = ({ navigation, 
     mode: 'create' | 'edit';
   };
 
-  console.log('🔍 PlayerFormScreen params:', { equipoId, jugador, mode });
+  //console.log('🔍 PlayerFormScreen params:', { equipoId, jugador, mode });
 
   if (!equipoId) {
     Alert.alert('Error', 'ID del equipo no proporcionado');
@@ -63,7 +63,7 @@ export const PlayerFormScreen: React.FC<PlayerFormScreenProps> = ({ navigation, 
         // 1. Obtener el equipo para saber su id_edicion_categoria
         const equipoResponse = await api.equipos.getById(equipoId);
         if (!equipoResponse || !equipoResponse.data) {
-          console.log("⚠️ No se encontró el equipo");
+          //console.log("⚠️ No se encontró el equipo");
           return;
         }
 
@@ -71,14 +71,14 @@ export const PlayerFormScreen: React.FC<PlayerFormScreenProps> = ({ navigation, 
         const idEdicionCategoria = equipo.id_edicion_categoria;
 
         if (!idEdicionCategoria) {
-          console.log("⚠️ Equipo sin id_edicion_categoria");
+          //console.log("⚠️ Equipo sin id_edicion_categoria");
           return;
         }
 
         // 2. Obtener la edicion-categoria con la categoria anidada
         const edicionCatResponse = await api.edicionCategorias.getById(idEdicionCategoria);
         if (!edicionCatResponse || !edicionCatResponse.data) {
-          console.log("⚠️ No se encontró la edicion-categoria");
+          //console.log("⚠️ No se encontró la edicion-categoria");
           return;
         }
 
@@ -87,7 +87,7 @@ export const PlayerFormScreen: React.FC<PlayerFormScreenProps> = ({ navigation, 
 
         // Si la categoria no viene anidada, buscarla por separado
         if (!categoria && edicionCategoria.id_categoria) {
-          console.log("📥 Buscando categoria por id:", edicionCategoria.id_categoria);
+          //console.log("📥 Buscando categoria por id:", edicionCategoria.id_categoria);
           const catResponse = await api.categorias.get(edicionCategoria.id_categoria);
           if (catResponse && catResponse.data) {
             categoria = catResponse.data;
@@ -105,7 +105,7 @@ export const PlayerFormScreen: React.FC<PlayerFormScreenProps> = ({ navigation, 
             max_refuerzos: (edicionCategoria as any).max_refuerzos_override ?? categoria.max_refuerzos,
             max_jugadores_por_equipo: edicionCategoria.max_jugadores_por_equipo
           });
-          console.log("✅ Restricciones cargadas:", {
+          //console.log("✅ Restricciones cargadas:", {
             edad_minima: categoria.edad_minima,
             edad_maxima: categoria.edad_maxima,
             permite_refuerzos: (edicionCategoria as any).permite_refuerzos_override ?? categoria.permite_refuerzos,
@@ -114,10 +114,10 @@ export const PlayerFormScreen: React.FC<PlayerFormScreenProps> = ({ navigation, 
           });
 
         } else {
-          console.log("⚠️ No se encontró la categoria:", edicionCategoria);
+          //console.log("⚠️ No se encontró la categoria:", edicionCategoria);
         }
       } catch (e) {
-        console.log("Error cargando restricciones", e);
+        //console.log("Error cargando restricciones", e);
       }
     };
     loadRestrictions();
@@ -281,7 +281,7 @@ export const PlayerFormScreen: React.FC<PlayerFormScreenProps> = ({ navigation, 
         }
 
       } catch (e) {
-        console.log("Error verificando cupos", e);
+        //console.log("Error verificando cupos", e);
       }
     }
 
@@ -324,7 +324,7 @@ export const PlayerFormScreen: React.FC<PlayerFormScreenProps> = ({ navigation, 
           return;
         }
       } catch (error) {
-        console.error('Error verificando camiseta:', error);
+        //console.error('Error verificando camiseta:', error);
         // No bloquear si hay error en la verificación
       }
     }
@@ -365,7 +365,7 @@ export const PlayerFormScreen: React.FC<PlayerFormScreenProps> = ({ navigation, 
       {
         fallbackValue: null,
         onError: (error: any) => {
-          // console.error('❌ [PlayerForm] Error al guardar:', error);
+          // //console.error('❌ [PlayerForm] Error al guardar:', error);
           setLoading(false);
           setSavingStatus('');
 

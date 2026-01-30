@@ -113,7 +113,7 @@ export const MoveTeamToGroupScreen: React.FC<MoveTeamToGroupScreenProps> = ({
       }
 
     } catch (error) {
-      // console.error('Error loading data:', error);
+      // //console.error('Error loading data:', error);
       showError('Error al cargar los datos');
     } finally {
       setLoading(false);
@@ -164,7 +164,7 @@ export const MoveTeamToGroupScreen: React.FC<MoveTeamToGroupScreenProps> = ({
           {
             fallbackValue: null,
             onError: (error) => {
-              // console.error('Error al remover del grupo actual:', error);
+              // //console.error('Error al remover del grupo actual:', error);
               throw error;
             }
           }
@@ -195,7 +195,7 @@ export const MoveTeamToGroupScreen: React.FC<MoveTeamToGroupScreenProps> = ({
         {
           fallbackValue: null,
           onError: (error) => {
-            // console.error('Error al agregar al nuevo grupo:', error);
+            // //console.error('Error al agregar al nuevo grupo:', error);
             throw error;
           }
         }
@@ -219,10 +219,10 @@ export const MoveTeamToGroupScreen: React.FC<MoveTeamToGroupScreenProps> = ({
       }, 1000);
 
     } catch (error: any) {
-      // console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      // console.error('❌ [MoveTeamToGroup] ERROR AL MOVER EQUIPO');
-      // console.error('Error:', error);
-      // console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      // //console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      // //console.error('❌ [MoveTeamToGroup] ERROR AL MOVER EQUIPO');
+      // //console.error('Error:', error);
+      // //console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       setMoving(false);
       setMovingStatus('');
       showError(error.message || 'Error al mover el equipo', 'Error');

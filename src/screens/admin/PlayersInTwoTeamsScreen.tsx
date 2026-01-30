@@ -51,7 +51,7 @@ export const PlayersInTwoTeamsScreen = ({ navigation, route }: any) => {
         categorias = [];
       }
 
-      console.log(`Encontradas ${categorias.length} categorías`);
+      //console.log(`Encontradas ${categorias.length} categorías`);
 
       // Mapa para guardar jugadores por DNI
       const playersByDni: Map<string, { nombre_completo: string; equipos: EquipoInfo[] }> = new Map();
@@ -70,7 +70,7 @@ export const PlayersInTwoTeamsScreen = ({ navigation, route }: any) => {
             equipos = [];
           }
 
-          console.log(`  - ${equipos.length} equipos en ${categoriaNombre}`);
+          //console.log(`  - ${equipos.length} equipos en ${categoriaNombre}`);
 
           for (const equipo of equipos) {
             try {
@@ -111,11 +111,11 @@ export const PlayersInTwoTeamsScreen = ({ navigation, route }: any) => {
                 }
               }
             } catch (error) {
-              console.log(`Error cargando jugadores de ${equipo.nombre}:`, error);
+              //console.log(`Error cargando jugadores de ${equipo.nombre}:`, error);
             }
           }
         } catch (error) {
-          console.log(`Error cargando equipos de ${categoriaNombre}:`, error);
+          //console.log(`Error cargando equipos de ${categoriaNombre}:`, error);
         }
       }
 
@@ -134,10 +134,10 @@ export const PlayersInTwoTeamsScreen = ({ navigation, route }: any) => {
       // Ordenar por nombre
       duplicados.sort((a, b) => a.nombre_completo.localeCompare(b.nombre_completo));
 
-      console.log(`Total jugadores en 2+ equipos: ${duplicados.length}`);
+      //console.log(`Total jugadores en 2+ equipos: ${duplicados.length}`);
       setPlayersInTwoTeams(duplicados);
     } catch (error) {
-      console.error('Error loading players:', error);
+      //console.error('Error loading players:', error);
     } finally {
       setLoading(false);
       setProgress('');

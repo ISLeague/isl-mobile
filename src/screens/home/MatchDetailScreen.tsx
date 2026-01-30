@@ -56,7 +56,7 @@ export const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({ navigation
         setError('No se pudo encontrar la información del partido');
       }
     } catch (err) {
-      console.error('[MatchDetailScreen] Error fetching match detail:', err);
+      //console.error('[MatchDetailScreen] Error fetching match detail:', err);
       setError('Error al cargar los detalles del partido');
     } finally {
       setLoading(false);
@@ -98,7 +98,7 @@ export const MatchDetailScreen: React.FC<MatchDetailScreenProps> = ({ navigation
           setLocalDetails(respLocal.data);
         }
       } catch (error) {
-        console.log('Error fetching local details:', error);
+        //console.log('Error fetching local details:', error);
       }
     };
 

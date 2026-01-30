@@ -202,7 +202,7 @@ export const RondaDetailScreen: React.FC<RondaDetailScreenProps> = ({ navigation
         {
           fallbackValue: null,
           onError: (error) => {
-            // console.error('❌ [RondaDetail] Error al crear partido:', error);
+            // //console.error('❌ [RondaDetail] Error al crear partido:', error);
             errorCount++;
           },
         }

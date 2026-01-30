@@ -1375,7 +1375,7 @@ Esta sección lista los bugs conocidos y mejoras necesarias, indicando dónde en
 ```tsx
 <Image
   source={equipo.logo ? { uri: equipo.logo } : require('../../assets/default-team.png')}
-  onError={(error) => // console.log('Logo failed to load:', error)}
+  onError={(error) => // //console.log('Logo failed to load:', error)}
 />
 ```
 
@@ -1495,9 +1495,9 @@ Para cada bug, seguir estos pasos:
 2. **Reproducir el bug** en ambiente de desarrollo
 3. **Agregar logs** de debugging:
 ```tsx
-// console.log('📊 [ComponentName] Estado actual:', state);
-// console.log('✅ [ComponentName] Datos enviados:', payload);
-// console.log('❌ [ComponentName] Error:', error);
+// //console.log('📊 [ComponentName] Estado actual:', state);
+// //console.log('✅ [ComponentName] Datos enviados:', payload);
+// //console.log('❌ [ComponentName] Error:', error);
 ```
 4. **Verificar el servicio de API** correspondiente en `src/api/services/`
 5. **Probar la solución** en dispositivo real o emulador
@@ -1524,17 +1524,17 @@ npx react-native doctor
 # Instalar axios interceptors para logging
 # Ver src/api/apiClient.ts y agregar:
 apiClient.interceptors.request.use(request => {
-  // console.log('🚀 Request:', request.method?.toUpperCase(), request.url);
+  // //console.log('🚀 Request:', request.method?.toUpperCase(), request.url);
   return request;
 });
 
 apiClient.interceptors.response.use(
   response => {
-    // console.log('✅ Response:', response.config.url, response.status);
+    // //console.log('✅ Response:', response.config.url, response.status);
     return response;
   },
   error => {
-    // console.log('❌ Error:', error.config?.url, error.response?.status);
+    // //console.log('❌ Error:', error.config?.url, error.response?.status);
     return Promise.reject(error);
   }
 );
@@ -1543,4 +1543,4 @@ apiClient.interceptors.response.use(
 ### Chrome DevTools
 - Abrir en navegador: `chrome://inspect`
 - Remote devices → Inspect
-- // console para ver todos los logs
+- // //console para ver todos los logs

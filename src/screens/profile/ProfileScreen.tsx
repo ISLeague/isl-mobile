@@ -118,7 +118,7 @@ export const ProfileScreen = ({ navigation: navProp }: any) => {
         }
       }
     } catch (error) {
-      // console.error(error);
+      // //console.error(error);
       Alert.alert('Error', 'No se pudo actualizar el perfil');
     }
   };

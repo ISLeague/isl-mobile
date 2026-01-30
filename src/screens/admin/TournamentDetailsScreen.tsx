@@ -66,7 +66,7 @@ export const TournamentDetailsScreen = ({ navigation, route }: any) => {
         }
       }
     } catch (error) {
-      // console.error('Error refreshing tournament details:', error);
+      // //console.error('Error refreshing tournament details:', error);
     }
   };
 
@@ -84,7 +84,7 @@ export const TournamentDetailsScreen = ({ navigation, route }: any) => {
       if (error?.response?.status === 404) {
         setEdiciones([]);
       } else {
-        // console.error('Error loading editions:', error);
+        // //console.error('Error loading editions:', error);
         setEdiciones([]);
       }
     } finally {

@@ -45,7 +45,7 @@ export const ImpostorGameScreen = ({ navigation, route }: Props) => {
         navigation.replace('ImpostorLobby', { id_sala, codigo_sala, isHost: false });
       }
     } catch (error) {
-      console.error('Error loading game:', error);
+      //console.error('Error loading game:', error);
       Alert.alert('Error', 'No se pudo cargar el juego');
       navigation.goBack();
     } finally {

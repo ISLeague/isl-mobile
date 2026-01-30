@@ -93,13 +93,13 @@ export const CreateKnockoutFlowScreen: React.FC<CreateKnockoutFlowScreenProps> =
       return;
     }
 
-    console.log('🎯 [CreateKnockout] ========================================');
-    console.log('🎯 [CreateKnockout] Iniciando creación de ronda knockout');
-    console.log('Modo:', creationMode);
-    console.log('📋 [CreateKnockout] Copa seleccionada:', selectedCopa);
-    console.log('📋 [CreateKnockout] Ronda seleccionada:', selectedRonda);
-    console.log('📋 [CreateKnockout] Nombre:', nombre);
-    console.log('📋 [CreateKnockout] ID Edición Categoría:', idEdicionCategoria);
+    //console.log('🎯 [CreateKnockout] ========================================');
+    //console.log('🎯 [CreateKnockout] Iniciando creación de ronda knockout');
+    //console.log('Modo:', creationMode);
+    //console.log('📋 [CreateKnockout] Copa seleccionada:', selectedCopa);
+    //console.log('📋 [CreateKnockout] Ronda seleccionada:', selectedRonda);
+    //console.log('📋 [CreateKnockout] Nombre:', nombre);
+    //console.log('📋 [CreateKnockout] ID Edición Categoría:', idEdicionCategoria);
 
     setLoading(true);
 
@@ -109,23 +109,23 @@ export const CreateKnockoutFlowScreen: React.FC<CreateKnockoutFlowScreenProps> =
 
         // 1. Si no viene idFase, buscar la fase knockout para esta copa
         if (!idFase) {
-          console.log('🔍 [CreateKnockout] Buscando fase knockout para copa:', selectedCopa);
+          //console.log('🔍 [CreateKnockout] Buscando fase knockout para copa:', selectedCopa);
           const fasesResponse = await api.fases.list(idEdicionCategoria);
-          console.log('🔍 [CreateKnockout] Fases encontradas:', fasesResponse.data?.length || 0);
+          //console.log('🔍 [CreateKnockout] Fases encontradas:', fasesResponse.data?.length || 0);
 
           const fase = fasesResponse.success && fasesResponse.data && fasesResponse.data.length > 0
             ? fasesResponse.data.find((f: any) => f.tipo === 'knockout' && f.copa === selectedCopa)
             : null;
 
           if (!fase || !fase.id_fase) {
-            console.log('❌ [CreateKnockout] No se encontró fase knockout para copa:', selectedCopa);
+            //console.log('❌ [CreateKnockout] No se encontró fase knockout para copa:', selectedCopa);
             throw new Error(`No se encontró la fase knockout para Copa ${selectedCopa.toUpperCase()}`);
           }
 
           idFase = fase.id_fase;
-          console.log('✅ [CreateKnockout] Fase encontrada:', fase.nombre, '| ID:', idFase);
+          //console.log('✅ [CreateKnockout] Fase encontrada:', fase.nombre, '| ID:', idFase);
         } else {
-          console.log('✅ [CreateKnockout] Usando idFase desde params:', idFase);
+          //console.log('✅ [CreateKnockout] Usando idFase desde params:', idFase);
         }
 
         // 2. Crear la ronda
@@ -141,19 +141,19 @@ export const CreateKnockoutFlowScreen: React.FC<CreateKnockoutFlowScreenProps> =
           metodo_asignacion: creationMode === 'automatic' ? ('automatico_llaves' as const) : ('manual' as const)
         };
 
-        console.log('📤 [CreateKnockout] Datos de ronda a crear:');
-        console.log('   - nombre:', rondaData.nombre);
-        console.log('   - tipo:', rondaData.tipo);
-        console.log('   - subtipo_eliminatoria (COPA):', rondaData.subtipo_eliminatoria);
-        console.log('   - stage_eliminatoria (STAGE):', rondaData.stage_eliminatoria);
-        console.log('   - id_fase:', rondaData.id_fase);
-        console.log('   - id_edicion_categoria:', rondaData.id_edicion_categoria);
-        console.log('   - orden:', rondaData.orden);
-        console.log('   - metodo_asignacion:', rondaData.metodo_asignacion);
+        //console.log('📤 [CreateKnockout] Datos de ronda a crear:');
+        //console.log('   - nombre:', rondaData.nombre);
+        //console.log('   - tipo:', rondaData.tipo);
+        //console.log('   - subtipo_eliminatoria (COPA):', rondaData.subtipo_eliminatoria);
+        //console.log('   - stage_eliminatoria (STAGE):', rondaData.stage_eliminatoria);
+        //console.log('   - id_fase:', rondaData.id_fase);
+        //console.log('   - id_edicion_categoria:', rondaData.id_edicion_categoria);
+        //console.log('   - orden:', rondaData.orden);
+        //console.log('   - metodo_asignacion:', rondaData.metodo_asignacion);
 
 
         const createResponse = await api.rondas.create(rondaData);
-        console.log('✅ [CreateKnockout] Respuesta de creación:', createResponse);
+        //console.log('✅ [CreateKnockout] Respuesta de creación:', createResponse);
 
         return createResponse;
       },

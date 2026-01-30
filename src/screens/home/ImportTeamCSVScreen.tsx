@@ -44,7 +44,7 @@ export const ImportTeamCSVScreen: React.FC<ImportTeamCSVScreenProps> = ({ naviga
   const cleanValue = (val: string) => val.replace(/^["']|["']$/g, '').trim();
 
   const handleSelectCSV = async () => {
-    console.log('📂 [TeamCSVImport] Abriendo DocumentPicker...');
+    //console.log('📂 [TeamCSVImport] Abriendo DocumentPicker...');
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: ['text/csv', 'text/comma-separated-values', 'application/csv', '*/*'],
@@ -52,31 +52,31 @@ export const ImportTeamCSVScreen: React.FC<ImportTeamCSVScreenProps> = ({ naviga
         multiple: false,
       });
 
-      console.log('📂 [TeamCSVImport] DocumentPicker result:', result);
+      //console.log('📂 [TeamCSVImport] DocumentPicker result:', result);
 
       if (result.canceled) {
-        console.log('📂 [TeamCSVImport] Usuario canceló la selección');
+        //console.log('📂 [TeamCSVImport] Usuario canceló la selección');
         return;
       }
 
       const file = result.assets[0];
-      console.log('📂 [TeamCSVImport] Archivo seleccionado:', file.name, 'URI:', file.uri);
+      //console.log('📂 [TeamCSVImport] Archivo seleccionado:', file.name, 'URI:', file.uri);
 
       setImportingCSV(true);
       setImportStatus('Procesando archivo CSV...');
 
       // Read the file content (igual que BulkImport)
-      console.log('📂 [TeamCSVImport] Leyendo contenido del archivo...');
+      //console.log('📂 [TeamCSVImport] Leyendo contenido del archivo...');
       const response = await fetch(file.uri);
       const csvText = await response.text();
-      console.log('📂 [TeamCSVImport] Contenido leído, longitud:', csvText.length);
+      //console.log('📂 [TeamCSVImport] Contenido leído, longitud:', csvText.length);
 
       // Parse CSV (igual que BulkImport)
       const lines = csvText.split(/\r?\n/).filter(line => line.trim() !== '');
-      console.log('📂 [TeamCSVImport] Líneas parseadas:', lines.length);
+      //console.log('📂 [TeamCSVImport] Líneas parseadas:', lines.length);
 
       if (lines.length < 2) {
-        console.log('📂 [TeamCSVImport] Error: CSV vacío o sin datos');
+        //console.log('📂 [TeamCSVImport] Error: CSV vacío o sin datos');
         setImportingCSV(false);
         setImportStatus('');
         showError('El archivo CSV está vacío o no tiene el formato correcto');
@@ -85,7 +85,7 @@ export const ImportTeamCSVScreen: React.FC<ImportTeamCSVScreenProps> = ({ naviga
 
       // Parsear headers y rows (igual que BulkImport)
       const headers = lines[0].split(',').map(h => cleanValue(h));
-      console.log('📂 [TeamCSVImport] Headers encontrados:', headers);
+      //console.log('📂 [TeamCSVImport] Headers encontrados:', headers);
 
       const rows = lines.slice(1).map(line => {
         const values = line.split(',').map(v => cleanValue(v));
@@ -95,18 +95,18 @@ export const ImportTeamCSVScreen: React.FC<ImportTeamCSVScreenProps> = ({ naviga
         });
         return obj;
       });
-      console.log('📂 [TeamCSVImport] Filas parseadas:', rows.length);
+      //console.log('📂 [TeamCSVImport] Filas parseadas:', rows.length);
 
       // Validate required fields (sin nombre_equipo)
       const requiredFields = ['nombre_completo', 'dni', 'fecha_nacimiento', 'es_refuerzo'];
       const missingFields = requiredFields.filter(f => !headers.includes(f));
 
-      console.log('📂 [TeamCSVImport] Required fields:', requiredFields);
-      console.log('📂 [TeamCSVImport] Found headers:', headers);
-      console.log('📂 [TeamCSVImport] Missing fields:', missingFields);
+      //console.log('📂 [TeamCSVImport] Required fields:', requiredFields);
+      //console.log('📂 [TeamCSVImport] Found headers:', headers);
+      //console.log('📂 [TeamCSVImport] Missing fields:', missingFields);
 
       if (missingFields.length > 0) {
-        console.log('📂 [TeamCSVImport] Error: Faltan columnas requeridas');
+        //console.log('📂 [TeamCSVImport] Error: Faltan columnas requeridas');
         setImportingCSV(false);
         setImportStatus('');
         Alert.alert(
@@ -118,7 +118,7 @@ export const ImportTeamCSVScreen: React.FC<ImportTeamCSVScreenProps> = ({ naviga
         return;
       }
 
-      console.log('📂 [TeamCSVImport] ✅ Validación pasada! Listo para enviar.');
+      //console.log('📂 [TeamCSVImport] ✅ Validación pasada! Listo para enviar.');
 
       // Reconstruct CSV string with proper formatting
       const csvLines = [
@@ -137,7 +137,7 @@ export const ImportTeamCSVScreen: React.FC<ImportTeamCSVScreenProps> = ({ naviga
         name: file.name,
       } as any;
 
-      console.log('📂 [TeamCSVImport] Enviando al servidor para equipoId:', equipoId);
+      //console.log('📂 [TeamCSVImport] Enviando al servidor para equipoId:', equipoId);
       setImportStatus('Enviando datos al servidor...');
 
       // Upload CSV
@@ -240,7 +240,7 @@ export const ImportTeamCSVScreen: React.FC<ImportTeamCSVScreenProps> = ({ naviga
         setImportStatus('');
       }
     } catch (error: any) {
-      console.error('❌ [TeamCSVImport] Error:', error);
+      //console.error('❌ [TeamCSVImport] Error:', error);
       setImportingCSV(false);
       setImportStatus('');
       showError('Error inesperado al procesar el archivo CSV', 'Error');

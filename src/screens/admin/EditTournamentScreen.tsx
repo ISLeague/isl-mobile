@@ -75,12 +75,12 @@ export const EditTournamentScreen = ({ navigation, route }: any) => {
         if (error?.response?.status === 404) {
           setAssignedAdmins([]);
         } else {
-          // console.error('Error loading assigned admins:', error);
+          // //console.error('Error loading assigned admins:', error);
           setAssignedAdmins([]);
         }
       }
     } catch (error) {
-      // console.error('Error in loadAdmins:', error);
+      // //console.error('Error in loadAdmins:', error);
     } finally {
       setLoadingAdmins(false);
     }
@@ -95,7 +95,7 @@ export const EditTournamentScreen = ({ navigation, route }: any) => {
       if (error?.response?.status === 404) {
         setAvailableAdmins([]);
       } else {
-        // console.error('Error loading available admins:', error);
+        // //console.error('Error loading available admins:', error);
         setAvailableAdmins([]);
       }
     } finally {
@@ -130,7 +130,7 @@ export const EditTournamentScreen = ({ navigation, route }: any) => {
         },
       ]);
     } catch (error) {
-      // console.error('Error updating tournament:', error);
+      // //console.error('Error updating tournament:', error);
       Alert.alert('Error', 'No se pudo actualizar el torneo');
     } finally {
       setIsSaving(false);
@@ -165,7 +165,7 @@ export const EditTournamentScreen = ({ navigation, route }: any) => {
               Alert.alert('Éxito', 'Administrador asignado correctamente');
               loadAdmins();
             } catch (error) {
-              // console.error('Error assigning admin:', error);
+              // //console.error('Error assigning admin:', error);
               Alert.alert('Error', 'No se pudo asignar el administrador');
             }
           },
@@ -202,7 +202,7 @@ export const EditTournamentScreen = ({ navigation, route }: any) => {
               Alert.alert('Éxito', 'Administrador removido correctamente');
               loadAdmins();
             } catch (error) {
-              // console.error('Error removing admin:', error);
+              // //console.error('Error removing admin:', error);
               Alert.alert('Error', 'No se pudo quitar el administrador');
             }
           },
@@ -250,7 +250,7 @@ export const EditTournamentScreen = ({ navigation, route }: any) => {
         }]
       );
     } catch (error) {
-      // console.error('Error creating admin:', error);
+      // //console.error('Error creating admin:', error);
       Alert.alert('Error', 'No se pudo crear el administrador');
       setIsCreatingAdmin(false);
     }
@@ -268,9 +268,9 @@ export const EditTournamentScreen = ({ navigation, route }: any) => {
           onPress: async () => {
             try {
               setIsSaving(true);
-              console.log('🔗 [EditTournament] Deleting tournament id:', torneo.id_torneo);
+              //console.log('🔗 [EditTournament] Deleting tournament id:', torneo.id_torneo);
               const response = await api.torneos.delete(torneo.id_torneo);
-              console.log('✅ [EditTournament] Delete response:', response);
+              //console.log('✅ [EditTournament] Delete response:', response);
               Alert.alert('Éxito', 'Torneo eliminado correctamente', [
                 {
                   text: 'OK',
@@ -280,7 +280,7 @@ export const EditTournamentScreen = ({ navigation, route }: any) => {
                 },
               ]);
             } catch (error: any) {
-              console.error('❌ [EditTournament] Error deleting tournament:', error);
+              //console.error('❌ [EditTournament] Error deleting tournament:', error);
               // Show detailed error if available
               const msg = error?.response?.data || error?.message || 'No se pudo eliminar el torneo';
               Alert.alert('Error', typeof msg === 'string' ? msg : 'No se pudo eliminar el torneo');

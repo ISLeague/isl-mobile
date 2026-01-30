@@ -70,7 +70,7 @@ const FixtureEmbedImprovedComponent: React.FC<FixtureEmbedImprovedProps> = ({
   }>({});
 
   const loadData = useCallback(async () => {
-    console.log('🔄 loadData callback iniciado');
+    //console.log('🔄 loadData callback iniciado');
     setLoading(true);
     const result = await safeAsync(
       async () => {
@@ -90,10 +90,10 @@ const FixtureEmbedImprovedComponent: React.FC<FixtureEmbedImprovedProps> = ({
           }
 
           currentIdFase = allFases[0].id_fase;
-          console.log('Estableciendo idFase:', currentIdFase);
+          //console.log('Estableciendo idFase:', currentIdFase);
           setIdFase(currentIdFase);
         } catch (apiError) {
-          console.log('Error en llamada a API getFaseGrupos:', apiError);
+          //console.log('Error en llamada a API getFaseGrupos:', apiError);
           throw apiError;
         }
 
@@ -102,43 +102,43 @@ const FixtureEmbedImprovedComponent: React.FC<FixtureEmbedImprovedProps> = ({
         let allRondas: Ronda[] = [];
         try {
           const rondasResponse = await api.rondas.list({ id_fase: currentIdFase });
-          console.log('📋 Respuesta completa de rondas:', rondasResponse);
-          console.log('🎯 Rondas extraídas:', rondasResponse.data?.rondas);
+          //console.log('📋 Respuesta completa de rondas:', rondasResponse);
+          //console.log('🎯 Rondas extraídas:', rondasResponse.data?.rondas);
           allRondas = rondasResponse.success && rondasResponse.data?.rondas ? rondasResponse.data.rondas : [];
-          console.log('✅ Rondas procesadas:', allRondas.length, 'rondas encontradas');
+          //console.log('✅ Rondas procesadas:', allRondas.length, 'rondas encontradas');
         } catch (error) {
-          console.log('💥 Error cargando rondas:', error);
+          //console.log('💥 Error cargando rondas:', error);
         }
 
         // Filter only fase_grupos and amistosa (no knockout rounds)
         // Also ensure each ronda has id_fase set
-        console.log('🔍 Filtrando rondas tipo fase_grupos o amistosa...');
+        //console.log('🔍 Filtrando rondas tipo fase_grupos o amistosa...');
         const sortedRondas: Ronda[] = allRondas
           .filter((r: Ronda) => {
             const isValid = r.tipo === 'fase_grupos' || r.tipo === 'amistosa';
-            console.log(`🔸 Ronda "${r.nombre}" (tipo: ${r.tipo}): ${isValid ? 'incluida' : 'excluida'}`);
+            //console.log(`🔸 Ronda "${r.nombre}" (tipo: ${r.tipo}): ${isValid ? 'incluida' : 'excluida'}`);
             return isValid;
           })
           .map((r: Ronda) => ({ ...r, id_fase: currentIdFase }))
           .sort((a: Ronda, b: Ronda) => b.orden - a.orden);
 
-        console.log('📊 Rondas finales después del filtro:', sortedRondas.length);
+        //console.log('📊 Rondas finales después del filtro:', sortedRondas.length);
 
         // Load partidos from API (now with nested team, cancha, and ronda data)
-        console.log('🔄 Cargando partidos para idEdicionCategoria:', idEdicionCategoria);
+        //console.log('🔄 Cargando partidos para idEdicionCategoria:', idEdicionCategoria);
         const partidosResponse = await api.partidos.list({ id_edicion_categoria: idEdicionCategoria || 1 });
         const allPartidos = partidosResponse.success && partidosResponse.data ? partidosResponse.data : [];
-        console.log('📋 Partidos cargados:', allPartidos.length);
+        //console.log('📋 Partidos cargados:', allPartidos.length);
 
         // Load canchas from API (optional - only needed for creating partidos from fixtures)
         let allCanchas: Cancha[] = [];
         try {
-          console.log('🔄 Cargando canchas para idEdicionCategoria:', idEdicionCategoria);
+          //console.log('🔄 Cargando canchas para idEdicionCategoria:', idEdicionCategoria);
           const canchasResponse = await api.canchas.listByEdicionCategoria(idEdicionCategoria || 1);
           allCanchas = canchasResponse.success && canchasResponse.data?.canchas ? canchasResponse.data.canchas : [];
-          console.log('📋 Canchas cargadas:', allCanchas.length);
+          //console.log('📋 Canchas cargadas:', allCanchas.length);
         } catch (canchasError) {
-          console.log('⚠️ Error cargando canchas (no crítico):', canchasError);
+          //console.log('⚠️ Error cargando canchas (no crítico):', canchasError);
           // No es crítico - las canchas solo se necesitan para crear partidos desde fixtures
         }
 
@@ -162,15 +162,15 @@ const FixtureEmbedImprovedComponent: React.FC<FixtureEmbedImprovedProps> = ({
         severity: 'high',
         fallbackValue: { sortedRondas: [], closestRondaId: null, partidos: [], canchas: [] },
         onError: (error) => {
-          console.log('💥 Error en safeAsync:', error);
+          //console.log('💥 Error en safeAsync:', error);
           showErrorRef.current(getUserFriendlyMessage(error), 'Error al cargar fixture');
         }
       }
     );
 
-    console.log('📊 Resultado de safeAsync:', result ? 'success' : 'failed');
+    //console.log('📊 Resultado de safeAsync:', result ? 'success' : 'failed');
     if (result) {
-      console.log('🔧 Estableciendo estados con resultado:', {
+      //console.log('🔧 Estableciendo estados con resultado:', {
         rondas: result.sortedRondas.length,
         partidos: result.partidos.length,
         canchas: result.canchas.length
@@ -184,7 +184,7 @@ const FixtureEmbedImprovedComponent: React.FC<FixtureEmbedImprovedProps> = ({
         hasInitializedRef.current = true;
       }
     }
-    console.log('✅ loadData completado, loading=false');
+    //console.log('✅ loadData completado, loading=false');
     setLoading(false);
   }, [idEdicionCategoria]); // Removido showError de dependencias
 
@@ -192,7 +192,7 @@ const FixtureEmbedImprovedComponent: React.FC<FixtureEmbedImprovedProps> = ({
   useFocusEffect(
     useCallback(() => {
       if (idEdicionCategoria) {
-        console.log('🔄 useFocusEffect active: reloading fixture data...');
+        //console.log('🔄 useFocusEffect active: reloading fixture data...');
         loadData();
       }
     }, [idEdicionCategoria, loadData])
@@ -977,7 +977,7 @@ const FixtureEmbedImprovedComponent: React.FC<FixtureEmbedImprovedProps> = ({
 
   const handleGenerateFixtures = (ronda: Ronda) => {
     // Navegar al paso 2 del flujo de creación de rondas (generación de fixtures)
-    console.log('🚀 Navegando a generación de fixtures con parámetros:', {
+    //console.log('🚀 Navegando a generación de fixtures con parámetros:', {
       idEdicionCategoria,
       step: 2,
       rondaData: {

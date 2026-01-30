@@ -68,7 +68,7 @@ export const CreateSponsorScreen: React.FC<CreateSponsorScreenProps> = ({ naviga
         { text: 'OK', onPress: () => navigation.goBack() }
       ]);
     } catch (error) {
-      // console.error('Error creando sponsor:', error);
+      // //console.error('Error creando sponsor:', error);
       Alert.alert('Error', 'No se pudo crear el sponsor. Por favor intenta de nuevo.');
     } finally {
       setLoading(false);

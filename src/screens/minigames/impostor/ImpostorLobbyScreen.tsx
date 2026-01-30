@@ -34,7 +34,7 @@ export const ImpostorLobbyScreen = ({ navigation, route }: Props) => {
       const data = await minigamesService.getSala({ id_sala });
       setSala(data);
     } catch (error) {
-      console.error('Error loading sala:', error);
+      //console.error('Error loading sala:', error);
       Alert.alert('Error', 'No se pudo cargar la sala');
       navigation.goBack();
     } finally {

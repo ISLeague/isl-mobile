@@ -79,35 +79,35 @@ export const BulkImportPlayersScreen: React.FC<BulkImportPlayersScreenProps> = (
   };
 
   const handleStartImport = async () => {
-    console.log('📂 [BulkImport] Iniciando selección de archivo...');
+    //console.log('📂 [BulkImport] Iniciando selección de archivo...');
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: ['text/csv', 'text/comma-separated-values', 'application/csv', '*/*'],
         copyToCacheDirectory: true,
       });
 
-      console.log('📂 [BulkImport] DocumentPicker result:', result);
+      //console.log('📂 [BulkImport] DocumentPicker result:', result);
 
       if (result.canceled) {
-        console.log('📂 [BulkImport] Usuario canceló la selección');
+        //console.log('📂 [BulkImport] Usuario canceló la selección');
         return;
       }
 
       const file = result.assets[0];
-      console.log('📂 [BulkImport] Archivo seleccionado:', file.name, 'URI:', file.uri);
+      //console.log('📂 [BulkImport] Archivo seleccionado:', file.name, 'URI:', file.uri);
 
       // Leer el contenido del archivo
-      console.log('📂 [BulkImport] Leyendo contenido del archivo...');
+      //console.log('📂 [BulkImport] Leyendo contenido del archivo...');
       const response = await fetch(file.uri);
       const csvText = await response.text();
-      console.log('📂 [BulkImport] Contenido leído, longitud:', csvText.length);
+      //console.log('📂 [BulkImport] Contenido leído, longitud:', csvText.length);
 
       // Parse CSV
       const lines = csvText.split(/\r?\n/).filter(line => line.trim() !== '');
-      console.log('📂 [BulkImport] Líneas parseadas:', lines.length);
+      //console.log('📂 [BulkImport] Líneas parseadas:', lines.length);
 
       if (lines.length < 2) {
-        console.log('📂 [BulkImport] Error: CSV vacío o sin datos');
+        //console.log('📂 [BulkImport] Error: CSV vacío o sin datos');
         showError('El archivo CSV está vacío o no tiene el formato correcto');
         return;
       }
@@ -116,7 +116,7 @@ export const BulkImportPlayersScreen: React.FC<BulkImportPlayersScreenProps> = (
       const cleanValue = (val: string) => val.replace(/^["']|["']$/g, '').trim();
 
       const headers = lines[0].split(',').map(h => cleanValue(h));
-      console.log('📂 [BulkImport] Headers encontrados:', headers);
+      //console.log('📂 [BulkImport] Headers encontrados:', headers);
 
       const rows = lines.slice(1).map(line => {
         const values = line.split(',').map(v => cleanValue(v));
@@ -126,11 +126,11 @@ export const BulkImportPlayersScreen: React.FC<BulkImportPlayersScreenProps> = (
         });
         return obj;
       });
-      console.log('📂 [BulkImport] Filas parseadas:', rows.length);
+      //console.log('📂 [BulkImport] Filas parseadas:', rows.length);
 
       // Validar columna nombre_equipo
       if (!headers.includes('nombre_equipo')) {
-        console.log('📂 [BulkImport] Error: Falta columna nombre_equipo. Headers:', headers);
+        //console.log('📂 [BulkImport] Error: Falta columna nombre_equipo. Headers:', headers);
         Alert.alert(
           'Error en formato CSV',
           `El CSV debe incluir la columna "nombre_equipo".\n\nColumnas encontradas:\n${headers.join(', ')}`,
@@ -142,10 +142,10 @@ export const BulkImportPlayersScreen: React.FC<BulkImportPlayersScreenProps> = (
 
       // Obtener nombres únicos de equipos del CSV
       const uniqueTeamNames = [...new Set(rows.map(row => row.nombre_equipo).filter(Boolean))];
-      console.log('📂 [BulkImport] Equipos únicos en CSV:', uniqueTeamNames);
+      //console.log('📂 [BulkImport] Equipos únicos en CSV:', uniqueTeamNames);
 
       if (uniqueTeamNames.length === 0) {
-        console.log('📂 [BulkImport] Error: No se encontraron nombres de equipo');
+        //console.log('📂 [BulkImport] Error: No se encontraron nombres de equipo');
         showError('No se encontraron nombres de equipo válidos en el CSV');
         return;
       }
@@ -154,7 +154,7 @@ export const BulkImportPlayersScreen: React.FC<BulkImportPlayersScreenProps> = (
       const matchedTeams: Array<{ equipo: Equipo; rows: any[] }> = [];
       const unmatchedTeams: string[] = [];
 
-      console.log('📂 [BulkImport] Equipos registrados para matching:', equipos.map(e => e.nombre));
+      //console.log('📂 [BulkImport] Equipos registrados para matching:', equipos.map(e => e.nombre));
 
       for (const teamName of uniqueTeamNames) {
         const equipo = equipos.find(e =>
@@ -164,14 +164,14 @@ export const BulkImportPlayersScreen: React.FC<BulkImportPlayersScreenProps> = (
         if (equipo) {
           const teamRows = rows.filter(row => row.nombre_equipo === teamName);
           matchedTeams.push({ equipo, rows: teamRows });
-          console.log(`📂 [BulkImport] Match encontrado: "${teamName}" -> "${equipo.nombre}" (${teamRows.length} jugadores)`);
+          //console.log(`📂 [BulkImport] Match encontrado: "${teamName}" -> "${equipo.nombre}" (${teamRows.length} jugadores)`);
         } else {
           unmatchedTeams.push(teamName);
-          console.log(`📂 [BulkImport] Sin match: "${teamName}"`);
+          //console.log(`📂 [BulkImport] Sin match: "${teamName}"`);
         }
       }
 
-      console.log('📂 [BulkImport] Resumen: matched:', matchedTeams.length, 'unmatched:', unmatchedTeams.length);
+      //console.log('📂 [BulkImport] Resumen: matched:', matchedTeams.length, 'unmatched:', unmatchedTeams.length);
 
       if (unmatchedTeams.length > 0) {
         Alert.alert(
@@ -189,9 +189,9 @@ export const BulkImportPlayersScreen: React.FC<BulkImportPlayersScreenProps> = (
         processImport(matchedTeams, headers);
       }
     } catch (error: any) {
-      console.error('❌ [BulkImport] Error en proceso de importación:', error);
-      console.error('❌ [BulkImport] Error message:', error?.message);
-      console.error('❌ [BulkImport] Error stack:', error?.stack);
+      //console.error('❌ [BulkImport] Error en proceso de importación:', error);
+      //console.error('❌ [BulkImport] Error message:', error?.message);
+      //console.error('❌ [BulkImport] Error stack:', error?.stack);
       showError('Error al procesar el archivo CSV');
     }
   };

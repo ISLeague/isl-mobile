@@ -75,20 +75,20 @@ export const AdminTournamentsScreen = ({ navigation, route }: any) => {
         setLoading(true);
       }
 
-      console.log('🔍 [AdminTournaments] loadTorneos - id_pais:', pais.id_pais, 'filtroActivo:', filtroActivo, 'searchQuery:', searchQuery);
+      //console.log('🔍 [AdminTournaments] loadTorneos - id_pais:', pais.id_pais, 'filtroActivo:', filtroActivo, 'searchQuery:', searchQuery);
       const activoParam = filtroActivo === undefined ? 'todos' : filtroActivo;
       const params = {
         activo: activoParam,
         q: searchQuery.trim() || undefined,
       } as const;
-      console.log('[AdminTournaments] loadTorneos - calling api.torneos.getByCountry with params:', params);
+      //console.log('[AdminTournaments] loadTorneos - calling api.torneos.getByCountry with params:', params);
       const response = await api.torneos.getByCountry(pais.id_pais, params as any);
 
       const data = response.data || [];
 
       // Validar que data sea un array
       if (!Array.isArray(data)) {
-        // console.warn('La respuesta de torneos no es un array:', data);
+        // //console.warn('La respuesta de torneos no es un array:', data);
         setTorneos([]);
         return;
       }
@@ -117,7 +117,7 @@ export const AdminTournamentsScreen = ({ navigation, route }: any) => {
             }
 
             // Solo loguear errores que NO sean 404
-            // console.error(`❌ [AdminTournaments] Error loading editions for tournament ${torneo.id_torneo}:`, error);
+            // //console.error(`❌ [AdminTournaments] Error loading editions for tournament ${torneo.id_torneo}:`, error);
             return {
               ...torneo,
               tieneEdicionActiva: false,
@@ -130,7 +130,7 @@ export const AdminTournamentsScreen = ({ navigation, route }: any) => {
       setTorneos(torneosConEstado);
 
     } catch (error: any) {
-      // console.error('❌❌❌ [AdminTournaments] Error en loadTorneos - ESTE ES EL ERROR QUE CAUSA EL ALERT:', error);
+      // //console.error('❌❌❌ [AdminTournaments] Error en loadTorneos - ESTE ES EL ERROR QUE CAUSA EL ALERT:', error);
 
       setTorneos([]);
       Alert.alert('Error', 'No se pudieron cargar los torneos. Intenta de nuevo.');

@@ -48,9 +48,9 @@ class ErrorHandler {
 
     // Loggear en consola según severidad
     if (severity === 'critical' || severity === 'high') {
-      // console.error(`[${severity.toUpperCase()}] ${context}:`, error, metadata);
+      // //console.error(`[${severity.toUpperCase()}] ${context}:`, error, metadata);
     } else {
-      // console.warn(`[${severity.toUpperCase()}] ${context}:`, error);
+      // //console.warn(`[${severity.toUpperCase()}] ${context}:`, error);
     }
 
     // TODO: Enviar a servicio de tracking (Sentry, Firebase, etc.)

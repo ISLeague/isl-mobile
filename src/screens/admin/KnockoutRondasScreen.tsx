@@ -83,7 +83,7 @@ export const KnockoutRondasScreen: React.FC<KnockoutRondasScreenProps> = ({
   );
 
   const loadData = async () => {
-    console.log('🔄 [KnockoutRondas] Cargando datos para fase:', fase.id_fase);
+    //console.log('🔄 [KnockoutRondas] Cargando datos para fase:', fase.id_fase);
     setLoading(true);
 
     const result = await safeAsync(
@@ -104,27 +104,27 @@ export const KnockoutRondasScreen: React.FC<KnockoutRondasScreenProps> = ({
           rondasData = todasLasRondas.filter(
             (r: Ronda) => r.subtipo_eliminatoria === copa
           );
-          console.log(`📅 [KnockoutRondas] Rondas encontradas: ${rondasData.length}`);
+          //console.log(`📅 [KnockoutRondas] Rondas encontradas: ${rondasData.length}`);
         }
 
         // Cargar partidos de cada ronda
-        console.log('⚽ [KnockoutRondas] Cargando partidos de cada ronda...');
+        //console.log('⚽ [KnockoutRondas] Cargando partidos de cada ronda...');
         let partidosData: Partido[] = [];
 
         for (const ronda of rondasData) {
-          console.log(`📋 [KnockoutRondas] Cargando partidos de ronda ${ronda.id_ronda}: ${ronda.nombre}`);
+          //console.log(`📋 [KnockoutRondas] Cargando partidos de ronda ${ronda.id_ronda}: ${ronda.nombre}`);
           const partidosResponse = await api.partidos.list({ id_ronda: ronda.id_ronda });
 
           if (partidosResponse.success && partidosResponse.data) {
             const partidosRonda = Array.isArray(partidosResponse.data)
               ? partidosResponse.data
               : [];
-            console.log(`   ✓ ${partidosRonda.length} partidos encontrados`);
+            //console.log(`   ✓ ${partidosRonda.length} partidos encontrados`);
             partidosData.push(...partidosRonda);
           }
         }
 
-        console.log(`⚽ [KnockoutRondas] Total partidos cargados: ${partidosData.length}`);
+        //console.log(`⚽ [KnockoutRondas] Total partidos cargados: ${partidosData.length}`);
 
         return { rondas: rondasData, partidos: partidosData };
       },
@@ -133,7 +133,7 @@ export const KnockoutRondasScreen: React.FC<KnockoutRondasScreenProps> = ({
         severity: 'high',
         fallbackValue: { rondas: [], partidos: [] },
         onError: (error) => {
-          console.error('❌ [KnockoutRondas] Error:', error);
+          //console.error('❌ [KnockoutRondas] Error:', error);
           showError(getUserFriendlyMessage(error), 'Error al cargar datos');
         },
       }
@@ -162,7 +162,7 @@ export const KnockoutRondasScreen: React.FC<KnockoutRondasScreenProps> = ({
   // ============================================
 
   const handleCreateRondaManual = () => {
-    console.log("Info de la fase:", fase);
+    //console.log("Info de la fase:", fase);
     navigation.navigate('CreateManualKnockoutRound', {
       idEdicionCategoria,
       idFase: fase.id_fase,
@@ -171,7 +171,7 @@ export const KnockoutRondasScreen: React.FC<KnockoutRondasScreenProps> = ({
   };
 
   const handleCreateRondaAutomatica = async () => {
-    console.log('🤖 [KnockoutRondas] Generando fixture automático...');
+    //console.log('🤖 [KnockoutRondas] Generando fixture automático...');
     setLoading(true);
 
     const result = await safeAsync(
@@ -180,7 +180,7 @@ export const KnockoutRondasScreen: React.FC<KnockoutRondasScreenProps> = ({
       {
         fallbackValue: null,
         onError: (error) => {
-          console.error('❌ [KnockoutRondas] Error al generar fixture:', error);
+          //console.error('❌ [KnockoutRondas] Error al generar fixture:', error);
           showError(getUserFriendlyMessage(error), 'Error al generar fixture');
         },
       }
@@ -189,7 +189,7 @@ export const KnockoutRondasScreen: React.FC<KnockoutRondasScreenProps> = ({
     setLoading(false);
 
     if (result && result.success && result.data) {
-      console.log('✅ [KnockoutRondas] Fixture generado:', result.data);
+      //console.log('✅ [KnockoutRondas] Fixture generado:', result.data);
 
       // Navegar a pantalla de configuración con los encuentros sugeridos
       navigation.navigate('CreateAutomaticKnockoutRound', {
@@ -249,7 +249,7 @@ export const KnockoutRondasScreen: React.FC<KnockoutRondasScreenProps> = ({
           text: 'Sí, eliminar',
           style: 'destructive',
           onPress: async () => {
-            console.log('🗑️ [KnockoutRondas] Eliminando ronda:', rondaObj.id_ronda);
+            //console.log('🗑️ [KnockoutRondas] Eliminando ronda:', rondaObj.id_ronda);
             setDeletingRonda(rondaObj.id_ronda);
 
             const result = await safeAsync(
@@ -258,7 +258,7 @@ export const KnockoutRondasScreen: React.FC<KnockoutRondasScreenProps> = ({
               {
                 fallbackValue: null,
                 onError: (error) => {
-                  console.error('❌ [KnockoutRondas] Error al eliminar:', error);
+                  //console.error('❌ [KnockoutRondas] Error al eliminar:', error);
                   showError('Error al eliminar la ronda');
                 },
               }

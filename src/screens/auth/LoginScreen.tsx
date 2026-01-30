@@ -53,7 +53,7 @@ export const LoginScreen = ({ navigation }: any) => {
 
     const response = await safeAsync(
       async () => {
-        console.log('🔑 Intentando login con device_token:', deviceToken);
+        //console.log('🔑 Intentando login con device_token:', deviceToken);
         return await api.auth.login({
           email,
           password,
@@ -82,7 +82,7 @@ export const LoginScreen = ({ navigation }: any) => {
     setLoading(false);
 
     if (response) {
-      // console.log('✅ Login exitoso:', 
+      // //console.log('✅ Login exitoso:', 
     
 
       // Guardar en el contexto
@@ -91,7 +91,7 @@ export const LoginScreen = ({ navigation }: any) => {
 
       // Verificar si debe cambiar contraseña (admins de torneo en primer login)
       if (response.usuario.debe_cambiar_password) {
-        // console.log('🔄 Redirigiendo a ChangePassword');
+        // //console.log('🔄 Redirigiendo a ChangePassword');
         setTimeout(() => {
           navigation.reset({
             index: 0,
@@ -103,17 +103,17 @@ export const LoginScreen = ({ navigation }: any) => {
 
       // Navegación según el rol
       const rol = response.usuario.rol;
-      // console.log('👤 Rol del usuario:', rol);
+      // //console.log('👤 Rol del usuario:', rol);
 
       setTimeout(() => {
         if (rol === 'superadmin') {
-          // console.log('🔄 Navegando a ManageCountries (SuperAdmin)');
+          // //console.log('🔄 Navegando a ManageCountries (SuperAdmin)');
           navigation.reset({
             index: 0,
             routes: [{ name: 'ManageCountries' }],
           });
         } else if (rol === 'admin') {
-          // console.log('🔄 Navegando a TournamentAdminDashboard (Admin)');
+          // //console.log('🔄 Navegando a TournamentAdminDashboard (Admin)');
           // Admin de torneo → TournamentAdminDashboard (muestra lista de torneos)
           if (response.usuario.id_torneos && response.usuario.id_torneos.length > 0) {
             navigation.reset({
@@ -125,13 +125,13 @@ export const LoginScreen = ({ navigation }: any) => {
             showError('Admin sin torneos asignados', 'Error');
           }
         } else if (rol === 'camarografo') {
-          // console.log('🔄 Navegando a Camarografo');
+          // //console.log('🔄 Navegando a Camarografo');
           navigation.reset({
             index: 0,
             routes: [{ name: 'Camarografo' }],
           });
         } else {
-          // console.log('🔄 Navegando a Main (Fan/Jugador)');
+          // //console.log('🔄 Navegando a Main (Fan/Jugador)');
           // Fan o jugador → Main (tabs)
           navigation.reset({
             index: 0,

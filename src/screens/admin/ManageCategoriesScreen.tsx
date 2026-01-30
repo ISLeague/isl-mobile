@@ -73,7 +73,7 @@ export const ManageCategoriesScreen = ({ navigation, route }: any) => {
       if (error?.response?.status === 404) {
         setCategorias([]);
       } else {
-        // console.error('Error loading categories:', error);
+        // //console.error('Error loading categories:', error);
         // Don't show alert, just set empty array - screen will show empty state
         setCategorias([]);
       }
@@ -182,18 +182,18 @@ export const ManageCategoriesScreen = ({ navigation, route }: any) => {
         const response = await api.categorias.update(updatePayload);
         Alert.alert('Éxito', 'Categoría actualizada correctamente');
       } else {
-        // console.warn('⚠️ [ManageCategories] No se pudo determinar la acción (create/edit)');
+        // //console.warn('⚠️ [ManageCategories] No se pudo determinar la acción (create/edit)');
       }
 
       setShowModal(false);
       loadCategorias();
     } catch (error: any) {
-      // console.error('❌ [ManageCategories] Error saving category:', error);
-      // console.error('❌ [ManageCategories] Error completo:', JSON.stringify(error, null, 2));
-      // console.error('❌ [ManageCategories] Error response:', error?.response);
-      // console.error('❌ [ManageCategories] Error response data:', error?.response?.data);
-      // console.error('❌ [ManageCategories] Error response status:', error?.response?.status);
-      // console.error('❌ [ManageCategories] Error config:', error?.config);
+      // //console.error('❌ [ManageCategories] Error saving category:', error);
+      // //console.error('❌ [ManageCategories] Error completo:', JSON.stringify(error, null, 2));
+      // //console.error('❌ [ManageCategories] Error response:', error?.response);
+      // //console.error('❌ [ManageCategories] Error response data:', error?.response?.data);
+      // //console.error('❌ [ManageCategories] Error response status:', error?.response?.status);
+      // //console.error('❌ [ManageCategories] Error config:', error?.config);
 
       const errorMessage = error?.response?.data?.message || error?.message || 'No se pudo guardar la categoría';
       Alert.alert('Error', errorMessage);
@@ -217,7 +217,7 @@ export const ManageCategoriesScreen = ({ navigation, route }: any) => {
               Alert.alert('Éxito', 'Categoría eliminada correctamente');
               loadCategorias();
             } catch (error) {
-              // console.error('Error deleting category:', error);
+              // //console.error('Error deleting category:', error);
               Alert.alert('Error', 'No se pudo eliminar la categoría');
             }
           },

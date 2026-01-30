@@ -121,7 +121,7 @@ export const CamarografoScreen = ({ navigation }: any) => {
         await asset.downloadAsync();
         setWatermarkAsset(asset);
       } catch (error) {
-        console.error('Error loading watermark:', error);
+        //console.error('Error loading watermark:', error);
       }
     };
     loadWatermark();
@@ -188,15 +188,15 @@ export const CamarografoScreen = ({ navigation }: any) => {
   }, [selectedRonda]);
 
   const loadAllData = async () => {
-    console.log('🚀 [CamarografoScreen] loadAllData - Iniciando carga de datos iniciales');
+    //console.log('🚀 [CamarografoScreen] loadAllData - Iniciando carga de datos iniciales');
     setLoading(true);
     try {
       const response = await api.paises.list();
-      console.log('✅ [CamarografoScreen] api.paises.list - Respuesta:', response);
+      //console.log('✅ [CamarografoScreen] api.paises.list - Respuesta:', response);
       const paisesResult = Array.isArray(response) ? response : response.data || [];
       setAllPaises(paisesResult);
     } catch (error) {
-      console.error('❌ [CamarografoScreen] Error al cargar países:', error);
+      //console.error('❌ [CamarografoScreen] Error al cargar países:', error);
       showError('Error al cargar países');
     } finally {
       setLoading(false);
@@ -204,15 +204,15 @@ export const CamarografoScreen = ({ navigation }: any) => {
   };
 
   const loadTorneos = async (idPais: number) => {
-    console.log(`🚀 [CamarografoScreen] loadTorneos - Cargando torneos para país: ${idPais}`);
+    //console.log(`🚀 [CamarografoScreen] loadTorneos - Cargando torneos para país: ${idPais}`);
     setLoadingFilters(true);
     try {
       // Usar getByCountry para filtrar correctamente por país, con activo='todos' para ver todos
       const response = await api.torneos.getByCountry(idPais, { activo: true });
-      console.log('✅ [CamarografoScreen] api.torneos.getByCountry - Respuesta:', response);
+      //console.log('✅ [CamarografoScreen] api.torneos.getByCountry - Respuesta:', response);
       setFilteredTorneos(response.data || []);
     } catch (error) {
-      console.error('❌ [CamarografoScreen] Error al cargar torneos:', error);
+      //console.error('❌ [CamarografoScreen] Error al cargar torneos:', error);
       showError('Error al cargar torneos');
     } finally {
       setLoadingFilters(false);
@@ -220,14 +220,14 @@ export const CamarografoScreen = ({ navigation }: any) => {
   };
 
   const loadEdiciones = async (idTorneo: number) => {
-    console.log(`🚀 [CamarografoScreen] loadEdiciones - Cargando ediciones para torneo: ${idTorneo}`);
+    //console.log(`🚀 [CamarografoScreen] loadEdiciones - Cargando ediciones para torneo: ${idTorneo}`);
     setLoadingFilters(true);
     try {
       const response = await api.ediciones.list({ id_torneo: idTorneo });
-      console.log('✅ [CamarografoScreen] api.ediciones.list - Respuesta:', response);
+      //console.log('✅ [CamarografoScreen] api.ediciones.list - Respuesta:', response);
       setFilteredEdiciones(response.data || []);
     } catch (error) {
-      console.error('❌ [CamarografoScreen] Error al cargar ediciones:', error);
+      //console.error('❌ [CamarografoScreen] Error al cargar ediciones:', error);
       showError('Error al cargar ediciones');
     } finally {
       setLoadingFilters(false);
@@ -235,20 +235,20 @@ export const CamarografoScreen = ({ navigation }: any) => {
   };
 
   const loadCategorias = async (idEdicion: number) => {
-    console.log(`🚀 [CamarografoScreen] loadCategorias - Cargando categorías para edición: ${idEdicion}`);
+    //console.log(`🚀 [CamarografoScreen] loadCategorias - Cargando categorías para edición: ${idEdicion}`);
     setLoadingFilters(true);
     try {
       const response = await api.edicionCategorias.list({ id_edicion: idEdicion });
-      console.log('✅ [CamarografoScreen] api.edicionCategorias.list - Respuesta:', JSON.stringify(response, null, 2));
+      //console.log('✅ [CamarografoScreen] api.edicionCategorias.list - Respuesta:', JSON.stringify(response, null, 2));
       const items = Array.isArray(response.data) ? response.data : response.data?.data || [];
 
       // Loggear los nombres de las categorías encontradas para depuración
       const categoryNames = items.map((i: any) => i.categorias?.nombre || i.categoria?.nombre || 'Sin nombre');
-      console.log(`📂 [CamarografoScreen] Categorías procesadas:`, categoryNames);
+      //console.log(`📂 [CamarografoScreen] Categorías procesadas:`, categoryNames);
 
       setFilteredCategorias(items);
     } catch (error) {
-      console.error('❌ [CamarografoScreen] Error al cargar categorías:', error);
+      //console.error('❌ [CamarografoScreen] Error al cargar categorías:', error);
       showError('Error al cargar categorías');
     } finally {
       setLoadingFilters(false);
@@ -256,22 +256,22 @@ export const CamarografoScreen = ({ navigation }: any) => {
   };
 
   const loadRondas = async (idEdicionCategoria: number) => {
-    console.log(`🚀 [CamarografoScreen] loadRondas - Cargando rondas para categoría: ${idEdicionCategoria}`);
+    //console.log(`🚀 [CamarografoScreen] loadRondas - Cargando rondas para categoría: ${idEdicionCategoria}`);
     setLoadingFilters(true);
     try {
       const response = await api.rondas.list({ id_edicion_categoria: idEdicionCategoria });
-      console.log('✅ [CamarografoScreen] api.rondas.list - Respuesta:', response);
+      //console.log('✅ [CamarografoScreen] api.rondas.list - Respuesta:', response);
       // El backend devuelve { data: { rondas: [...], total: n } }
       // response ya es el body parseado, así que response.data contiene { rondas, total }
       const rondas = response.data?.rondas || response.rondas || [];
-      console.log(`📋 [CamarografoScreen] Rondas encontradas: ${rondas.length}`);
+      //console.log(`📋 [CamarografoScreen] Rondas encontradas: ${rondas.length}`);
       setFilteredRondas(rondas);
     } catch (error: any) {
       const is404 = error.response?.status === 404;
       const endpoint = error.config?.url || '/rondas';
       const fullUrl = error.config?.baseURL ? `${error.config.baseURL}${endpoint}` : endpoint;
 
-      console.error(`❌ [CamarografoScreen] FALLO CARGA DE RONDAS:`, {
+      //console.error(`❌ [CamarografoScreen] FALLO CARGA DE RONDAS:`, {
         url: fullUrl,
         method: error.config?.method?.toUpperCase(),
         status: error.response?.status,
@@ -293,18 +293,18 @@ export const CamarografoScreen = ({ navigation }: any) => {
   };
 
   const loadPartidos = async (idRonda: number) => {
-    console.log(`🚀 [CamarografoScreen] loadPartidos - Cargando partidos para ronda: ${idRonda}`);
+    //console.log(`🚀 [CamarografoScreen] loadPartidos - Cargando partidos para ronda: ${idRonda}`);
     setLoadingFilters(true);
     const result = await safeAsync(
       async () => {
         const response = await api.partidos.list({ id_ronda: idRonda });
-        console.log('✅ [CamarografoScreen] api.partidos.list - Respuesta:', response);
+        //console.log('✅ [CamarografoScreen] api.partidos.list - Respuesta:', response);
         return response.data || [];
       },
       'loadPartidos',
       {
         fallbackValue: [], onError: (err) => {
-          console.error('❌ [CamarografoScreen] Error al cargar partidos:', err);
+          //console.error('❌ [CamarografoScreen] Error al cargar partidos:', err);
           showError('Error al cargar partidos');
         }
       }
@@ -353,7 +353,7 @@ export const CamarografoScreen = ({ navigation }: any) => {
         setLinkFotos(partido.link_fotos || '');
       }
     } catch (error) {
-      console.error('Error cargando datos de fotos:', error);
+      //console.error('Error cargando datos de fotos:', error);
       // Fallback silencioso
       setLinkFotos(partido.link_fotos || '');
     } finally {
@@ -414,7 +414,7 @@ export const CamarografoScreen = ({ navigation }: any) => {
 
       return processed;
     } catch (error) {
-      console.error('Error procesando imagen:', error);
+      //console.error('Error procesando imagen:', error);
       throw error;
     }
   };
@@ -442,7 +442,7 @@ export const CamarografoScreen = ({ navigation }: any) => {
 
     const result = await safeAsync(
       async () => {
-        console.log(`📤 Subiendo fotos y link para partido ${selectedPartido.id_partido}...`);
+        //console.log(`📤 Subiendo fotos y link para partido ${selectedPartido.id_partido}...`);
 
         // Usamos la acción unificada de upload
         // Esta acción crea o actualiza el registro de fotos del partido
@@ -459,7 +459,7 @@ export const CamarografoScreen = ({ navigation }: any) => {
       {
         fallbackValue: null,
         onError: (err) => {
-          console.error('❌ Error en el proceso de guardado:', err);
+          //console.error('❌ Error en el proceso de guardado:', err);
           showError('Error al guardar los datos');
         }
       }

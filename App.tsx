@@ -91,7 +91,6 @@ function AppNavigator() {
   // Guardar el token en el contexto cuando se obtenga
   useEffect(() => {
     if (expoPushToken) {
-      console.log('📱 Guardando device token en contexto:', expoPushToken);
       setDeviceToken(expoPushToken);
     }
   }, [expoPushToken, setDeviceToken]);

@@ -68,7 +68,7 @@ export const LoadPhotosScreen: React.FC<LoadPhotosScreenProps> = ({ navigation, 
       
       return manipulatedImage.uri;
     } catch (error) {
-      // console.error('Error procesando imagen:', error);
+      // //console.error('Error procesando imagen:', error);
       throw error;
     }
   };
@@ -120,7 +120,7 @@ export const LoadPhotosScreen: React.FC<LoadPhotosScreenProps> = ({ navigation, 
               )
             );
           } catch (error) {
-            // console.error('Error procesando imagen:', error);
+            // //console.error('Error procesando imagen:', error);
             setPreviewImages(prev => 
               prev.map(p => 
                 p.id === img.id 
@@ -135,7 +135,7 @@ export const LoadPhotosScreen: React.FC<LoadPhotosScreenProps> = ({ navigation, 
         showInfo(`${newImages.length} imagen(es) agregada(s)`);
       }
     } catch (error) {
-      // console.error('Error seleccionando imágenes:', error);
+      // //console.error('Error seleccionando imágenes:', error);
       showError('Error al seleccionar imágenes');
       setIsProcessing(false);
     }
@@ -209,7 +209,7 @@ export const LoadPhotosScreen: React.FC<LoadPhotosScreenProps> = ({ navigation, 
       showSuccess('Fotos guardadas exitosamente');
       navigation.goBack();
     } catch (error) {
-      // console.error('Error guardando fotos:', error);
+      // //console.error('Error guardando fotos:', error);
       showError('Error al guardar las fotos');
     } finally {
       setIsSaving(false);

@@ -45,7 +45,7 @@ export const BulkCreateTeamsScreen: React.FC<BulkCreateTeamsScreenProps> = ({
         setUploadResult(null);
       }
     } catch (error) {
-      // console.error('Error picking file:', error);
+      // //console.error('Error picking file:', error);
       Alert.alert('Error', 'No se pudo seleccionar el archivo');
     }
   };
@@ -93,8 +93,8 @@ export const BulkCreateTeamsScreen: React.FC<BulkCreateTeamsScreenProps> = ({
         );
       }
     } catch (error: any) {
-      // console.error('❌ [BulkCreateTeams] Error uploading CSV:', error);
-      // console.error('❌ [BulkCreateTeams] Error details:', error?.response?.data);
+      // //console.error('❌ [BulkCreateTeams] Error uploading CSV:', error);
+      // //console.error('❌ [BulkCreateTeams] Error details:', error?.response?.data);
 
       const errorMessage =
         error?.response?.data?.message || 'No se pudo importar el archivo';

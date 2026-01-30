@@ -26,7 +26,7 @@ export const torneosService = {
       const { activo = 'todos' } = (params || {}) as TorneosListParams;
       // Usar action: 'por-pais' que es lo que espera el backend para filtrar por país
       const query = { action: 'por-pais', id_pais, activo } as any;
-      console.log('🔗 [torneosService.getByCountry] query being sent to backend:', query);
+      //console.log('🔗 [torneosService.getByCountry] query being sent to backend:', query);
       const response = await apiClient.get<TorneosListResponse>('/torneos', { params: query });
     return response.data;
   },

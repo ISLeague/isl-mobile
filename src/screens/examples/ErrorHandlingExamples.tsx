@@ -225,7 +225,7 @@ export const ExampleManualErrorHandling = () => {
       );
       
       // Opcional: loggear para debugging
-      // console.error('Error details:', error);
+      // //console.error('Error details:', error);
     }
   };
 

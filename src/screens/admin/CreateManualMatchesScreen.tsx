@@ -78,10 +78,10 @@ export const CreateManualMatchesScreen = ({ navigation, route }: any) => {
             // Obtener todos los partidos y filtrar por id_ronda
             const todasEtapas = Object.values(partidosResponse.data.partidos_por_etapa).flat();
             partidosExistentes = todasEtapas.filter((p: any) => p.id_ronda === idRonda);
-            console.log(`📥 [CreateManualMatches] Partidos existentes encontrados: ${partidosExistentes.length}`);
+            //console.log(`📥 [CreateManualMatches] Partidos existentes encontrados: ${partidosExistentes.length}`);
           }
         } catch (error) {
-          console.log('⚠️ [CreateManualMatches] No se pudieron cargar partidos existentes:', error);
+          //console.log('⚠️ [CreateManualMatches] No se pudieron cargar partidos existentes:', error);
         }
 
         return { locales: allLocales, canchas: allCanchasData, partidosExistentes };
@@ -98,7 +98,7 @@ export const CreateManualMatchesScreen = ({ navigation, route }: any) => {
 
     // Si hay partidos existentes, cargarlos
     if (result?.partidosExistentes && result.partidosExistentes.length > 0) {
-      console.log('♻️ [CreateManualMatches] Cargando partidos existentes...');
+      //console.log('♻️ [CreateManualMatches] Cargando partidos existentes...');
       const partidos = result.partidosExistentes;
       setPartidosExistentes(partidos);
 
@@ -243,7 +243,7 @@ export const CreateManualMatchesScreen = ({ navigation, route }: any) => {
 
             // Si hay partidos existentes, primero eliminarlos
             if (hayPartidosExistentes) {
-              console.log('🗑️ [CreateManualMatches] Eliminando partidos existentes...');
+              //console.log('🗑️ [CreateManualMatches] Eliminando partidos existentes...');
               for (const partidoExistente of partidosExistentes) {
                 await safeAsync(
                   async () => await api.partidos.delete(partidoExistente.id_partido),
@@ -251,7 +251,7 @@ export const CreateManualMatchesScreen = ({ navigation, route }: any) => {
                   {
                     fallbackValue: null,
                     onError: (error) => {
-                      console.error('❌ Error eliminando partido:', partidoExistente.id_partido, error);
+                      //console.error('❌ Error eliminando partido:', partidoExistente.id_partido, error);
                     },
                   }
                 );
@@ -284,7 +284,7 @@ export const CreateManualMatchesScreen = ({ navigation, route }: any) => {
                 {
                   fallbackValue: null,
                   onError: (error) => {
-                    console.error('❌ Error creando partido:', error);
+                    //console.error('❌ Error creando partido:', error);
                     errorCount++;
                   },
                 }

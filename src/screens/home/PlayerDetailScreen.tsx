@@ -26,33 +26,33 @@ export const PlayerDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const { showError } = useToast();
 
   // Log all route params to debug
-  console.log('🔍 [PlayerDetail] route.params:', route.params);
-  console.log('🔍 [PlayerDetail] All keys in route.params:', route.params ? Object.keys(route.params) : 'No params');
+  //console.log('🔍 [PlayerDetail] route.params:', route.params);
+  //console.log('🔍 [PlayerDetail] All keys in route.params:', route.params ? Object.keys(route.params) : 'No params');
 
   const { playerId } = route.params as { playerId: number };
 
-  console.log('🔍 [PlayerDetail] Extracted playerId:', playerId);
-  console.log('🔍 [PlayerDetail] playerId type:', typeof playerId);
+  //console.log('🔍 [PlayerDetail] Extracted playerId:', playerId);
+  //console.log('🔍 [PlayerDetail] playerId type:', typeof playerId);
 
   const [loading, setLoading] = useState(true);
   const [detalleData, setDetalleData] = useState<JugadorDetalleData | null>(null);
 
   useEffect(() => {
     const loadJugadorDetalle = async () => {
-      console.log('🔍 [PlayerDetail] About to call API with playerId:', playerId);
+      //console.log('🔍 [PlayerDetail] About to call API with playerId:', playerId);
 
       const result = await safeAsync(
         async () => {
-          console.log('🔍 [PlayerDetail] Calling api.jugadores.detalle with id:', playerId);
+          //console.log('🔍 [PlayerDetail] Calling api.jugadores.detalle with id:', playerId);
           const response = await api.jugadores.detalle(playerId);
-          console.log('🔍 [PlayerDetail] API response:', response);
+          //console.log('🔍 [PlayerDetail] API response:', response);
           return response;
         },
         'PlayerDetailScreen - loadJugadorDetalle',
         {
           fallbackValue: null,
           onError: (error) => {
-            console.error('❌ [PlayerDetail] Error loading player:', error);
+            //console.error('❌ [PlayerDetail] Error loading player:', error);
             showError('No se pudo cargar la información del jugador', 'Error');
           }
         }

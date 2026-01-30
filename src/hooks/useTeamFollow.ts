@@ -69,7 +69,7 @@ export const useTeamFollow = (edicionCategoriaId: number): UseTeamFollowReturn =
         setTeamStats(null);
       }
     } catch (error) {
-      console.error('Error loading followed team:', error);
+      //console.error('Error loading followed team:', error);
     } finally {
       setLoading(false);
     }
@@ -99,7 +99,7 @@ export const useTeamFollow = (edicionCategoriaId: number): UseTeamFollowReturn =
         showSuccess(`Ahora sigues a ${team.nombre}`);
       }
     } catch (error) {
-      console.error('Error following team:', error);
+      //console.error('Error following team:', error);
       showError('Error al seguir al equipo');
     } finally {
       setLoading(false);
@@ -120,7 +120,7 @@ export const useTeamFollow = (edicionCategoriaId: number): UseTeamFollowReturn =
         showSuccess('Dejaste de seguir al equipo');
       }
     } catch (error) {
-      console.error('Error unfollowing team:', error);
+      //console.error('Error unfollowing team:', error);
       showError('Error al dejar de seguir');
     } finally {
       setLoading(false);

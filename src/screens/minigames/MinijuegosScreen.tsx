@@ -24,7 +24,7 @@ export const MinijuegosScreen = ({ navigation }: any) => {
       const data = await minigamesService.list();
       setMinijuegos(data);
     } catch (error) {
-      console.error('Error loading minigames:', error);
+      //console.error('Error loading minigames:', error);
       setMinijuegos([]);
     } finally {
       setLoading(false);

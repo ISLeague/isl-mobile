@@ -196,7 +196,7 @@ export const EditPartidoScreen: React.FC<EditPartidoScreenProps> = ({ navigation
           id_cancha: canchaId ?? undefined
         };
 
-        console.log('Actualizando partido con datos:', updateData);
+        //console.log('Actualizando partido con datos:', updateData);
 
         const response = await api.partidos.update(updateData);
 

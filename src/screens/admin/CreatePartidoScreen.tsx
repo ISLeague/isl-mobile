@@ -442,7 +442,7 @@ export const CreatePartidoScreen = ({ navigation, route }: any) => {
             } catch (error) {
               setCreating(false);
               showError('Error en el proceso de creación');
-              // console.error('❌ [CreatePartido] Error:', error);
+              // //console.error('❌ [CreatePartido] Error:', error);
             }
           },
         },

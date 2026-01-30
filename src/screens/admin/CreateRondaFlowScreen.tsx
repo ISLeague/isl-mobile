@@ -79,7 +79,7 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
       setFechaFin(rondaData.fecha_fin);
       setOrden(rondaData.orden?.toString() || '1');
 
-      console.log('🔧 Inicializando con ronda existente:', {
+      //console.log('🔧 Inicializando con ronda existente:', {
         id_ronda: rondaData.id_ronda,
         nombre: rondaData.nombre,
         tipo: rondaData.tipo,
@@ -114,7 +114,7 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
           }
         }
       } catch (error) {
-        console.log('Error cargando equipos en grupos:', error);
+        //console.log('Error cargando equipos en grupos:', error);
       }
     };
     if (idEdicionCategoria) {
@@ -354,14 +354,14 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
           rondasCreadas++;
 
           // Crear partidos automáticamente a partir de los fixtures generados
-          console.log(`🔍 [AUTO] Fixture response para ronda ${rondaId}:`, JSON.stringify(fixtureRes.data, null, 2));
+          //console.log(`🔍 [AUTO] Fixture response para ronda ${rondaId}:`, JSON.stringify(fixtureRes.data, null, 2));
 
           if (fixtureRes.success && fixtureRes.data?.jornadas) {
             for (const jornada of fixtureRes.data.jornadas) {
-              console.log(`📋 [AUTO] Procesando jornada ${jornada.jornada} con ${jornada.enfrentamientos?.length || 0} enfrentamientos`);
+              //console.log(`📋 [AUTO] Procesando jornada ${jornada.jornada} con ${jornada.enfrentamientos?.length || 0} enfrentamientos`);
 
               for (const enfrentamiento of jornada.enfrentamientos) {
-                console.log(`⚽ [AUTO] Enfrentamiento:`, enfrentamiento);
+                //console.log(`⚽ [AUTO] Enfrentamiento:`, enfrentamiento);
 
                 const partidoData = {
                   id_fixture: enfrentamiento.fixture_id,
@@ -377,19 +377,19 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
                     : 'Partido de clasificación',
                 };
 
-                console.log(`📤 [AUTO] Creando partido con datos:`, partidoData);
+                //console.log(`📤 [AUTO] Creando partido con datos:`, partidoData);
                 const partidoRes = await api.partidos.createFromFixture(partidoData);
-                console.log(`📥 [AUTO] Respuesta crear partido:`, partidoRes);
+                //console.log(`📥 [AUTO] Respuesta crear partido:`, partidoRes);
 
                 if (partidoRes.success) {
                   partidosCreados++;
                 } else {
-                  console.error(`❌ [AUTO] Error creando partido:`, partidoRes.error);
+                  //console.error(`❌ [AUTO] Error creando partido:`, partidoRes.error);
                 }
               }
             }
           } else {
-            console.warn(`⚠️ [AUTO] No hay jornadas en fixtureRes:`, fixtureRes);
+            //console.warn(`⚠️ [AUTO] No hay jornadas en fixtureRes:`, fixtureRes);
           }
         }
       }
@@ -404,8 +404,8 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
   };
 
   const handleGenerateFixture = async () => {
-    console.log('🔍 [handleGenerateFixture] Validando datos iniciales...');
-    console.log('📊 [handleGenerateFixture] Estado actual:', {
+    //console.log('🔍 [handleGenerateFixture] Validando datos iniciales...');
+    //console.log('📊 [handleGenerateFixture] Estado actual:', {
       createdRondaId,
       tipo,
       tipoGeneracion,
@@ -414,13 +414,13 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
     });
 
     if (!createdRondaId) {
-      console.log('❌ [handleGenerateFixture] Error: createdRondaId es nulo');
+      //console.log('❌ [handleGenerateFixture] Error: createdRondaId es nulo');
       Alert.alert('Error', 'No se encontró la ronda creada');
       return;
     }
 
     if (tipo === 'amistosa' && (!cantidadPartidos || parseInt(cantidadPartidos) <= 0)) {
-      console.log('❌ [handleGenerateFixture] Error: cantidad de partidos inválida para amistosos');
+      //console.log('❌ [handleGenerateFixture] Error: cantidad de partidos inválida para amistosos');
       Alert.alert('Error', 'Para amistosos, especifica la cantidad de partidos');
       return;
     }
@@ -438,12 +438,12 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
       fixtureData.cantidad_partidos = parseInt(cantidadPartidos);
     }
 
-    console.log('🔍 [handleGenerateFixture] Validando fixtureData antes de enviar...');
-    console.log('📋 [handleGenerateFixture] fixtureData completo:', JSON.stringify(fixtureData, null, 2));
+    //console.log('🔍 [handleGenerateFixture] Validando fixtureData antes de enviar...');
+    //console.log('📋 [handleGenerateFixture] fixtureData completo:', JSON.stringify(fixtureData, null, 2));
 
     // Validaciones adicionales
     if (!fixtureData.id_ronda || !fixtureData.tipo_generacion) {
-      console.log('❌ [handleGenerateFixture] Error: campos requeridos faltantes');
+      //console.log('❌ [handleGenerateFixture] Error: campos requeridos faltantes');
       Alert.alert('Error', 'Datos incompletos para generar fixture');
       setLoading(false);
       return;
@@ -452,15 +452,15 @@ export const CreateRondaFlowScreen: React.FC<CreateRondaFlowScreenProps> = ({ na
     const result = await safeAsync(
       async () => {
         try {
-          console.log('🚀 [generateFixture] Enviando request con datos:', JSON.stringify(fixtureData, null, 2));
+          //console.log('🚀 [generateFixture] Enviando request con datos:', JSON.stringify(fixtureData, null, 2));
           const response = await api.rondas.generarFixture(fixtureData);
-          console.log('✅ [generateFixture] Respuesta recibida:', JSON.stringify(response, null, 2));
+          //console.log('✅ [generateFixture] Respuesta recibida:', JSON.stringify(response, null, 2));
           return response;
         } catch (error) {
-          console.log('💥 [generateFixture] Error capturado:', error);
+          //console.log('💥 [generateFixture] Error capturado:', error);
           if (error instanceof Error) {
-            console.log('💥 [generateFixture] Error message:', error.message);
-            console.log('💥 [generateFixture] Error stack:', error.stack);
+            //console.log('💥 [generateFixture] Error message:', error.message);
+            //console.log('💥 [generateFixture] Error stack:', error.stack);
           }
           // Re-throw el error para que safeAsync lo maneje
           throw error;

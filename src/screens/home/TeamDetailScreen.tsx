@@ -48,11 +48,11 @@ const getBadgeColor = (posicion?: string) => {
 
 export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, route }) => {
   const { equipoId } = route.params as { equipoId: number };
-  console.log('🔍 TeamDetailScreen - equipoId from params:', equipoId);
+  //console.log('🔍 TeamDetailScreen - equipoId from params:', equipoId);
 
   // Validar que equipoId sea válido
   if (!equipoId) {
-    console.error('❌ TeamDetailScreen: equipoId is undefined or invalid');
+    //console.error('❌ TeamDetailScreen: equipoId is undefined or invalid');
     return (
       <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <Text style={{ fontSize: 16, color: 'red' }}>Error: ID de equipo no válido</Text>
@@ -173,7 +173,7 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
         setGrupoEquipo(null);
 
       } catch (error) {
-        // console.error('Error fetching team data:', error);
+        // //console.error('Error fetching team data:', error);
         showError('No se pudo cargar la información del equipo');
       } finally {
         setLoading(false);
@@ -328,7 +328,7 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({ navigation, 
   };
 
   const handleAddPlayer = () => {
-    console.log('🔍 handleAddPlayer - equipoId:', equipoId);
+    //console.log('🔍 handleAddPlayer - equipoId:', equipoId);
     navigation.navigate('PlayerForm', { equipoId, mode: 'create' });
   };
 

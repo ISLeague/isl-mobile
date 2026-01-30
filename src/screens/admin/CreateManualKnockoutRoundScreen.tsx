@@ -85,13 +85,13 @@ export const CreateManualKnockoutRoundScreen: React.FC<CreateManualKnockoutRound
   }, []);
 
   const loadInitialData = async () => {
-    console.log('🔄 [CreateManualKnockout] Cargando datos iniciales...');
+    //console.log('🔄 [CreateManualKnockout] Cargando datos iniciales...');
     setLoading(true);
 
     const result = await safeAsync(
       async () => {
         // PASO 1: Listar rondas existentes
-        console.log('📋 [CreateManualKnockout] Obteniendo rondas existentes...');
+        //console.log('📋 [CreateManualKnockout] Obteniendo rondas existentes...');
         const rondasResponse = await api.rondas.list({
           id_fase: idFase,
           tipo_ronda: 'eliminatorias',
@@ -105,28 +105,28 @@ export const CreateManualKnockoutRoundScreen: React.FC<CreateManualKnockoutRound
           rondas = todasLasRondas.filter((r: any) => r.subtipo_eliminatoria === copa);
         }
 
-        console.log(`📋 [CreateManualKnockout] Rondas existentes: ${rondas.length}`);
+        //console.log(`📋 [CreateManualKnockout] Rondas existentes: ${rondas.length}`);
 
         // PASO 2: Obtener equipos disponibles
         let equipos: any[] = [];
 
         if (rondas.length === 0) {
           // PRIMERA RONDA - Traer TODOS los equipos
-          console.log('🔍 [CreateManualKnockout] Primera ronda, obteniendo todos los equipos...');
+          //console.log('🔍 [CreateManualKnockout] Primera ronda, obteniendo todos los equipos...');
           const equiposResponse = await api.equipos.list(idEdicionCategoria);
 
           if (equiposResponse.success && equiposResponse.data) {
             equipos = equiposResponse.data;
-            console.log(`👥 [CreateManualKnockout] Equipos totales: ${equipos.length}`);
+            //console.log(`👥 [CreateManualKnockout] Equipos totales: ${equipos.length}`);
           }
         } else {
           // RONDA SUBSECUENTE - Obtener ganadores de la ronda anterior
-          console.log('🔍 [CreateManualKnockout] Ronda subsecuente, obteniendo ganadores...');
+          //console.log('🔍 [CreateManualKnockout] Ronda subsecuente, obteniendo ganadores...');
 
           const rondasOrdenadas = rondas.sort((a, b) => (b.orden || 0) - (a.orden || 0));
           const ultimaRonda = rondasOrdenadas[0];
 
-          console.log('📌 [CreateManualKnockout] Última ronda:', ultimaRonda.nombre);
+          //console.log('📌 [CreateManualKnockout] Última ronda:', ultimaRonda.nombre);
 
           const ganadoresResponse = await api.rondas.getGanadores(ultimaRonda.id_ronda);
 
@@ -139,7 +139,7 @@ export const CreateManualKnockoutRoundScreen: React.FC<CreateManualKnockoutRound
             }
 
             equipos = ganadoresResponse.data.ganadores || [];
-            console.log(`👥 [CreateManualKnockout] Ganadores disponibles: ${equipos.length}`);
+            //console.log(`👥 [CreateManualKnockout] Ganadores disponibles: ${equipos.length}`);
           }
         }
 
@@ -153,7 +153,7 @@ export const CreateManualKnockoutRoundScreen: React.FC<CreateManualKnockoutRound
         severity: 'high',
         fallbackValue: null,
         onError: (error) => {
-          console.error('❌ [CreateManualKnockout] Error:', error);
+          //console.error('❌ [CreateManualKnockout] Error:', error);
           showError(error.message || 'No se pudo cargar los datos necesarios');
         },
       }
@@ -248,7 +248,7 @@ export const CreateManualKnockoutRoundScreen: React.FC<CreateManualKnockoutRound
           metodo_asignacion: 'manual' as const,
         };
 
-        console.log('📤 [CreateManualKnockout] Creando ronda:', rondaData);
+        //console.log('📤 [CreateManualKnockout] Creando ronda:', rondaData);
         const createResponse = await api.rondas.create(rondaData);
 
         if (!createResponse.success || !createResponse.data) {
@@ -262,7 +262,7 @@ export const CreateManualKnockoutRoundScreen: React.FC<CreateManualKnockoutRound
         severity: 'high',
         fallbackValue: null,
         onError: (error) => {
-          console.error('❌ [CreateManualKnockout] Error al crear ronda:', error);
+          //console.error('❌ [CreateManualKnockout] Error al crear ronda:', error);
           showError(error.message || 'No se pudo crear la ronda');
         },
       }
